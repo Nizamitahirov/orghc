@@ -45,7 +45,7 @@ export const HotelSection = ({
                     value={hotel.hotel_name}
                     onChange={(e) => onChange(hotel.id, 'hotel_name', e.target.value)}
                     placeholder="Hotel name"
-                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
                   />
                 </div>
                 <div>
@@ -54,7 +54,7 @@ export const HotelSection = ({
                     type="date"
                     value={hotel.check_in_date}
                     onChange={(e) => onChange(hotel.id, 'check_in_date', e.target.value)}
-                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:border-almet-comet rounded-lg  dark:bg-gray-700 dark:text-white"
                   />
                 </div>
                 <div>
@@ -63,7 +63,7 @@ export const HotelSection = ({
                     type="date"
                     value={hotel.check_out_date}
                     onChange={(e) => onChange(hotel.id, 'check_out_date', e.target.value)}
-                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
                   />
                 </div>
                 <div>
@@ -73,7 +73,7 @@ export const HotelSection = ({
                     value={hotel.location}
                     onChange={(e) => onChange(hotel.id, 'location', e.target.value)}
                     placeholder="City/Area"
-                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
                   />
                 </div>
                 <div>
@@ -83,7 +83,7 @@ export const HotelSection = ({
                     value={hotel.notes}
                     onChange={(e) => onChange(hotel.id, 'notes', e.target.value)}
                     placeholder="Optional"
-                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
                   />
                 </div>
               </div>

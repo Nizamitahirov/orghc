@@ -201,17 +201,10 @@ const ObjectiveRow = memo(({
                     {canRateEndYear && !isCancelled ? (
                     <select
   value={objective.end_year_rating || ''}
-  onChange={(e) => { // ✅ Use onChange instead of onInput
+  onChange={(e) => { 
     const value = e.target.value ? parseInt(e.target.value) : null;
     
-    console.log('🎯 ROW RATING CHANGE:', {
-      objectiveId: objective.id,
-      objectiveTitle: objective.title?.substring(0, 30),
-      index,
-      oldRating: objective.end_year_rating,
-      newRating: value,
-      eventValue: e.target.value
-    });
+  
     
     onUpdate(index, 'end_year_rating', value);
   }}
@@ -245,7 +238,7 @@ const ObjectiveRow = memo(({
                     </label>
                     <select
                       value={objective.status || ''}
-                      onInput={(e) => {
+                      onChange={(e) => {
                         const value = e.target.value ? parseInt(e.target.value) : null;
                         onUpdate(index, 'status', value);
                       }}
@@ -343,7 +336,7 @@ const ObjectiveRow = memo(({
                           </span>
                         </div>
                         
-                        {/* Delete button - only for own comments */}
+               
                         <button
                           onClick={() => {
                             if (confirm('Delete this comment?')) {
@@ -352,7 +345,8 @@ const ObjectiveRow = memo(({
                           }}
                           className="text-xs text-red-600 dark:text-red-400 hover:underline"
                         >
-                          Delete
+           <Trash2 className="w-3.5 h-3.5" />
+
                         </button>
                       </div>
                       
@@ -363,8 +357,8 @@ const ObjectiveRow = memo(({
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-6">
-                  <MessageSquare className={`w-8 h-8 mx-auto mb-2 ${darkMode ? 'text-almet-bali-hai/30' : 'text-almet-waterloo/30'}`} />
+                <div className="text-center py-2">
+                  <MessageSquare className={`w-4 h-4 mx-auto mb-2 ${darkMode ? 'text-almet-bali-hai/30' : 'text-almet-waterloo/30'}`} />
                   <p className={`text-xs ${darkMode ? 'text-almet-bali-hai/70' : 'text-almet-waterloo/70'}`}>
                     No comments yet
                   </p>
@@ -401,13 +395,13 @@ const ObjectiveRow = memo(({
     </div>
   );
 }, (prevProps, nextProps) => {
-  // ✅ SIMPLE: Just check if the objective reference changed
-  return prevProps.objective === nextProps.objective &&
-         prevProps.isExpanded === nextProps.isExpanded &&
-         prevProps.canEditGoals === nextProps.canEditGoals &&
-         prevProps.canCancelGoals === nextProps.canCancelGoals &&
-         prevProps.canRateEndYear === nextProps.canRateEndYear &&
-         prevProps.darkMode === nextProps.darkMode;
+return prevProps.objective === nextProps.objective &&
+       prevProps.isExpanded === nextProps.isExpanded &&
+       prevProps.canEditGoals === nextProps.canEditGoals &&
+       prevProps.canCancelGoals === nextProps.canCancelGoals &&
+       prevProps.canRateEndYear === nextProps.canRateEndYear &&
+       prevProps.darkMode === nextProps.darkMode &&
+       prevProps.settings === nextProps.settings; 
 });
 ObjectiveRow.displayName = 'ObjectiveRow';
 
@@ -449,47 +443,41 @@ export default function ObjectivesSection({
                           );
 
   const isGoalsSubmitted = performanceData?.objectives_employee_submitted || false;
-  const isGoalsApproved = performanceData?.objectives_manager_approved || false;
+  const isGoalsApproved = 
+                         performanceData?.objectives_employee_approved || 
+                         performanceData?.approval_status === 'APPROVED';
   const isNeedClarification = performanceData?.approval_status === 'NEED_CLARIFICATION';
   
-  const isManagerPeriodActive = () => {
+  const isGoalSettingPeriodActive = () => {
     if (!activeYear) return false;
     const today = new Date().toISOString().split('T')[0];
-    const managerStart = activeYear.goal_setting_manager_start;
-    const managerEnd = activeYear.goal_setting_manager_end;
-    return today >= managerStart && today <= managerEnd;
-  };
-  
-  const isEmployeePeriodActive = () => {
-    if (!activeYear) return false;
-    const today = new Date().toISOString().split('T')[0];
-    const employeeStart = activeYear.goal_setting_employee_start;
-    const employeeEnd = activeYear.goal_setting_employee_end;
-    return today >= employeeStart && today <= employeeEnd;
-  };
-  
+    return today >= activeYear.goal_setting_start && today <= activeYear.goal_setting_end;
+};
   const isGoalSettingPeriod = currentPeriod === 'GOAL_SETTING';
   const isMidYearPeriod = currentPeriod === 'MID_YEAR_REVIEW';
   const isEndYearPeriod = currentPeriod === 'END_YEAR_REVIEW';
+
+const isPeriodActive = isGoalSettingPeriod && isGoalSettingPeriodActive();
+
+const canEditGoals = canEdit && (
+    (isPeriodActive && (!isGoalsSubmitted || isNeedClarification)) ||
+    isNeedClarification
+);
+
+const canSaveDraft = canEditGoals;
+
+const canSubmitGoals = canEdit && isValidForSubmit && (
+    (isPeriodActive && !isGoalsSubmitted) ||
+    isNeedClarification
+);
+
+const canCancelGoals = canEdit && isMidYearPeriod;
+const canAddMidYearGoal = canEdit && isMidYearPeriod && canAddMore;
+const canRateEndYear = canEdit && isEndYearPeriod;
   
-  const isManagerPeriod = isGoalSettingPeriod && isManagerPeriodActive();
-  const isEmployeePeriod = isGoalSettingPeriod && isEmployeePeriodActive();
+
   
-  const canEditGoals = canEdit && (
-    (isManagerPeriod && (!isGoalsSubmitted || isNeedClarification)) ||
-    (!isManagerPeriod && isNeedClarification)
-  );
-  
-  const canSaveDraft = canEditGoals;
-  
-  const canSubmitGoals = canEdit && isValidForSubmit && (
-    (isManagerPeriod && !isGoalsSubmitted) ||
-    (!isManagerPeriod && isNeedClarification)
-  );
-  
-  const canCancelGoals = canEdit && isMidYearPeriod;
-  const canAddMidYearGoal = canEdit && isMidYearPeriod && canAddMore;
-  const canRateEndYear = canEdit && isEndYearPeriod;
+
 
   const formatNumber = (value, decimals = 2) => {
     const num = parseFloat(value);
@@ -515,77 +503,19 @@ export default function ObjectivesSection({
   const objectivesGrade = getLetterGradeFromScale(percentage || 0);
 
   const getValidationMessage = () => {
-    if (objectives.length < settings.goalLimits?.min) {
-      return `Add ${settings.goalLimits.min - objectives.length} more objective(s)`;
-    }
-    if (totalWeight !== 100) {
-      return 'Total weight must be 100%';
-    }
-    const missingTitle = objectives.some(obj => !obj.title?.trim());
-    const missingStatus = objectives.some(obj => !obj.status);
-    const missingWeight = objectives.some(obj => !obj.weight || obj.weight <= 0);
-    
-    if (missingTitle) return 'All objectives must have a title';
-    if (missingStatus) return 'All objectives must have a status';
-    if (missingWeight) return 'All objectives must have weight > 0';
-    
-    return '';
-  };
-  
-  const getPeriodStatusMessage = () => {
-    if (!activeYear) return null;
-    
-    if (isNeedClarification) {
-      return {
-        type: 'warning',
-        message: 'Clarification Requested - Manager can edit and resubmit (even after manager period)',
-        icon: MessageSquare
-      };
-    }
-    
-    if (isManagerPeriod) {
-      if (isGoalsSubmitted) {
-        return {
-          type: 'info',
-          message: `Manager Period Active - Goals submitted, waiting for employee review`,
-          icon: Clock
-        };
-      }
-      return {
-        type: 'info',
-        message: `Manager Period Active (${activeYear.goal_setting_manager_start} to ${activeYear.goal_setting_manager_end})`,
-        icon: Clock
-      };
-    }
-    
-    if (isEmployeePeriod && isGoalsSubmitted && !isGoalsApproved) {
-      return {
-        type: 'warning',
-        message: `Employee Review Period Active - Waiting for employee approval`,
-        icon: Clock
-      };
-    }
-    
-    if (isGoalsApproved) {
-      return {
-        type: 'success',
-        message: 'Goals Approved - Goal Setting Complete ✓',
-        icon: CheckCircle
-      };
-    }
-    
-    if (isGoalSettingPeriod && !isManagerPeriod && !isEmployeePeriod) {
-      return {
-        type: 'error',
-        message: 'Goal setting period has ended',
-        icon: XCircle
-      };
-    }
-    
-    return null;
-  };
-  
-  const periodStatus = getPeriodStatusMessage();
+  const active = objectives.filter(o => !o.is_cancelled);
+  if (active.length < settings.goalLimits?.min)
+    return `Please add at least ${settings.goalLimits.min} objective(s) (you have ${active.length}).`;
+  if (totalWeight !== 100)
+    return `Total weight must equal 100% (currently ${totalWeight}%).`;
+  if (active.some(o => !o.title?.trim()))
+    return 'Every objective needs a title.';
+  if (active.some(o => !o.status))
+    return 'Please select a status for each objective.';
+  if (active.some(o => !o.weight || o.weight <= 0))
+    return 'Every objective must have a weight greater than 0.';
+  return '';
+};
 
   const handleToggle = useCallback((index) => {
     setExpandedRows(prev => ({
@@ -595,34 +525,111 @@ export default function ObjectivesSection({
   }, []);
 
   const handleUpdate = useCallback((index, field, value) => {
-  console.log('🔄 SECTION UPDATE:', { 
-    index, 
-    field, 
-    value,
-    objectiveId: objectives[index]?.id,
-    currentValue: objectives[index]?.[field]
-  });
-  
+
   onUpdate(index, field, value);
-}, [onUpdate]); // ✅ Remove 'objectives' dependency
+}, [onUpdate]); 
 
   return (
     <div className={`${darkMode ? 'bg-almet-cloud-burst/60' : 'bg-white'} border ${darkMode ? 'border-almet-comet/30' : 'border-almet-mystic'} rounded-xl overflow-hidden shadow-sm`}>
       <div className={`p-5 border-b ${darkMode ? 'border-almet-comet/30' : 'border-almet-mystic'}`}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-almet-sapphire/10 dark:bg-almet-sapphire/20">
-              <Target className="w-5 h-5 text-almet-sapphire" />
+  <div className="p-3 rounded-xl bg-almet-sapphire/10 dark:bg-almet-sapphire/20">
+    <Target className="w-5 h-5 text-almet-sapphire" />
+  </div>
+  <div>
+    <div className="flex items-center gap-2">
+      <h3 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+        Employee Objectives
+      </h3>
+      <div className="relative group">
+        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold cursor-help ${
+          darkMode 
+            ? 'bg-almet-sapphire/20 text-almet-sapphire' 
+            : 'bg-almet-sapphire/10 text-almet-sapphire'
+        }`}>
+          SMART
+        </span>
+        
+        {/* Tooltip on hover */}
+        <div className={`absolute invisible group-hover:visible z-50 left-0 top-full mt-2 w-80 p-4 rounded-xl shadow-lg border transition-all ${
+          darkMode 
+            ? 'bg-almet-san-juan border-almet-comet/30' 
+            : 'bg-white border-gray-200'
+        }`}>
+          <h4 className={`text-xs font-bold mb-3 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+            SMART Objectives Criteria
+          </h4>
+          
+          <div className="space-y-2.5">
+            <div className="flex items-start gap-2">
+              <span className="text-almet-sapphire font-bold text-sm flex-shrink-0">S</span>
+              <div>
+                <span className={`text-xs font-semibold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                  Specific
+                </span>
+                <span className={`text-xs block ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
+                  Related to function and capabilities
+                </span>
+              </div>
             </div>
-            <div>
-              <h3 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-                Employee Objectives
-              </h3>
-              <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mt-0.5`}>
-                Min: {settings.goalLimits?.min} • Max: {settings.goalLimits?.max} objectives
-              </p>
+            
+            <div className="flex items-start gap-2">
+              <span className="text-almet-sapphire font-bold text-sm flex-shrink-0">M</span>
+              <div>
+                <span className={`text-xs font-semibold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                  Measurable
+                </span>
+                <span className={`text-xs block ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
+                  Progress can be measured
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-2">
+              <span className="text-almet-sapphire font-bold text-sm flex-shrink-0">A</span>
+              <div>
+                <span className={`text-xs font-semibold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                  Achievable
+                </span>
+                <span className={`text-xs block ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
+                  Realistic to be achieved
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-2">
+              <span className="text-almet-sapphire font-bold text-sm flex-shrink-0">R</span>
+              <div>
+                <span className={`text-xs font-semibold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                  Relevant
+                </span>
+                <span className={`text-xs block ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
+                  Relates to business objectives
+                </span>
+              </div>
+            </div>
+            
+            <div className="flex items-start gap-2">
+              <span className="text-almet-sapphire font-bold text-sm flex-shrink-0">T</span>
+              <div>
+                <span className={`text-xs font-semibold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                  Timed
+                </span>
+                <span className={`text-xs block ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
+                  Date for completion is set
+                </span>
+              </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+    <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mt-0.5`}>
+      Min: {settings.goalLimits?.min} • Max: {settings.goalLimits?.max} objectives
+    </p>
+  </div>
+</div>
           
           {(canEditGoals || canAddMidYearGoal) && (
             <button
@@ -636,17 +643,6 @@ export default function ObjectivesSection({
           )}
         </div>
 
-        {periodStatus && (
-          <div className={`mb-4 px-4 py-3 rounded-xl border flex items-center gap-3 ${
-            periodStatus.type === 'info' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/30' :
-            periodStatus.type === 'warning' ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/30' :
-            periodStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30' :
-            'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/30'
-          }`}>
-            {periodStatus.icon && <periodStatus.icon className="w-4 h-5 flex-shrink-0" />}
-            <span className="text-xs font-medium">{periodStatus.message}</span>
-          </div>
-        )}
 
         <div className="flex flex-wrap items-center gap-2">
           <div className={`px-3 py-2 rounded-xl flex items-center gap-2 ${
@@ -658,26 +654,23 @@ export default function ObjectivesSection({
             <span className="text-xs font-semibold">{totalWeight}% • {weightStatus.text}</span>
           </div>
           
-          {isGoalsSubmitted && (
-            <div className="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/30 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4" />
-              <span className="text-xs font-semibold">Submitted</span>
-            </div>
-          )}
           
-          {isGoalsApproved && (
-            <div className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4" />
-              <span className="text-xs font-semibold">Approved</span>
-            </div>
-          )}
-          
-          {isNeedClarification && (
-            <div className="px-3 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/30 flex items-center gap-2 animate-pulse">
-              <MessageSquare className="w-4 h-4" />
-              <span className="text-xs font-semibold">Clarification Requested</span>
-            </div>
-          )}
+{isNeedClarification ? (
+  <div className="px-3 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/30 flex items-center gap-2 animate-pulse">
+    <MessageSquare className="w-4 h-4" />
+    <span className="text-xs font-semibold">Clarification requested</span>
+  </div>
+) : isGoalsApproved ? (
+  <div className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30 flex items-center gap-2">
+    <CheckCircle className="w-4 h-4" />
+    <span className="text-xs font-semibold">Objectives approved ✓</span>
+  </div>
+) : isGoalsSubmitted ? (
+  <div className="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/30 flex items-center gap-2">
+    <CheckCircle className="w-4 h-4" />
+    <span className="text-xs font-semibold">Submitted — waiting for employee</span>
+  </div>
+) : null}
         </div>
       </div>
 
@@ -806,50 +799,45 @@ export default function ObjectivesSection({
               </div>
             )}
             
-            {isGoalsSubmitted && !isGoalsApproved && !isNeedClarification && isEmployeePeriod && (
+            {isGoalsSubmitted && !isGoalsApproved && !isNeedClarification  && (
               <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 rounded-xl text-xs">
                 <AlertCircle className="w-4 h-4" />
-                Waiting for employee approval (Employee period active)
+                Waiting for employee approval 
               </div>
             )}
             
-            {isGoalsApproved && (
-              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 rounded-xl text-xs">
-                <CheckCircle className="w-4 h-4" />
-                Goals approved - Goal setting complete!
-              </div>
-            )}
+     
             
-            {isNeedClarification && (
-              <div className={`flex-1 min-w-full p-4 rounded-xl border ${
-                darkMode 
-                  ? 'bg-amber-900/20 border-amber-800/30 text-amber-400' 
-                  : 'bg-amber-50 border-amber-200 text-amber-700'
-              }`}>
-                <div className="flex items-start gap-3">
-                  <MessageSquare className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <h4 className="text-sm font-bold mb-1">Clarification Requested</h4>
-                    <p className="text-xs opacity-90 mb-2">
-                      Employee has requested clarification. You can:
-                    </p>
-                    <ul className="text-xs space-y-1 ml-4">
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                        Edit objectives and save draft
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                        Make no changes and resubmit directly
-                      </li>
-                    </ul>
-                    <p className="text-xs mt-2 opacity-75 italic">
-                      Note: You can edit even if manager period has ended
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+{isNeedClarification && (
+  <div className={`flex-1 min-w-full p-4 rounded-xl border ${
+    darkMode
+      ? 'bg-amber-900/20 border-amber-800/30 text-amber-400'
+      : 'bg-amber-50 border-amber-200 text-amber-700'
+  }`}>
+    <div className="flex items-start gap-3">
+      <MessageSquare className="w-5 h-5 flex-shrink-0 mt-0.5" />
+      <div className="flex-1">
+        <h4 className="text-sm font-bold mb-1">Clarification Requested</h4>
+        <p className="text-xs opacity-90 mb-2">
+          The employee wants more information. You can:
+        </p>
+        <ul className="text-xs space-y-1 ml-4">
+          <li className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+            Edit any objective and save the draft
+          </li>
+          <li className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+            Resubmit without changes — the employee will be notified
+          </li>
+        </ul>
+        <p className="text-xs mt-2 opacity-75 italic">
+          You can still edit even if the manager window has passed.
+        </p>
+      </div>
+    </div>
+  </div>
+)}
           </div>
         </div>
       )}

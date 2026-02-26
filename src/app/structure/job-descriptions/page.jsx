@@ -244,7 +244,7 @@ const handleBusinessFunctionClick = async (group) => {
       setSelectedStatus('');
       setCurrentPage(1);
       
-      console.log('✅ Using cached jobs:', group.jobs.length);
+ 
     } else {
       // 🔥 Option 2: Try to fetch from API
       const response = await jobDescriptionService.getJobDescriptions({ 
@@ -252,7 +252,6 @@ const handleBusinessFunctionClick = async (group) => {
         page_size: 1000  // Get all jobs
       });
       
-      console.log('📡 Fetched from API:', response.results?.length);
       
       if (response.results && response.results.length > 0) {
         const updatedGroup = {
@@ -283,12 +282,7 @@ const handleBusinessFunctionClick = async (group) => {
 const filteredJobsInBusinessFunction = useMemo(() => {
   if (!selectedBusinessFunction) return [];
   
-  console.log('🔍 Filtering jobs:', {
-    totalJobs: businessFunctionJobs.length,
-    searchTerm,
-    selectedDepartment,
-    selectedStatus
-  });
+
   
   let filtered = businessFunctionJobs;
   
@@ -307,7 +301,6 @@ const filteredJobsInBusinessFunction = useMemo(() => {
     filtered = filtered.filter(job => job.overall_status === selectedStatus);
   }
   
-  console.log('✅ Filtered results:', filtered.length);
   
   return filtered;
 }, [businessFunctionJobs, searchTerm, selectedDepartment, selectedStatus]);
@@ -318,14 +311,7 @@ const paginatedJobs = useMemo(() => {
   const endIndex = startIndex + itemsPerPage;
   const paginated = filteredJobsInBusinessFunction.slice(startIndex, endIndex);
   
-  console.log('📄 Pagination:', {
-    currentPage,
-    itemsPerPage,
-    startIndex,
-    endIndex,
-    totalFiltered: filteredJobsInBusinessFunction.length,
-    pageResults: paginated.length
-  });
+
   
   return paginated;
 }, [filteredJobsInBusinessFunction, currentPage, itemsPerPage]);
@@ -537,7 +523,7 @@ const totalPages = Math.ceil(filteredJobsInBusinessFunction.length / itemsPerPag
 
   // Simple page change without API call
 const handlePageChange = (page) => {
-  console.log('📄 Changing page to:', page);
+
   setCurrentPage(page);
   // No API call needed - we have all data in businessFunctionJobs
 };
@@ -856,12 +842,7 @@ const handleEdit = async (job) => {
     const accessRightIds = extractResourceIds(fullJob.access_rights, 'acc');
     const companyBenefitIds = extractResourceIds(fullJob.company_benefits, 'ben');
     
-    console.log('📦 Extracted Resource IDs:', {
-      business: businessResourceIds,
-      access: accessRightIds,
-      benefits: companyBenefitIds
-    });
-    
+
     // 🔥 CONVERT SKILL IDs to hierarchical format
     const convertSkillIds = async (skillIds) => {
       if (!skillIds || skillIds.length === 0) return [];
@@ -871,8 +852,7 @@ const handleEdit = async (job) => {
       
       // Load all skill groups and their skills
       const skillGroups = dropdownData.skillGroups || [];
-      
-      console.log('🔍 Converting skills:', { skillIds, availableGroups: skillGroups.length });
+    
       
       for (const groupData of skillGroups) {
         try {
@@ -884,7 +864,7 @@ const handleEdit = async (job) => {
               // Format: groupId_skillId
               const hierarchicalId = `${groupData.id}_${skill.id}`;
               hierarchicalIds.push(hierarchicalId);
-              console.log(`✅ Matched skill ${skill.id} (${skill.name}) → ${hierarchicalId}`);
+           
             }
           });
         } catch (error) {
@@ -904,7 +884,6 @@ const handleEdit = async (job) => {
       
       const behavioralGroups = dropdownData.behavioralGroups || [];
       
-      console.log('🔍 Converting behavioral competencies:', { compIds, availableGroups: behavioralGroups.length });
       
       for (const groupData of behavioralGroups) {
         try {
@@ -916,7 +895,6 @@ const handleEdit = async (job) => {
               // Format: groupId_compId
               const hierarchicalId = `${groupData.id}_${comp.id}`;
               hierarchicalIds.push(hierarchicalId);
-              console.log(`✅ Matched behavioral competency ${comp.id} (${comp.name}) → ${hierarchicalId}`);
             }
           });
         } catch (error) {
@@ -936,7 +914,6 @@ const handleEdit = async (job) => {
       
       const leadershipMainGroups = dropdownData.leadershipMainGroups || [];
       
-      console.log('🔍 Converting leadership competencies:', { itemIds, availableMainGroups: leadershipMainGroups.length });
       
       for (const mainGroup of leadershipMainGroups) {
         try {
@@ -946,7 +923,6 @@ const handleEdit = async (job) => {
             ? childGroupsResponse 
             : (childGroupsResponse.child_groups || childGroupsResponse.results || []);
           
-          console.log(`📂 Main group ${mainGroup.id} (${mainGroup.name}) has ${childGroups.length} child groups`);
           
           for (const childGroup of childGroups) {
             try {
@@ -961,7 +937,6 @@ const handleEdit = async (job) => {
                   // Format: mainGroupId_childGroupId_itemId
                   const hierarchicalId = `${mainGroup.id}_${childGroup.id}_${item.id}`;
                   hierarchicalIds.push(hierarchicalId);
-                  console.log(`✅ Matched leadership item ${item.id} (${item.name}) → ${hierarchicalId}`);
                 }
               });
             } catch (error) {
@@ -1001,12 +976,7 @@ const handleEdit = async (job) => {
       });
     }
     
-    console.log('📋 Extracted simple IDs:', {
-      skills: skillIds,
-      behavioral: behavioralCompetencyIds,
-      leadership: leadershipCompetencyIds
-    });
-    
+
     // 🔥 CONVERT to hierarchical format
     const [
       hierarchicalSkillIds,
@@ -1018,23 +988,7 @@ const handleEdit = async (job) => {
       convertLeadershipIds(leadershipCompetencyIds)
     ]);
     
-    console.log('🔄 Converted to hierarchical IDs:', {
-      skills: { 
-        original: skillIds, 
-        hierarchical: hierarchicalSkillIds,
-        count: hierarchicalSkillIds.length 
-      },
-      behavioral: { 
-        original: behavioralCompetencyIds, 
-        hierarchical: hierarchicalBehavioralIds,
-        count: hierarchicalBehavioralIds.length 
-      },
-      leadership: { 
-        original: leadershipCompetencyIds, 
-        hierarchical: hierarchicalLeadershipIds,
-        count: hierarchicalLeadershipIds.length 
-      }
-    });
+  
     
     // Extract grading levels
     let gradingLevels = [];
@@ -1081,20 +1035,7 @@ const handleEdit = async (job) => {
       company_benefits_ids: companyBenefitIds
     };
     
-    console.log('✅ Final transformed data for edit:', {
-      basic: {
-        job_title: transformedData.job_title,
-        business_function: transformedData.business_function,
-        department: transformedData.department,
-        position_group: transformedData.position_group
-      },
-      skills: transformedData.required_skills_data.length,
-      behavioral: transformedData.behavioral_competencies_data.length,
-      leadership: transformedData.leadership_competencies_data.length,
-      resources: transformedData.business_resources_ids.length,
-      access: transformedData.access_rights_ids.length,
-      benefits: transformedData.company_benefits_ids.length
-    });
+  
     
     setFormData(transformedData);
     setEditingJob(fullJob);

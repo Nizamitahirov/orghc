@@ -34,19 +34,21 @@ const [formData, setFormData] = useState({
   const [showTargetGroupSelector, setShowTargetGroupSelector] = useState(false);
   const fileInputRef = useRef(null);
 
-  useEffect(() => {
+  // NewsFormModal.jsx - useEffect hissəsini düzəltF
+
+useEffect(() => {
   if (newsItem) {
     setFormData({
       title: newsItem.title || '',
       excerpt: newsItem.excerpt || '',
-      content: newsItem.content || '',
+      content: newsItem.content || '',  // ✅ Bu düzgündür
       category: newsItem.category || (categories.length > 0 ? categories[0].id : ''),
       image: newsItem.image || null,
       imagePreview: newsItem.imagePreview || newsItem.image_url || '',
-      tags: newsItem.tags || [],
+      tags: newsItem.tags || newsItem.tags_list || [],  // ✅ tags_list də əlavə et
       isPinned: newsItem.isPinned || newsItem.is_pinned || false,
-      isPublished: newsItem.isPublished !== undefined ? newsItem.isPublished : (newsItem.is_published !== undefined ? newsItem.is_published : true), // ƏLAVƏ ET
-      targetGroups: newsItem.targetGroups || [],
+      isPublished: newsItem.isPublished !== undefined ? newsItem.isPublished : (newsItem.is_published !== undefined ? newsItem.is_published : true),
+      targetGroups: newsItem.targetGroups || (newsItem.target_groups_info?.map(g => g.id)) || [],  // ✅ Düzəliş
       notifyMembers: newsItem.notifyMembers || newsItem.notify_members || false,
       authorDisplayName: newsItem.authorDisplayName || newsItem.author_display_name || ''
     });
@@ -60,7 +62,7 @@ const [formData, setFormData] = useState({
       imagePreview: '',
       tags: [],
       isPinned: false,
-      isPublished: true, // ƏLAVƏ ET - default true
+      isPublished: true,
       targetGroups: [],
       notifyMembers: false,
       authorDisplayName: ''
@@ -68,7 +70,9 @@ const [formData, setFormData] = useState({
   }
   setErrors({});
 }, [newsItem, isOpen, categories]);
-  if (!isOpen) return null;
+  
+
+if (!isOpen) return null;
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -146,19 +150,7 @@ const [formData, setFormData] = useState({
     newErrors.title = 'Title must be at least 5 characters long';
   }
   
-  // Excerpt validation - minimum 10 characters
-  if (!formData.excerpt.trim()) {
-    newErrors.excerpt = 'Excerpt is required';
-  } else if (formData.excerpt.trim().length < 10) {
-    newErrors.excerpt = 'Excerpt must be at least 10 characters long';
-  }
-  
-  // Content validation - minimum 20 characters
-  if (!formData.content.trim()) {
-    newErrors.content = 'Content is required';
-  } else if (formData.content.trim().length < 20) {
-    newErrors.content = 'Content must be at least 20 characters long';
-  }
+
   
   if (!formData.imagePreview) newErrors.image = 'Image is required';
   if (!formData.category) newErrors.category = 'Category is required';
@@ -543,7 +535,7 @@ const [formData, setFormData] = useState({
             {/* Excerpt */}
             <div>
               <label className={labelClass}>
-                Excerpt <span className="text-red-500">*</span>
+                Excerpt 
               </label>
               <textarea
                 value={formData.excerpt}
@@ -572,7 +564,7 @@ const [formData, setFormData] = useState({
             {/* Content */}
             <div>
               <label className={labelClass}>
-                Content <span className="text-red-500">*</span>
+                Content 
               </label>
               <textarea
                 value={formData.content}

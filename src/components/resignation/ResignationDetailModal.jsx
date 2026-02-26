@@ -266,7 +266,7 @@ export default function ResignationDetailModal({ resignation, onClose, onSuccess
                   onChange={(e) => setComments(e.target.value)}
                   rows={3}
                   placeholder="Add your comments here..."
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none"
+                  className="w-full px-3 py-2 text-sm border focus:outline-none  border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none"
                 />
               </div>
               <div className="flex gap-2">

@@ -114,14 +114,12 @@ const HeadcountWrapper = () => {
     }
   }, [selectedCompany]);
 
-  // ✅ Persist viewMode to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.VIEW_MODE, viewMode);
     }
   }, [viewMode]);
 
-  // ✅ Validate and restore selected company on mount
   useEffect(() => {
     if (selectedCompany && businessFunctions && businessFunctions.length > 0) {
       // Verify the selected company still exists in businessFunctions
@@ -130,8 +128,7 @@ const HeadcountWrapper = () => {
       );
       
       if (!companyExists) {
-        // Company no longer exists, clear selection and go to dashboard
-        console.warn('⚠️ Previously selected company no longer exists');
+     
         setSelectedCompany(null);
         setSelectedView('dashboard');
         localStorage.removeItem(STORAGE_KEYS.SELECTED_COMPANY);
@@ -254,7 +251,7 @@ const HeadcountWrapper = () => {
       activeEmployees: statistics?.active_employees || 0,
       inactiveEmployees: statistics?.inactive_employees || 0,
       recentHires: statistics?.recent_hires_30_days || 0,
-      contractEnding: statistics?.upcoming_contract_endings_30_days || 0,
+ 
       totalVacant: statistics?.total_vacant_positions || 0
     };
   }, [companyCards, statistics]);

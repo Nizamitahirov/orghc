@@ -36,16 +36,14 @@ const VacationCalendar = ({ darkMode, showError, userAccess }) => {
   const day = String(date.getDate()).padStart(2, '0');
   const dateStr = `${year}-${month}-${day}`;
   
-  console.log('🔍 Checking date:', dateStr); // Debug
+  
   
   return holidays.filter(h => {
     // ✅ Compare ONLY date part (ignore time)
     const holidayDate = h.date.split('T')[0];
     const match = holidayDate === dateStr;
     
-    if (match) {
-      console.log('✅ Match found:', h.name, holidayDate);
-    }
+  
     
     return match;
   });

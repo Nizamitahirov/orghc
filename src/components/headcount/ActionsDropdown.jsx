@@ -566,21 +566,7 @@ const viewAssignmentDetail = async (assignment) => {
           </div>
         </button>
 
-        {/* Competency Matrix */}
-        <button
-          className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
-          onClick={() => handleAction("competencyMatrix")}
-        >
-          <div className="flex items-center">
-            <BarChart2 size={14} className="mr-2 text-teal-500" />
-            <div className="flex flex-col items-start">
-              <span>Competency Matrix</span>
-              <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                Skills assessment
-              </span>
-            </div>
-          </div>
-        </button>
+    
 
         {/* Performance Management */}
         <button

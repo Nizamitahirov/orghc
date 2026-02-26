@@ -287,13 +287,7 @@ export const useVacantPositions = () => {
     }
   }, []);
 
-  // ========================================
-  // VACANT POSITIONS OPERATIONS
-  // ========================================
 
-  /**
-   * Fetch vacant positions with filtering and pagination
-   */
   const fetchVacantPositions = useCallback(async (params = {}) => {
     updateLoading('vacantPositions', true);
     updateError('vacantPositions', null);
@@ -537,23 +531,8 @@ export const useVacantPositions = () => {
     }));
   }, []);
 
-  /**
-   * Set archived employees page
-   */
-  const setArchivedEmployeesPage = useCallback((page) => {
-    setArchivePagination(prev => ({ ...prev, page }));
-  }, []);
 
-  /**
-   * Set archived employees page size
-   */
-  const setArchivedEmployeesPageSize = useCallback((pageSize) => {
-    setArchivePagination(prev => ({ 
-      ...prev, 
-      pageSize, 
-      page: 1 // Reset to first page when changing page size
-    }));
-  }, []);
+
 
   // ========================================
   // SEARCH AND FILTER UTILITIES
@@ -635,8 +614,8 @@ export const useVacantPositions = () => {
     // Pagination Helpers
     setVacantPositionsPage,
     setVacantPositionsPageSize,
-    setArchivedEmployeesPage,
-    setArchivedEmployeesPageSize,
+
+
     
     // Utility
     clearErrors

@@ -64,8 +64,7 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
       // Pending transfer approvals from employee API
       setPendingTransfers(employeeData.pending_transfer_approvals || []);
       
-      console.log('📦 Assets loaded:', employeeData.assigned_assets?.length || 0);
-      console.log('🔄 Pending transfers loaded:', employeeData.pending_transfer_approvals?.length || 0);
+ 
     }
   }, [employeeData]);
 

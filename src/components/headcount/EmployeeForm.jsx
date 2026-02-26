@@ -890,10 +890,8 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         }
       }
 
-      console.log('Submitting FormData with entries:');
-      for (let [key, value] of formDataObj.entries()) {
-        console.log(`${key}:`, value instanceof File ? `File: ${value.name}` : value);
-      }
+   
+   
 
       let result;
       if (isEditMode) {

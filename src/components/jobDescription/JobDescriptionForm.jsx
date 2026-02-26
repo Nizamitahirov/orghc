@@ -136,19 +136,11 @@ const JobDescriptionForm = ({
 
     }
   };
-useEffect(() => {
-  if (editingJob) {
-    console.log('📝 [EDIT MODE] Current form data:', {
-      skills: formData.required_skills_data,
-      behavioral: formData.behavioral_competencies_data,
-      leadership: formData.leadership_competencies_data,
-      resources: formData.business_resources_ids,
-      access: formData.access_rights_ids,
-      benefits: formData.company_benefits_ids
-    });
-  }
-}, [formData, editingJob]);
-  const handleEmployeeSelection = (employeeIds, employeeData) => {
+
+  
+
+
+const handleEmployeeSelection = (employeeIds, employeeData) => {
     if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
       console.warn('⚠️ Invalid employee/vacancy selection data');
       return;
@@ -328,7 +320,7 @@ const getBusinessFunctionId = (name) => {
   if (employee) {
     const id = extractId(employee, 'business_function_id', 'business_function');
     if (id) {
-      console.log(`✅ [Submit] Business Function "${name}" → ID: ${id}`);
+     
       return id;
     }
   }
@@ -350,7 +342,7 @@ const getDepartmentId = (name) => {
     if (employee) {
       const id = extractId(employee, 'department_id', 'department');
       if (id) {
-        console.log(`✅ [Submit] Department "${name}" → ID: ${id}`);
+     
         return id;
       }
     }
@@ -364,7 +356,7 @@ const getDepartmentId = (name) => {
   if (anyMatch) {
     const id = extractId(anyMatch, 'department_id', 'department');
     if (id) {
-      console.log(`✅ [Submit] Department "${name}" → ID: ${id} (any match)`);
+ 
       return id;
     }
   }
@@ -387,7 +379,7 @@ const getUnitId = (name) => {
     if (employee) {
       const id = extractId(employee, 'unit_id', 'unit');
       if (id) {
-        console.log(`✅ [Submit] Unit "${name}" → ID: ${id}`);
+
         return id;
       }
     }
@@ -400,7 +392,7 @@ const getUnitId = (name) => {
   if (anyMatch) {
     const id = extractId(anyMatch, 'unit_id', 'unit');
     if (id) {
-      console.log(`✅ [Submit] Unit "${name}" → ID: ${id} (any match)`);
+    
       return id;
     }
   }
@@ -423,7 +415,7 @@ const getJobFunctionId = (name) => {
     if (employee) {
       const id = extractId(employee, 'job_function_id', 'job_function');
       if (id) {
-        console.log(`✅ [Submit] Job Function "${name}" → ID: ${id}`);
+  
         return id;
       }
     }
@@ -436,7 +428,7 @@ const getJobFunctionId = (name) => {
   if (anyMatch) {
     const id = extractId(anyMatch, 'job_function_id', 'job_function');
     if (id) {
-      console.log(`✅ [Submit] Job Function "${name}" → ID: ${id} (any match)`);
+    
       return id;
     }
   }
@@ -460,7 +452,7 @@ const getPositionGroupId = (name) => {
     if (employee) {
       const id = extractId(employee, 'position_group_id', 'position_group');
       if (id) {
-        console.log(`✅ [Submit] Position Group "${name}" → ID: ${id}`);
+      
         return id;
       }
     }
@@ -473,7 +465,7 @@ const getPositionGroupId = (name) => {
   if (anyMatch) {
     const id = extractId(anyMatch, 'position_group_id', 'position_group');
     if (id) {
-      console.log(`✅ [Submit] Position Group "${name}" → ID: ${id} (any match)`);
+
       return id;
     }
   }
@@ -624,15 +616,7 @@ const handleSubmit = async (e) => {
       })
     };
 
-    // 🔥 DEBUG: Log what we're sending
-    console.log('📤 [Submit] Sending to API:', {
-      skills_count: apiData.required_skills_data.length,
-      skills: apiData.required_skills_data,
-      behavioral_count: apiData.behavioral_competencies_data.length,
-      behavioral: apiData.behavioral_competencies_data,
-      leadership_count: apiData.leadership_competencies_data.length,
-      leadership: apiData.leadership_competencies_data
-    });
+
 
     // Add resources
     const resourcesPayload = buildResourcesPayload(
@@ -718,7 +702,7 @@ const handleSubmit = async (e) => {
       onUpdate();
     } else {
       const createdJob = await jobDescriptionService.createJobDescription(apiData);
-      console.log('✅ [Submit] Job created successfully:', createdJob);
+     
       onSubmit(createdJob);
     }
   } catch (error) {

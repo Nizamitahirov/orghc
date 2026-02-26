@@ -1,4 +1,3 @@
-
 import api from './api';
 
 /**
@@ -28,7 +27,7 @@ export const getUser = async () => {
  * Resignation Services
  */
 export const resignationService = {
- 
+  // Get all resignations
   getResignations: async (params = {}) => {
     const response = await api.get('/resignations/', { params });
     return response.data;
@@ -75,6 +74,12 @@ export const resignationService = {
     });
     return response.data;
   },
+
+  // ✅ Admin: Delete resignation
+  deleteResignation: async (id) => {
+    const response = await api.delete(`/resignations/${id}/`);
+    return response.data;
+  },
 };
 
 /**
@@ -82,20 +87,24 @@ export const resignationService = {
  */
 export const exitInterviewService = {
   // Get all exit interview questions
-  // Get all exit interview questions
-getQuestions: async (section = null) => {
-  const params = section ? { section } : {};
-  const response = await api.get('/exit-interview-questions/', { params });
-  
-  // ✅ Handle both direct array and paginated response
-  if (Array.isArray(response.data)) {
-    return response.data;
-  } else if (response.data && Array.isArray(response.data.results)) {
-    return response.data.results;
-  } else {
-    return [];
-  }
-},
+  getQuestions: async (section = null) => {
+    try {
+      const params = section ? { section } : {};
+      const response = await api.get('/exit-interview-questions/', { params });
+      
+      // ✅ Handle both direct array and paginated response
+      if (Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && Array.isArray(response.data.results)) {
+        return response.data.results;
+      } else {
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching exit interview questions:', error);
+      throw error;
+    }
+  },
 
   // Admin: Create exit interview question
   createQuestion: async (data) => {
@@ -131,7 +140,7 @@ getQuestions: async (section = null) => {
   createExitInterview: async (data) => {
     try {
       const response = await api.post('/exit-interviews/', data);
-      console.log('✅ Exit Interview Created:', response.data); // ✅ Debug
+
       return response.data;
     } catch (error) {
       console.error('❌ Error creating exit interview:', error);
@@ -141,7 +150,7 @@ getQuestions: async (section = null) => {
 
   // Employee: Submit exit interview responses
   submitResponses: async (id, responses) => {
-    console.log('📤 Submitting responses for interview ID:', id); // ✅ Debug
+
     
     if (!id || id === 'undefined') {
       throw new Error('Invalid interview ID');
@@ -151,12 +160,19 @@ getQuestions: async (section = null) => {
       const response = await api.post(`/exit-interviews/${id}/submit_responses/`, {
         responses
       });
-      console.log('✅ Responses submitted:', response.data); // ✅ Debug
+ 
       return response.data;
     } catch (error) {
       console.error('❌ Error submitting responses:', error);
       throw error;
-    }},
+    }
+  },
+
+  // ✅ Admin: Delete exit interview
+  deleteExitInterview: async (id) => {
+    const response = await api.delete(`/exit-interviews/${id}/`);
+    return response.data;
+  },
 };
 
 /**
@@ -188,26 +204,45 @@ export const contractRenewalService = {
     });
     return response.data;
   },
+
+  // ✅ Admin: Delete contract renewal
+  deleteContractRenewal: async (id) => {
+    const response = await api.delete(`/contract-renewals/${id}/`);
+    return response.data;
+  },
 };
 
 /**
  * Probation Review Services
  */
 export const probationReviewService = {
-
-getQuestions: async (reviewType = null) => {
-  const params = reviewType ? { review_type: reviewType } : {};
-  const response = await api.get('/probation-review-questions/', { params });
-  
-  // ✅ Handle both direct array and paginated response
-  if (Array.isArray(response.data)) {
-    return response.data;
-  } else if (response.data && Array.isArray(response.data.results)) {
-    return response.data.results;
-  } else {
-    return [];
-  }
-},
+  // Get all probation review questions
+  getQuestions: async (reviewType = null) => {
+    try {
+      let url = '/probation-review-questions/';
+      
+      // ✅ Add review_type filter if provided
+      if (reviewType) {
+        url += `?review_type=${reviewType}`;
+      }
+      
+ 
+      const response = await api.get(url);
+    
+      
+      // ✅ Handle both direct array and paginated response
+      if (Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data && Array.isArray(response.data.results)) {
+        return response.data.results;
+      } else {
+        return [];
+      }
+    } catch (error) {
+      console.error('❌ Error fetching probation questions:', error);
+      throw error;
+    }
+  },
 
   // Admin: Create probation review question
   createQuestion: async (data) => {
@@ -247,6 +282,12 @@ getQuestions: async (reviewType = null) => {
     });
     return response.data;
   },
+
+  // ✅ Admin: Delete probation review
+  deleteProbationReview: async (id) => {
+    const response = await api.delete(`/probation-reviews/${id}/`);
+    return response.data;
+  },
 };
 
 /**
@@ -276,17 +317,20 @@ export const helpers = {
   // Get status badge color
   getStatusColor: (status) => {
     const colors = {
-      'PENDING_MANAGER': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-      'PENDING_HR': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-      'MANAGER_APPROVED': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-      'HR_APPROVED': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-      'COMPLETED': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-      'MANAGER_REJECTED': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-      'HR_REJECTED': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-      'PENDING': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-      'IN_PROGRESS': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+      'PENDING_MANAGER': 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800',
+      'PENDING_HR': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+      'MANAGER_APPROVED': 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
+      'HR_APPROVED': 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
+      'COMPLETED': 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
+      'MANAGER_REJECTED': 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
+      'HR_REJECTED': 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
+      'PENDING': 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800',
+      'IN_PROGRESS': 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+      'MANAGER_DECIDED': 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800',
+      'HR_PROCESSED': 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800',
+      'EXPIRED': 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600',
     };
-    return colors[status] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+    return colors[status] || 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600';
   },
 
   // Get status display text
@@ -297,22 +341,49 @@ export const helpers = {
       'MANAGER_APPROVED': 'Manager Approved',
       'HR_APPROVED': 'HR Approved',
       'COMPLETED': 'Completed',
-      'MANAGER_REJECTED': 'Rejected',
-      'HR_REJECTED': 'Rejected',
+      'MANAGER_REJECTED': 'Rejected by Manager',
+      'HR_REJECTED': 'Rejected by HR',
       'PENDING': 'Pending',
       'IN_PROGRESS': 'In Progress',
+      'MANAGER_DECIDED': 'Manager Decided',
+      'HR_PROCESSED': 'HR Processed',
+      'EXPIRED': 'Expired',
     };
-    return texts[status] || status;
+    return texts[status] || status.replace(/_/g, ' ');
   },
 
   // Get urgency color for days remaining
   getUrgencyColor: (days) => {
-    if (days <= 3) return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-    if (days <= 7) return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400';
-    return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+    if (days <= 3) return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800';
+    if (days <= 7) return 'bg-yellow-100 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800';
+    if (days <= 14) return 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800';
+    return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800';
+  },
+
+  // Get contract type display name
+  getContractTypeDisplay: (contractType) => {
+    const names = {
+      'PERMANENT': 'Permanent',
+      '1_YEAR': '1 Year',
+      '2_YEARS': '2 Years',
+      '6_MONTHS': '6 Months',
+      '3_MONTHS': '3 Months',
+    };
+    return names[contractType] || contractType;
+  },
+
+  // Get review period display
+  getReviewPeriodDisplay: (reviewPeriod) => {
+    const names = {
+      '30_DAY': '30-Day Review',
+      '60_DAY': '60-Day Review',
+      '90_DAY': '90-Day Review',
+    };
+    return names[reviewPeriod] || reviewPeriod.replace('_', '-');
   },
 };
 
+// Default export
 export default {
   resignation: resignationService,
   exitInterview: exitInterviewService,

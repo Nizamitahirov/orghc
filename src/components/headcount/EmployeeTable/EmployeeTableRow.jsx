@@ -150,11 +150,7 @@ const EmployeeTableRow = ({
                   employee.status_detail?.name ||
                   'Unknown Status',
                   
-      // Grading mapping  
-      grading_level: employee.grading_level ||
-                    employee.grade ||
-                    employee.grading_display ||
-                    'No Grade',
+  
 
       // Tags mapping
       tag_names: employee.tag_names || employee.tags || [],
@@ -453,9 +449,7 @@ const EmployeeTableRow = ({
               {employee.position_group_name || 'No Position'}
             </div>
           </div>
-          <div className={`text-xs ${styles.textMuted} text-center`}>
-            {employee.grading_display || employee.grading_level || 'No Grade'}
-          </div>
+        
         </div>
       </td>
 

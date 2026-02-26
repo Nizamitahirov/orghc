@@ -91,13 +91,7 @@ const EmployeeModal = ({
                                 {selectedEmployee.title}
                             </p>
                             <div className="flex items-center gap-2">
-                                {selectedEmployee.employee_details?.grading_display && (
-                                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold text-white ${
-                                        selectedEmployee.vacant ? 'bg-red-600' : 'bg-almet-sapphire'
-                                    }`}>
-                                        {selectedEmployee.employee_details.grading_display}
-                                    </span>
-                                )}
+                              
                                 <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${
                                     selectedEmployee.vacant 
                                         ? 'bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-200' 

@@ -33,11 +33,7 @@ const HierarchicalMultiSelect = ({
 
   // 🔥 CRITICAL FIX: Sync internal state with prop
   useEffect(() => {
-    console.log('🔄 [HierarchicalMultiSelect] selectedIds prop changed:', {
-      newIds: selectedIds,
-      previousInternal: internalSelectedIds,
-      idPrefix
-    });
+
     setInternalSelectedIds(selectedIds);
   }, [selectedIds, idPrefix]);
 
@@ -64,10 +60,7 @@ const HierarchicalMultiSelect = ({
         }
       });
       
-      console.log('🔓 [HierarchicalMultiSelect] Auto-expanding:', {
-        parents: Array.from(newExpandedParents),
-        children: Array.from(newExpandedChildren)
-      });
+
       
       setExpandedParents(newExpandedParents);
       setExpandedChildren(newExpandedChildren);

@@ -173,6 +173,33 @@ export const RequestDetailModal = ({
                     <p className="text-xs font-medium text-almet-cloud-burst dark:text-white">{detail.number_of_days} days</p>
                   </div>
                 </div>
+
+                 {(detail.initial_finance_amount || detail.finance_amount) && (
+                  <div className="mt-3 pt-3 border-t border-blue-200/60 dark:border-blue-800/40">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {detail.initial_finance_amount && (
+                        <div>
+                          <label className="block text-xs text-almet-waterloo dark:text-almet-bali-hai mb-1">
+                            Estimated Amount (by Employee)
+                          </label>
+                          <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                            {parseFloat(detail.initial_finance_amount).toFixed(2)} AZN
+                          </p>
+                        </div>
+                      )}
+                      {detail.finance_amount && (
+                        <div>
+                          <label className="block text-xs text-almet-waterloo dark:text-almet-bali-hai mb-1">
+                            Approved Amount (by Finance)
+                          </label>
+                          <p className="text-xs font-semibold text-green-600 dark:text-green-400">
+                            {parseFloat(detail.finance_amount).toFixed(2)} AZN
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {detail.comment && (
                   <div className="mt-3 pt-3 border-t border-blue-200/60 dark:border-blue-800/40">
                     <label className="block text-xs text-almet-waterloo dark:text-almet-bali-hai mb-1">Comment</label>

@@ -12,23 +12,24 @@ export default function EditScheduleModal({
   loading
 }) {
   
-  // ✅ Auto-select Paid Vacation on mount
-  useEffect(() => {
-    if (show && editingSchedule && vacationTypes.length > 0) {
-      // Find Paid Vacation
-      const paidVacation = vacationTypes.find(t => 
-        t.name.toLowerCase().includes('paid') || 
-        t.name.toLowerCase().includes('annual')
-      );
-      
-      if (paidVacation && !editingSchedule.vacation_type_id) {
-        setEditingSchedule(prev => ({
-          ...prev,
-          vacation_type_id: paidVacation.id
-        }));
-      }
+useEffect(() => {
+  if (show && editingSchedule && vacationTypes.length > 0) {
+    // ✅ CRITICAL: Always force Paid Vacation on edit
+    const paidVacation = vacationTypes.find(t => 
+      t.name.toLowerCase().includes('paid') || 
+      t.name.toLowerCase().includes('annual') ||
+      t.name.toLowerCase().includes('ödənişli')  // Azərbaycan adı
+    );
+    
+    if (paidVacation) {
+      // ✅ FORCE UPDATE - həmişə Paid Vacation
+      setEditingSchedule(prev => ({
+        ...prev,
+        vacation_type_id: paidVacation.id
+      }));
     }
-  }, [show, editingSchedule, vacationTypes]);
+  }
+}, [show, editingSchedule?.id, vacationTypes]); // ✅ editingSchedule.id dependency
   
   if (!show || !editingSchedule) return null;
 
@@ -68,7 +69,7 @@ export default function EditScheduleModal({
               value={editingSchedule.start_date}
               onChange={(e) => setEditingSchedule(prev => ({...prev, start_date: e.target.value}))}
               min={new Date().toISOString().split('T')[0]}
-              className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white"
+              className="w-full px-3 py-2.5 text-sm border outline-0 focus:outline-none border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white"
             />
           </div>
 
@@ -81,7 +82,7 @@ export default function EditScheduleModal({
               value={editingSchedule.end_date}
               onChange={(e) => setEditingSchedule(prev => ({...prev, end_date: e.target.value}))}
               min={editingSchedule.start_date}
-              className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white"
+              className="w-full px-3 py-2.5 text-sm border focus:outline-none   outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white"
             />
           </div>
 
@@ -94,7 +95,7 @@ export default function EditScheduleModal({
               onChange={(e) => setEditingSchedule(prev => ({...prev, comment: e.target.value}))}
               rows={3}
               placeholder="Add any notes..."
-              className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+              className="w-full px-3 py-2.5 text-sm border focus:outline-none  outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
             />
           </div>
         </div>

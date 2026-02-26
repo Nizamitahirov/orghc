@@ -12,7 +12,6 @@ import {
   saveDraftScenario,
   applyScenario,
   archiveScenario,
-  setScenarioInputs,
   updateScenarioInput,
   updateGradeInput,
   updateGlobalHorizontalInterval,
@@ -498,9 +497,9 @@ const toggleCompareMode = useCallback(() => {
     
 
     return null;
-  }, [currentScenario, draftScenarios, archivedScenarios]); // currentData deyil, currentScenario
+  }, [currentScenario, draftScenarios, archivedScenarios]); 
 
-  // ✅ FIXED: Helper functions - Current Scenario-dan input data götürürük
+  
   const getVerticalInputValue = useCallback((scenarioId, gradeName) => {
   
     
@@ -726,8 +725,8 @@ const toggleCompareMode = useCallback(() => {
 
   return {
     // Core data
-    currentData,         // Current Structure (calculated values only)
-    currentScenario,     // Current Scenario (input + calculated values) ✅
+    currentData,         
+    currentScenario,    
     positionGroups,
     scenarioInputs,
     calculatedOutputs,
@@ -754,7 +753,7 @@ const toggleCompareMode = useCallback(() => {
     hasErrors,
     isInitialized,
     
-    // Direct loading access
+   
     loading,
     
     // Actions
@@ -772,13 +771,12 @@ const toggleCompareMode = useCallback(() => {
     calculateGrades,
     clearCalculatedOutputs,
     refreshData,
-    
-    // ✅ FIXED: Comparison helper functions - Current Scenario istifadə edir
+
     getVerticalInputValue,
     getHorizontalInputValues,
-    comparisonData,           // YENİ
+    comparisonData,           
     handleCompareScenarios,
-    // Utility functions
+ 
     clearErrors: () => dispatch(clearErrors()),
     setError: (field, message) => dispatch(setError({ field, message }))
   };

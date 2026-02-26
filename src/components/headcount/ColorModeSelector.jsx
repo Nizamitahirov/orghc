@@ -164,7 +164,7 @@ const ColorSelector = ({ onChange }) => {
       case 'BUSINESS_FUNCTION': return <Globe {...iconProps} />;
       case 'UNIT': return <Landmark {...iconProps} />;
       case 'JOB_FUNCTION': return <Briefcase {...iconProps} />;
-      case 'GRADE': return <Target {...iconProps} />;
+
       default: return <Palette {...iconProps} />;
     }
   };

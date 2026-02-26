@@ -1082,7 +1082,7 @@ useEffect(() => {
 
         {activeTab === 'balances' && (
           <BalancesTabContent 
-            userAccess={userAccess}
+            userPermissions={userAccess}
             darkMode={darkMode}
             showSuccess={showSuccess}
             showError={showError}

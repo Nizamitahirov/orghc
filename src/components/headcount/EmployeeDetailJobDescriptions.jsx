@@ -77,7 +77,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
       if (!response.ok) throw new Error('Failed to fetch employee data');
       
       const employeeData = await response.json();
-      console.log('Fetched Employee Data:', employeeData);
+
       // 🔥 Extract assignments from employee data
       setMyAssignments(employeeData.job_description_assignments || []);
       setAssignmentsSummary(employeeData.job_description_summary || null);

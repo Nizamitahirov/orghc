@@ -159,148 +159,277 @@ const OrgChart = () => {
         setExpandedNodes([]);
     }, [clearFilters, setExpandedNodes]);
 
-    // Company options from orgChart data
-    const companyOptions = useMemo(() => {
-        if (!orgChart || orgChart.length === 0) {
-            return [];
+    // app/org-chart/page.jsx - ✅ FIXED: Normalized company options
+
+// ✅ Company options from orgChart data - NORMALIZED for case-insensitivity
+const companyOptions = useMemo(() => {
+    if (!orgChart || orgChart.length === 0) {
+        return [];
+    }
+    
+    // ✅ FIXED: Normalize company names (case-insensitive grouping)
+    const companyCountsMap = new Map(); // Use Map to preserve order and merge case variants
+    
+    orgChart.forEach(emp => {
+        if (emp && emp.business_function) {
+            const company = emp.business_function;
+            const companyLower = String(company).toLowerCase().trim();
+            
+            if (!companyCountsMap.has(companyLower)) {
+                // First time seeing this company (any casing)
+                companyCountsMap.set(companyLower, {
+                    displayName: company, // Use the first casing we see
+                    count: 0,
+                    variants: new Set([company]) // Track all case variants
+                });
+            }
+            
+            const companyData = companyCountsMap.get(companyLower);
+            companyData.count += 1;
+            companyData.variants.add(company); // Track this variant
+        }
+    });
+    
+    // ✅ Log if we found case variants
+    companyCountsMap.forEach((data, key) => {
+        if (data.variants.size > 1) {
+            console.log(`⚠️ Found case variants for "${key}":`, Array.from(data.variants));
+        }
+    });
+    
+    // Add "All Companies" option at the beginning
+    const options = [
+        {
+            value: 'ALL',
+            label: `All Companies (${orgChart.length})`,
+            count: orgChart.length,
+            isAll: true
+        }
+    ];
+    
+    // ✅ Add individual companies (sorted by count)
+    const companyList = Array.from(companyCountsMap.entries())
+        .sort((a, b) => b[1].count - a[1].count) // Sort by count descending
+        .map(([companyLower, data]) => ({
+            value: data.displayName, // Use original casing for value
+            label: `${data.displayName} (${data.count})`,
+            count: data.count,
+            isAll: false,
+            normalized: companyLower // ✅ Store normalized version for matching
+        }));
+    
+    options.push(...companyList);
+    
+ 
+    
+    return options;
+}, [orgChart]);
+
+
+// app/org-chart/page.jsx - ✅ FIXED: Case-insensitive company filter
+
+// ✅ FIXED: Company filtered data - case-insensitive matching
+const companyFilteredOrgChart = useMemo(() => {
+    if (!selectedCompany || !fullTree) return [];
+    
+
+    // Show all if "ALL" is selected
+    if (selectedCompany === 'ALL') {
+        return fullTree;
+    }
+    
+    // ✅ Helper function to get business function value
+    const getBusinessFunction = (item) => {
+        if (!item) return null;
+        
+        // Try all possible field names
+        return item.business_function || 
+               item.business_function_name || 
+               item.department?.business_function ||
+               null;
+    };
+    
+    // ✅ FIXED: Case-insensitive matching
+    const selectedCompanyLower = String(selectedCompany).toLowerCase().trim();
+    
+    // ✅ Filter with case-insensitive business function matching
+    const filtered = fullTree.filter(item => {
+        if (!item) return false;
+        
+        const businessFunction = getBusinessFunction(item);
+        
+        // Handle null/undefined
+        if (!businessFunction) {
+            console.log(`⚠️ No business function for: ${item.name || item.employee_id}`);
+            return false;
         }
         
-        const companyCounts = {};
-        orgChart.forEach(emp => {
-            if (emp && emp.business_function) {
-                const company = emp.business_function;
-                companyCounts[company] = (companyCounts[company] || 0) + 1;
-            }
-        });
+        // ✅ Case-insensitive comparison
+        const businessFunctionLower = String(businessFunction).toLowerCase().trim();
+        const matches = businessFunctionLower === selectedCompanyLower;
         
-        // Add "All Companies" option at the beginning
-        const options = [
-            {
-                value: 'ALL',
-                label: `All Companies (${orgChart.length})`,
-                count: orgChart.length,
-                isAll: true
-            }
+        if (!matches) {
+            console.log(`❌ Filtered out: ${item.name || item.employee_id} - BF: ${businessFunction}`);
+        }
+        
+        return matches;
+    });
+    
+    // Count breakdown
+    const employees = filtered.filter(e => !e.employee_details?.is_vacancy && !e.is_vacancy);
+    const vacancies = filtered.filter(e => e.employee_details?.is_vacancy || e.is_vacancy);
+    
+ 
+    
+    return filtered;
+}, [fullTree, selectedCompany]);
+
+const searchFilteredOrgChart = useMemo(() => {
+    if (!companyFilteredOrgChart || companyFilteredOrgChart.length === 0) {
+        return [];
+    }
+
+    // No search term - return all
+    if (!filters.search || filters.search.trim() === '') {
+        return companyFilteredOrgChart;
+    }
+
+    const searchTerm = filters.search.toLowerCase().trim();
+
+    const filtered = companyFilteredOrgChart.filter(employee => {
+        if (!employee) return false;
+
+        // ✅ Check if this is a vacancy
+        const isVacancy = Boolean(
+            employee.employee_details?.is_vacancy || 
+            employee.is_vacancy || 
+            employee.record_type === 'vacancy'
+        );
+
+        // Build searchable fields array
+        const searchableFields = [
+            employee.name,
+            employee.employee_id,
+            employee.title,
+            employee.job_title,
+            employee.department,
+            employee.department_name,
+            employee.unit,
+            employee.unit_name,
+            employee.business_function,
+            employee.business_function_name,
+            employee.position_group,
+            employee.position_group_name
         ];
         
-        // Add individual companies
-        const companyList = Object.entries(companyCounts)
-            .sort((a, b) => b[1] - a[1])
-            .map(([company, count]) => ({
-                value: company,
-                label: `${company} (${count})`,
-                count: count,
-                isAll: false
-            }));
-        
-        options.push(...companyList);
-        
-        return options;
-    }, [orgChart]);
-
-    // Filter orgChart by selected company
-    const companyFilteredOrgChart = useMemo(() => {
-        // If no company selected, return empty array
-        if (!selectedCompany || !orgChart) return [];
-        
-        // If "ALL" selected, return all employees
-        if (selectedCompany === 'ALL') {
-            return orgChart;
-        }
-        
-        // Filter by specific company
-        const filtered = orgChart.filter(emp => emp.business_function === selectedCompany);
-        return filtered;
-    }, [orgChart, selectedCompany]);
-
-    // Apply search filter on company filtered data
-    const searchFilteredOrgChart = useMemo(() => {
-        if (!companyFilteredOrgChart || companyFilteredOrgChart.length === 0) {
-            return [];
-        }
-
-        // If no search term, return company filtered data
-        if (!filters.search || filters.search.trim() === '') {
-            return companyFilteredOrgChart;
-        }
-
-        const searchTerm = filters.search.toLowerCase().trim();
-
-        return companyFilteredOrgChart.filter(employee => {
-            if (!employee) return false;
-
-            const searchableFields = [
-                employee.name,
-                employee.employee_id,
+        // ✅ Add vacancy-specific searchable fields
+        if (isVacancy) {
+            searchableFields.push(
+                employee.employee_details?.position_id,
+                employee.position_id,
+                'VACANT',
+                'vacancy',
+                'open position'
+            );
+        } else {
+            // Add employee-specific fields
+            searchableFields.push(
                 employee.email,
-                employee.title,
-                employee.department,
-                employee.unit,
-                employee.business_function
-            ]
-                .filter(Boolean)
-                .map(field => String(field).toLowerCase());
+                employee.phone
+            );
+        }
 
-            return searchableFields.some(field => field.includes(searchTerm));
-        });
-    }, [companyFilteredOrgChart, filters.search]);
+        // Check if any field matches
+        const matches = searchableFields
+            .filter(Boolean)
+            .map(field => String(field).toLowerCase())
+            .some(field => field.includes(searchTerm));
 
-    // Count vacant positions from search filtered data
-    // Update vacancy count calculation
+        return matches;
+    });
+
+    return filtered;
+}, [companyFilteredOrgChart, filters.search]);
+
+// ✅ FIXED: Vacant count
 const vacantCount = useMemo(() => {
     if (!searchFilteredOrgChart || searchFilteredOrgChart.length === 0) {
         return 0;
     }
     
-    return searchFilteredOrgChart.filter(emp => {
-        // ✅ FIXED: Check employee_details.is_vacancy first
+    const count = searchFilteredOrgChart.filter(emp => {
         return Boolean(
-            emp.employee_details?.is_vacancy ||  // ✅ Primary - backend format
+            emp.employee_details?.is_vacancy ||
             emp.is_vacancy || 
             emp.vacant || 
             emp.record_type === 'vacancy' ||
             (emp.name && emp.name.includes('[VACANT]'))
         );
     }).length;
+    
+    return count;
 }, [searchFilteredOrgChart]);
 
-    // Calculate summary stats from search filtered data
-    const companySummary = useMemo(() => {
-        if (!searchFilteredOrgChart || searchFilteredOrgChart.length === 0) {
-            return {
-                totalEmployees: 0,
-                totalManagers: 0,
-                totalDepartments: 0,
-                totalBusinessFunctions: 0
-            };
-        }
-
-        const totalEmployees = searchFilteredOrgChart.length;
-        const totalManagers = searchFilteredOrgChart.filter(emp => 
-            emp.direct_reports && emp.direct_reports > 0
-        ).length;
-        
-        const departments = new Set(
-            searchFilteredOrgChart
-                .map(emp => emp.department)
-                .filter(Boolean)
-        );
-        
-        const businessFunctions = new Set(
-            searchFilteredOrgChart
-                .map(emp => emp.business_function)
-                .filter(Boolean)
-        );
-
+// ✅ FIXED: Summary stats - properly separates employees and vacancies
+const companySummary = useMemo(() => {
+    if (!searchFilteredOrgChart || searchFilteredOrgChart.length === 0) {
         return {
-            totalEmployees,
-            totalManagers,
-            totalDepartments: departments.size,
-            totalBusinessFunctions: businessFunctions.size
+            totalEmployees: 0,
+            totalManagers: 0,
+            totalDepartments: 0,
+            totalBusinessFunctions: 0,
+            totalVacancies: 0,
+            totalPositions: 0
         };
-    }, [searchFilteredOrgChart]);
+    }
 
-    // Fetch Job Description with Database ID
+    // ✅ Separate employees and vacancies
+    const employees = searchFilteredOrgChart.filter(emp => 
+        !emp.employee_details?.is_vacancy && 
+        !emp.is_vacancy && 
+        emp.record_type !== 'vacancy'
+    );
+    
+    const vacancies = searchFilteredOrgChart.filter(emp => 
+        emp.employee_details?.is_vacancy || 
+        emp.is_vacancy || 
+        emp.record_type === 'vacancy'
+    );
+
+    const totalEmployees = employees.length;
+    const totalVacancies = vacancies.length;
+    
+    // Only count managers from employees
+    const totalManagers = employees.filter(emp => 
+        emp.direct_reports && emp.direct_reports > 0
+    ).length;
+    
+    // Count unique departments (from both employees and vacancies)
+    const departments = new Set(
+        searchFilteredOrgChart
+            .map(emp => emp.department || emp.department_name)
+            .filter(Boolean)
+    );
+    
+    // Count unique business functions (from both employees and vacancies)
+    const businessFunctions = new Set(
+        searchFilteredOrgChart
+            .map(emp => emp.business_function || emp.business_function_name)
+            .filter(Boolean)
+    );
+
+    const summary = {
+        totalEmployees,
+        totalManagers,
+        totalDepartments: departments.size,
+        totalBusinessFunctions: businessFunctions.size,
+        totalVacancies,
+        totalPositions: totalEmployees + totalVacancies
+    };
+
+    return summary;
+}, [searchFilteredOrgChart]);
+
      const fetchJobDescription = async (employeeId) => {
         try {
             setDetailLoading(true);
@@ -360,8 +489,6 @@ const vacantCount = useMemo(() => {
             const jobDescriptionId = selectedAssignment.job_description_id || selectedAssignment.job_description;
             
             if (!jobDescriptionId) {
-                console.error('Job description ID missing from assignment:', selectedAssignment);
-                alert('Job description ID is missing.');
                 return;
             }
 

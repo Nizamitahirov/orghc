@@ -5,6 +5,8 @@ import { Plane } from 'lucide-react';
 import { SectionHeader } from './SectionHeader';
 import SearchableDropdown from '@/components/common/SearchableDropdown';
 
+// components/business-trip/TravelSection.jsx
+
 export const TravelSection = ({
   isExpanded,
   onToggle,
@@ -35,7 +37,7 @@ export const TravelSection = ({
                 onChange={(value) => setFormData(prev => ({...prev, travel_type_id: value}))} 
                 placeholder="Select travel type" 
                 darkMode={darkMode} 
-                     allowUncheck={true}
+                allowUncheck={true}
               />
             </div>
 
@@ -47,7 +49,7 @@ export const TravelSection = ({
                 onChange={(value) => setFormData(prev => ({...prev, transport_type_id: value}))} 
                 placeholder="Select transport type" 
                 darkMode={darkMode} 
-                     allowUncheck={true}
+                allowUncheck={true}
               />
             </div>
           </div>
@@ -60,7 +62,7 @@ export const TravelSection = ({
               onChange={(value) => setFormData(prev => ({...prev, purpose_id: value}))} 
               placeholder="Select purpose" 
               darkMode={darkMode} 
-                   allowUncheck={true}
+              allowUncheck={true}
             />
           </div>
 
@@ -72,7 +74,7 @@ export const TravelSection = ({
                 value={formData.start_date} 
                 onChange={(e) => setFormData(prev => ({...prev, start_date: e.target.value}))}
                 min={new Date().toISOString().split('T')[0]}
-                className="w-full px-3 py-2.5 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2.5 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire dark:bg-gray-700 dark:text-white"
                 required 
               />
             </div>
@@ -83,10 +85,27 @@ export const TravelSection = ({
                 value={formData.end_date} 
                 onChange={(e) => setFormData(prev => ({...prev, end_date: e.target.value}))}
                 min={formData.start_date || new Date().toISOString().split('T')[0]}
-                className="w-full px-3 py-2.5 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2.5 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire dark:bg-gray-700 dark:text-white"
                 required 
               />
             </div>
+          </div>
+
+          {/* ✅ NEW: Initial Finance Amount (Optional) */}
+          <div>
+            <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+              Estimated Amount (Optional)
+              <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai ml-2">Final amount will be confirmed by Finance</span>
+            </label>
+            <input 
+              type="number"
+              step="0.01"
+              min="0"
+              value={formData.initial_finance_amount || ''} 
+              onChange={(e) => setFormData(prev => ({...prev, initial_finance_amount: e.target.value}))} 
+              placeholder="Enter estimated amount (AZN)"
+              className="w-full px-3 py-2.5 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire dark:bg-gray-700 dark:text-white" 
+            />
           </div>
 
           <div>
@@ -96,7 +115,7 @@ export const TravelSection = ({
               onChange={(e) => setFormData(prev => ({...prev, comment: e.target.value}))} 
               rows={3} 
               placeholder="Add any additional notes..."
-              className="w-full px-3 py-2.5 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire dark:bg-gray-700 dark:text-white resize-none" 
+              className="w-full px-3 py-2.5 text-xs border outline-0 focus:outline-none focus:ring-1 focus:ring-almet-sapphire border-almet-mystic dark:border-almet-comet rounded-lg  focus:border-almet-sapphire dark:bg-gray-700 dark:text-white resize-none" 
             />
           </div>
         </div>

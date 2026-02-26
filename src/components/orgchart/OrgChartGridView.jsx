@@ -7,9 +7,9 @@ import Avatar from './Avatar';
 const cleanEmployeeData = (employee) => {
     if (!employee) return null;
     
-    // ✅ FIXED: Check employee_details.is_vacancy first
+    
     const isVacancy = Boolean(
-        employee.employee_details?.is_vacancy ||  // ✅ Primary - backend format
+        employee.employee_details?.is_vacancy ||  
         employee.is_vacancy || 
         employee.vacant || 
         employee.record_type === 'vacancy' ||

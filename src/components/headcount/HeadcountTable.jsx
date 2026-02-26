@@ -1,4 +1,3 @@
-
 // src/components/headcount/HeadcountTable.jsx - COMPLETE FIXED VERSION
 "use client";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
@@ -7,8 +6,7 @@ import { useToast } from "../common/Toast";
 import { useEmployees } from "../../hooks/useEmployees";
 import { useVacantPositions } from "../../hooks/useVacantPositions";
 import { useReferenceData } from "../../hooks/useReferenceData";
-
-// Import tab content components
+import { useDispatch } from "react-redux";
 import VacantPositionsTable from "./VacantPositionsTable";
 import ArchiveEmployeesTable from "./ArchiveEmployeesTable";
 import { archiveEmployeesService } from '../../services/vacantPositionsService';
@@ -26,11 +24,11 @@ import BulkUploadForm from "./BulkUploadForm";
 import { AdvancedMultipleSortingSystem } from "./MultipleSortingSystem";
 import LineManagerModal from "./LineManagerAssignModal";
 import TagManagementModal from "./TagManagementModalsingle";
+import { employeeAPI } from '../../store/api/employeeAPI';
 
 const HeadcountTable = ({ businessFunctionFilter = null }) => {
   const { darkMode } = useTheme();
   const { showSuccess, showError, showWarning, showInfo } = useToast();
-  
   const [activeTab, setActiveTab] = useState('employees');
   
   const {
@@ -58,8 +56,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     bulkAddTags,
     bulkRemoveTags,
     bulkAssignLineManager,
-    bulkExtendContracts,
-    exportEmployees,
     downloadEmployeeTemplate,
     showInOrgChart,
     hideFromOrgChart,
@@ -84,7 +80,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     employeeTags,
     units,
     jobFunctions,
-    contractConfigs,
     loading: refLoading,
     error: refError
   } = useReferenceData();
@@ -106,6 +101,15 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   const [currentColorMode, setCurrentColorMode] = useState('null');
   const [defaultSortingApplied, setDefaultSortingApplied] = useState(false);
   const [isWrapperFilterApplied, setIsWrapperFilterApplied] = useState(false);
+
+  // ✅ NEW: Refs to lock business_function filter
+  const lockedBusinessFunction = useRef(null);
+  const initialized = useRef(false);
+  const lastFetchTime = useRef(0);
+  const debounceRef = useRef(null);
+  const lastApiParamsRef = useRef(null);
+  const colorSystemInitRef = useRef(false);
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
     if (loading.exporting !== undefined) {
@@ -136,15 +140,25 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     years_of_service_max: "",
     is_active: "",
     is_visible_in_org_chart: "",
-    status_needs_update: "",
-    contract_expiring_days: ""
+  
+ 
   });
 
-  const initialized = useRef(false);
-  const lastFetchTime = useRef(0);
-  const debounceRef = useRef(null);
-  const lastApiParamsRef = useRef(null);
-  const colorSystemInitRef = useRef(false);
+  // ========================================
+  // 🎯 PAGINATION HANDLERS - SIMPLIFIED WITH REF LOCK
+  // ========================================
+  const handlePageChange = useCallback((newPage) => {
+
+    setCurrentPage(newPage);
+  }, [setCurrentPage]);
+
+  const handlePageSizeChange = useCallback((newPageSize) => {
+
+  setPageSize(newPageSize);
+  setCurrentPage(1);
+  
+
+}, [setPageSize, setCurrentPage]);
 
   // Color system initialization
   useEffect(() => {
@@ -250,35 +264,13 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   ]);
 
   const handleColorModeChange = useCallback((newMode) => {
-  if (newMode === currentColorMode) return;
-  
-  // ✅ CRITICAL: Save wrapper filter BEFORE clearing anything
-  const preservedBFFilter = isWrapperFilterApplied 
-    ? [...localFilters.business_function] 
-    : [];
-  
-  console.log('🎨 Color mode changing, preserving filter:', preservedBFFilter);
-  
-  setCurrentColorMode(newMode);
-  setDefaultSortingApplied(false);
-  clearSorting();
-  
-  // ✅ IMMEDIATELY restore the filter
-  if (preservedBFFilter.length > 0) {
-    setLocalFilters(prev => ({
-      ...prev,
-      business_function: preservedBFFilter
-    }));
-  }
-  
-  setCurrentPage(1);
-}, [
-  currentColorMode, 
-  clearSorting, 
-  setCurrentPage, 
-  isWrapperFilterApplied, 
-  localFilters.business_function
-]);
+    if (newMode === currentColorMode) return;
+    
+    setCurrentColorMode(newMode);
+    setDefaultSortingApplied(false);
+    clearSorting();
+    setCurrentPage(1);
+  }, [currentColorMode, clearSorting, setCurrentPage]);
 
   useEffect(() => {
     const initializeAllStats = async () => {
@@ -300,14 +292,22 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     }
   }, [activeTab, fetchStatistics, fetchVacantPositionsStatistics, showError]);
 
-  // ========================================
-  // 🎯 BUILD API PARAMS - Convert to backend format
-  // ========================================
   const buildApiParams = useCallback(() => {
+
+    
     const params = {
       page: pagination.page || 1,
       page_size: pagination.pageSize || 25
     };
+
+    // ✅ CRITICAL: USE THE LOCKED VALUE FROM REF - NEVER CHANGES
+    if (lockedBusinessFunction.current !== null) {
+      params.business_function = String(lockedBusinessFunction.current);
+ 
+    } else if (!isWrapperFilterApplied && localFilters.business_function?.length > 0) {
+      params.business_function = localFilters.business_function.join(',');
+   
+    }
 
     if (localFilters.search?.trim()) {
       params.search = localFilters.search.trim();
@@ -319,12 +319,9 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       );
       params.ordering = orderingFields.join(',');
     }
-if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
-    params.business_function = localFilters.business_function.join(',');
-    console.log('🔒 Wrapper filter enforced in buildApiParams:', params.business_function);
-  }
+
     const multiSelectFilters = [
-      'business_function', 'department', 'unit', 'job_function', 'position_group',
+      'department', 'unit', 'job_function', 'position_group',
       'status', 'grading_level', 'contract_duration', 'line_manager', 'tags', 'gender', 'employee_search'
     ];
 
@@ -335,7 +332,6 @@ if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
             val !== null && val !== undefined && val !== ''
           );
           if (cleanValues.length > 0) {
-            // ✅ CRITICAL: Convert to comma-separated string
             params[filterKey] = cleanValues.join(',');
           }
         } else if (typeof localFilters[filterKey] === 'string') {
@@ -367,18 +363,17 @@ if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
     if (localFilters.is_visible_in_org_chart && localFilters.is_visible_in_org_chart !== "") {
       params.is_visible_in_org_chart = localFilters.is_visible_in_org_chart === "true";
     }
-    if (localFilters.status_needs_update && localFilters.status_needs_update !== "") {
-      params.status_needs_update = localFilters.status_needs_update === "true";
-    }
+   
 
-    if (localFilters.contract_expiring_days) {
-      params.contract_expiring_days = parseInt(localFilters.contract_expiring_days);
-    }
 
-    
-    
     return params;
-  }, [localFilters, pagination.page, pagination.pageSize, sorting]);
+  }, [
+    localFilters, 
+    pagination.page, 
+    pagination.pageSize, 
+    sorting, 
+    isWrapperFilterApplied
+  ]);
 
   const apiParamsChanged = useMemo(() => {
     if (!lastApiParamsRef.current) {
@@ -391,23 +386,32 @@ if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
     const currentStr = JSON.stringify(currentParams);
     const lastStr = JSON.stringify(lastParams);
     
-    const changed = currentStr !== lastStr;
-    
-  
-    
-    return changed;
+    return currentStr !== lastStr;
   }, [buildApiParams]);
 
   const debouncedFetchEmployees = useCallback((params, immediate = false) => {
+
+    if (abortControllerRef.current) {
+    
+      abortControllerRef.current.abort();
+    }
+    
+    // ✅ CRITICAL: If locked, params MUST have business_function
+    if (lockedBusinessFunction.current !== null && !params.business_function) {
+      console.error('❌ BLOCKED: Lock exists but no business_function in params!');
+      console.error('Locked value:', lockedBusinessFunction.current);
+      console.error('Params:', params);
+      return;
+    }
+    
     const paramsStr = JSON.stringify(params);
     const lastParamsStr = lastApiParamsRef.current ? JSON.stringify(lastApiParamsRef.current) : null;
     
     if (paramsStr === lastParamsStr && !immediate) {
-    
       return;
     }
 
-    const delay = immediate ? 0 : 500;
+    const delay = immediate ? 0 : 300;
     
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -417,14 +421,19 @@ if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
       const now = Date.now();
       if (now - lastFetchTime.current > 100) {
     
+        
+        // Create new AbortController
+        abortControllerRef.current = new AbortController();
+        
         lastFetchTime.current = now;
         lastApiParamsRef.current = params;
+        
         fetchEmployees(params);
-      } 
+      }
     }, delay);
   }, [fetchEmployees]);
 
-  // ✅ WRAPPER FILTER EFFECT - Set business_function ID
+  // ✅ WRAPPER FILTER EFFECT - Set business_function ID AND LOCK IT
   useEffect(() => {
     if (!businessFunctions || businessFunctions.length === 0) {
       return;
@@ -434,35 +443,37 @@ if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
       const bf = businessFunctions.find(b => b.code === businessFunctionFilter);
       
       if (bf) {
-        // ✅ CRITICAL: Get ID as NUMBER
         const bfId = Number(bf.id || bf.value);
+        
+  
+        
+        // ✅ LOCK IT IN REF - THIS NEVER CHANGES
+        lockedBusinessFunction.current = bfId;
         
         setLocalFilters(prev => {
           const currentIds = prev.business_function.map(id => Number(id));
           
           if (currentIds.length === 1 && currentIds[0] === bfId) {
-          
             return prev;
           }
           
-          
           return {
             ...prev,
-            business_function: [bfId] // ✅ Array with single NUMBER ID
+            business_function: [bfId]
           };
         });
         
         setIsWrapperFilterApplied(true);
-      } else {
-        console.warn('⚠️ Business function not found for code:', businessFunctionFilter);
       }
     } else {
+      // Clear the lock
+      lockedBusinessFunction.current = null;
+      
       setLocalFilters(prev => {
         if (prev.business_function.length === 0) {
           return prev;
         }
         
-      
         return {
           ...prev,
           business_function: []
@@ -480,38 +491,32 @@ if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
         return;
       }
       
-      // ✅ Wait for businessFunctions to load
       if (!businessFunctions || businessFunctions.length === 0) {
-     
         return;
       }
       
-      // ✅ CRITICAL: If wrapper filter exists, wait for it to be applied
+      // ✅ CRITICAL: If wrapper filter exists, wait for lock to be set
       if (businessFunctionFilter) {
-        if (localFilters.business_function.length === 0) {
-
+        if (lockedBusinessFunction.current === null) {
           return;
         }
-     
+       
       }
       
       try {
-       
+     
         initialized.current = true;
         clearErrors();
         
-        // Fetch statistics first
         await fetchStatistics();
         
-        // Build params and fetch employees
         const params = buildApiParams();
-     
+  
         
         lastApiParamsRef.current = params;
         await fetchEmployees(params);
         
-    
-        
+     
       } catch (error) {
         console.error('❌ Initialize failed:', error);
         showError('Failed to initialize data');
@@ -523,7 +528,6 @@ if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
   }, [
     businessFunctionFilter, 
     businessFunctions, 
-    localFilters.business_function,
     buildApiParams,
     fetchEmployees,
     fetchStatistics, 
@@ -531,28 +535,35 @@ if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
     showError
   ]);
 
-  // ✅ DATA FETCHING EFFECT - Only after initialization
-  // ✅ DATA FETCHING EFFECT - Only after initialization
-useEffect(() => {
-  if (!initialized.current) {
-    return;
-  }
+  // ✅ DATA FETCHING EFFECT - Check the lock
+  useEffect(() => {
+    if (!initialized.current) {
+      return;
+    }
 
-  if (!apiParamsChanged) {
-    return;
-  }
+    // ✅ CRITICAL: If lock exists, business_function MUST be in params
+    if (lockedBusinessFunction.current !== null) {
+      const params = buildApiParams();
+      if (!params.business_function) {
+        console.error('❌ CRITICAL: Lock exists but no business_function in params!');
+        console.error('Locked value:', lockedBusinessFunction.current);
+        return;
+      }
+    }
 
-  const params = buildApiParams();
+    if (!apiParamsChanged) {
+      return;
+    }
+
+    const params = buildApiParams();
+    
   
-  // ✅ CRITICAL: Preserve wrapper filter during pagination
-  if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
-    // Ensure business_function is always included in params
-    params.business_function = localFilters.business_function.join(',');
-    console.log('🔒 Preserving wrapper filter in API call:', params.business_function);
-  }
-
-  debouncedFetchEmployees(params);
-}, [apiParamsChanged, buildApiParams, debouncedFetchEmployees, isWrapperFilterApplied, localFilters.business_function]);
+    debouncedFetchEmployees(params);
+  }, [
+    apiParamsChanged, 
+    buildApiParams, 
+    debouncedFetchEmployees
+  ]);
 
   const refreshAllData = useCallback(async (forceRefresh = false) => {
     try {
@@ -566,12 +577,11 @@ useEffect(() => {
       ]);
       
       lastApiParamsRef.current = { ...buildApiParams() };
-     
     } catch (error) {
       console.error('Data refresh failed:', error);
       showError('Failed to refresh data');
     }
-  }, [fetchStatistics, fetchEmployees, buildApiParams, showInfo, showSuccess, showError]);
+  }, [fetchStatistics, fetchEmployees, buildApiParams, showError]);
 
   const handleTabChange = useCallback((tabId) => {
     setActiveTab(tabId);
@@ -581,7 +591,7 @@ useEffect(() => {
     setIsExportModalOpen(false);
     setIsBulkUploadOpen(false);
     clearSelection();
-  }, [clearSelection, showInfo]);
+  }, [clearSelection]);
 
   const combinedStatistics = useMemo(() => ({
     ...statistics,
@@ -601,8 +611,8 @@ useEffect(() => {
       setSorting({ multiple: newSorting });
     }
     setCurrentPage(1);
-    showInfo(`Sorting updated: ${newSorting.length} level(s)`);
-  }, [setSorting, clearSorting, setCurrentPage, showInfo]);
+
+  }, [setSorting, clearSorting, setCurrentPage]);
 
   const handleClearAllSorting = useCallback(() => {
     clearSorting();
@@ -610,31 +620,22 @@ useEffect(() => {
     showInfo('All sorting cleared');
   }, [clearSorting, setCurrentPage, showInfo]);
 
-  // ========================================
-  // 🎯 FILTER HANDLERS
-  // ========================================
   const handleSearchChange = useCallback((value) => {
-  setLocalFilters(prev => {
-    // ✅ Preserve business_function filter
-    return {
+    setLocalFilters(prev => ({
       ...prev,
-      search: value,
-      business_function: isWrapperFilterApplied ? prev.business_function : []
-    };
-  });
-  setCurrentPage(1);
-}, [setCurrentPage, isWrapperFilterApplied]);
+      search: value
+    }));
+    setCurrentPage(1);
+  }, [setCurrentPage]);
 
-const handleStatusChange = useCallback((selectedStatuses) => {
-  setLocalFilters(prev => ({
-    ...prev,
-    status: Array.isArray(selectedStatuses) ? selectedStatuses : [],
-    business_function: isWrapperFilterApplied ? prev.business_function : [] // ✅ Preserve
-  }));
-  setCurrentPage(1);
-}, [setCurrentPage, isWrapperFilterApplied]);
+  const handleStatusChange = useCallback((selectedStatuses) => {
+    setLocalFilters(prev => ({
+      ...prev,
+      status: Array.isArray(selectedStatuses) ? selectedStatuses : []
+    }));
+    setCurrentPage(1);
+  }, [setCurrentPage]);
 
-// Apply same pattern to all filter handlers...
   const handleDepartmentChange = useCallback((selectedDepartments) => {
     setLocalFilters(prev => ({ ...prev, department: Array.isArray(selectedDepartments) ? selectedDepartments : [] }));
     setCurrentPage(1);
@@ -669,8 +670,8 @@ const handleStatusChange = useCallback((selectedStatuses) => {
     
     setLocalFilters(prev => ({ ...prev, ...processedFilters }));
     setCurrentPage(1);
-    showInfo('Advanced filters applied');
-  }, [setCurrentPage, showInfo]);
+ 
+  }, [setCurrentPage]);
 
   const handleClearFilter = useCallback((key) => {
     if (key === 'business_function' && isWrapperFilterApplied) {
@@ -691,8 +692,8 @@ const handleStatusChange = useCallback((selectedStatuses) => {
     });
     
     setCurrentPage(1);
-    showInfo(`${key} filter cleared`);
-  }, [isWrapperFilterApplied, showWarning, setCurrentPage, showInfo]);
+
+  }, [isWrapperFilterApplied, showWarning, setCurrentPage]);
 
   const handleClearAllFilters = useCallback(() => {
     const clearedFilters = {
@@ -717,8 +718,8 @@ const handleStatusChange = useCallback((selectedStatuses) => {
       years_of_service_max: "",
       is_active: "",
       is_visible_in_org_chart: "",
-      status_needs_update: "",
-      contract_expiring_days: ""
+
+ 
     };
     
     setLocalFilters(clearedFilters);
@@ -739,7 +740,7 @@ const handleStatusChange = useCallback((selectedStatuses) => {
       const allIds = formattedEmployees.map(emp => emp.id);
       setSelectedEmployees(allIds);      
     }
-  }, [selectedEmployees.length, formattedEmployees, clearSelection, setSelectedEmployees, showInfo]);
+  }, [selectedEmployees.length, formattedEmployees, clearSelection, setSelectedEmployees]);
 
   const handleVisibilityChange = useCallback(async (employeeId, newVisibility) => {
     try {
@@ -898,7 +899,7 @@ const handleStatusChange = useCallback((selectedStatuses) => {
               tag_id: options.tag_id
             };
             
-            showInfo('Adding tags...');
+           
             result = await bulkAddTags(payload.employee_ids, payload.tag_id);
             clearSelection();
             await refreshAllData(true);
@@ -944,27 +945,9 @@ const handleStatusChange = useCallback((selectedStatuses) => {
           }
           break;
 
-        case "bulkExtendContracts":
-          try {
-            result = await bulkExtendContracts({
-              employee_ids: selectedEmployees,
-              new_contract_type: options.new_contract_type,
-              new_start_date: options.new_start_date,
-              reason: options.reason
-            });
-            
-            clearSelection();
-            await refreshAllData(true);
-            showSuccess(`Contracts extended for ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
-          } catch (error) {
-          
-            showError('Contract extension failed: ' + error.message);
-          }
-          break;
-
+      
         default:
           console.warn('Unknown bulk action:', action);
-     
       }
     } catch (error) {
       console.error(`Bulk action ${action} failed:`, error);
@@ -977,7 +960,7 @@ const handleStatusChange = useCallback((selectedStatuses) => {
     bulkAddTags,
     bulkRemoveTags,
     bulkAssignLineManager,
-    bulkExtendContracts,
+
     downloadEmployeeTemplate,
     showInOrgChart,
     hideFromOrgChart,
@@ -999,64 +982,35 @@ const handleStatusChange = useCallback((selectedStatuses) => {
     try {
       setIsExporting(true);
 
-      let apiEndpoint;
-      let apiPayload;
-      let queryParams = {};
+      let exportParams = {
+        format: exportOptions.format || 'excel',
+        include_fields: exportOptions.include_fields || []
+      };
 
       switch (exportOptions.type) {
         case "selected":
           if (!selectedEmployees || selectedEmployees.length === 0) {
-            throw new Error("No employees selected for export!");
+            throw new Error("No employees selected!");
           }
-          
-          apiEndpoint = 'export_selected';
-          apiPayload = {
-            employee_ids: selectedEmployees,
-            export_format: exportOptions.format || 'excel'
-          };
-          
-          if (exportOptions.include_fields && Array.isArray(exportOptions.include_fields) && exportOptions.include_fields.length > 0) {
-            apiPayload.include_fields = exportOptions.include_fields;
-          }
+          exportParams.employee_ids = selectedEmployees;
           break;
 
         case "filtered":
-          apiEndpoint = 'export_selected';
-          
-          const filterParams = { ...buildApiParams() };
+          const currentFilters = buildApiParams();
+          const filterParams = { ...currentFilters };
           delete filterParams.page;
           delete filterParams.page_size;
+          delete filterParams.use_pagination;
           
-          apiPayload = {
-            export_format: exportOptions.format || 'excel'
-          };
-          
-          if (exportOptions.include_fields && Array.isArray(exportOptions.include_fields) && exportOptions.include_fields.length > 0) {
-            apiPayload.include_fields = exportOptions.include_fields;
-          }
-          
-          queryParams = filterParams;
+          exportParams._queryParams = filterParams;
           break;
 
         case "all":
-          apiEndpoint = 'export_selected';
-          apiPayload = {
-            export_format: exportOptions.format || 'excel'
-          };
-          
-          if (exportOptions.include_fields && Array.isArray(exportOptions.include_fields) && exportOptions.include_fields.length > 0) {
-            apiPayload.include_fields = exportOptions.include_fields;
-          }
+          exportParams._queryParams = {};
           break;
-
-        default:
-          throw new Error(`Unknown export type: ${exportOptions.type}`);
       }
 
-      const result = await exportEmployees(exportOptions.format || 'excel', {
-        ...apiPayload,
-        _queryParams: queryParams
-      });
+      const response = await employeeAPI.export(exportParams);
       
       const exportTypeLabel = exportOptions.type === "selected" 
         ? `${selectedEmployees?.length || 0} selected` 
@@ -1064,41 +1018,26 @@ const handleStatusChange = useCallback((selectedStatuses) => {
         ? "filtered"
         : "all";
       
-      const fieldsCount = exportOptions.include_fields?.length || 'default';
-      showSuccess(`Export completed! ${exportTypeLabel} employees exported with ${fieldsCount} fields.`);
+      showSuccess(`✅ ${exportTypeLabel} employees exported.`);
       
-      return result;
+      return response;
 
     } catch (error) {
-      console.error('Export error:', error);
-      
-      let userFriendlyMessage = error.message || "Export failed. Please try again.";
-      
-      if (error.message?.includes('No employees selected')) {
-        userFriendlyMessage = "Please select at least one employee to export.";
-      } else if (error.message?.includes('Invalid fields')) {
-        userFriendlyMessage = "Some selected fields are not available. Please check your field selection.";
-      } else if (error.message?.includes('No data received')) {
-        userFriendlyMessage = "Export failed - no data returned from server. Please check your selection.";
-      }
-      
-      showError(`Export failed: ${userFriendlyMessage}`);
+      console.error('❌ Export error:', error);
+      showError(`Export failed: ${error.message || 'Error occurred'}`);
       throw error;
     } finally {
       setIsExporting(false);
     }
-  }, [selectedEmployees, buildApiParams, exportEmployees, showInfo, showSuccess, showError]);
+  }, [selectedEmployees, buildApiParams, showSuccess, showError]);
 
-  const handleQuickExport = useCallback(async (exportOptions) => {
-    try {
-      setIsExporting(true);
-      await handleExport(exportOptions);
-    } catch (error) {
-      showError(`Export failed: ${error.message}`);
-    } finally {
-      setIsExporting(false);
-    }
-  }, [handleExport, showError]);
+  const handleQuickExport = useCallback(async (format) => {
+    await handleExport({
+      type: selectedEmployees.length > 0 ? "selected" : "filtered",
+      format: format,
+      include_fields: 'all'
+    });
+  }, [handleExport, selectedEmployees]);
 
   const handleBulkImportComplete = useCallback(async (result) => {
     try {
@@ -1252,7 +1191,6 @@ const handleStatusChange = useCallback((selectedStatuses) => {
           if (confirmation === "DELETE") {
             try {
               const notes = prompt("Please provide notes for this deletion (optional but recommended):");
-              showWarning('Processing permanent deletion...');
               
               await archiveEmployeesService.bulkHardDeleteEmployees([employeeId], notes, true);
               await refreshAllData(true);
@@ -1277,9 +1215,6 @@ const handleStatusChange = useCallback((selectedStatuses) => {
           showInfo(`Job Description for ${employee?.name || employeeId} - Feature coming soon!`);
           break;
 
-        case "competencyMatrix":
-          showInfo(`Competency Matrix for ${employee?.name || employeeId} - Feature coming soon!`);
-          break;
 
         case "performanceManagement":
           showInfo(`Performance Management for ${employee?.name || employeeId} - Feature coming soon!`);
@@ -1325,14 +1260,13 @@ const handleStatusChange = useCallback((selectedStatuses) => {
       console.error('Line manager assignment failed:', error);
       showError(`Failed to assign line manager: ${error.message}`);
     }
-  }, [currentModalEmployee, bulkAssignLineManager, refreshAllData, allEmployeesForModal, showInfo, showSuccess, showError]);
+  }, [currentModalEmployee, bulkAssignLineManager, refreshAllData, allEmployeesForModal, showSuccess, showError]);
 
   const handleTagOperation = useCallback(async (operation, tagId) => {
     try {
       if (!currentModalEmployee) {
         throw new Error('No employee selected for tag operation');
       }
-      
 
       if (operation === 'add') {
         await bulkAddTags([currentModalEmployee.id], tagId);
@@ -1347,13 +1281,11 @@ const handleStatusChange = useCallback((selectedStatuses) => {
       
       await refreshAllData();
       
-    
-    
     } catch (error) {
       console.error(`Tag ${operation} failed:`, error);
       showError(`Failed to ${operation} tag: ${error.message}`);
     }
-  }, [currentModalEmployee, bulkAddTags, bulkRemoveTags, refreshAllData, showInfo, showSuccess, showError]);
+  }, [currentModalEmployee, bulkAddTags, bulkRemoveTags, refreshAllData, showError]);
 
   const handleLineManagerModalClose = useCallback(() => {
     setShowLineManagerModal(false);
@@ -1479,18 +1411,8 @@ const handleStatusChange = useCallback((selectedStatuses) => {
         label: `Org Chart: ${localFilters.is_visible_in_org_chart === "true" ? "Visible" : "Hidden"}`
       });
     }
-    if (localFilters.status_needs_update && localFilters.status_needs_update !== "") {
-      filters.push({ 
-        key: "status_needs_update", 
-        label: `Status Update: ${localFilters.status_needs_update === "true" ? "Needed" : "Not Needed"}`
-      });
-    }
-    if (localFilters.contract_expiring_days) {
-      filters.push({ 
-        key: "contract_expiring_days", 
-        label: `Contract expiring in ${localFilters.contract_expiring_days} days`
-      });
-    }
+ 
+
     
     return filters;
   }, [localFilters, isWrapperFilterApplied]);
@@ -1500,8 +1422,12 @@ const handleStatusChange = useCallback((selectedStatuses) => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, []);
+
   const availableFieldsForSorting = useMemo(() => [
     { value: 'name', label: 'Full Name', description: 'Employee full name' },
     { value: 'employee_name', label: 'Employee Name', description: 'Employee display name' },
@@ -1611,66 +1537,6 @@ const handleStatusChange = useCallback((selectedStatuses) => {
                 </div>
               </div>
             )}
-{/* 
-            {activeFilters.length > 0 && (
-              <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center flex-wrap gap-2">
-                    <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
-                      {activeFilters.length} filter{activeFilters.length !== 1 ? 's' : ''} active
-                      {isWrapperFilterApplied && (
-                        <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-800 px-2 py-0.5 rounded">
-                          Company Filter Active
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleClearAllFilters}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
-                  >
-                    Clear All{isWrapperFilterApplied ? ' (except company)' : ''}
-                  </button>
-                </div>
-              </div>
-            )} */}
-
-                {/* Filter Summary */}
-            {/* {activeFilters.length > 0 && (
-              <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center flex-wrap gap-2">
-                    <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
-                      Multi-level sorting active:
-                    </span>
-                    <div className="ml-2 flex items-center space-x-2">
-                      {sorting.map((sort, index) => (
-                        <span 
-                          key={sort.field}
-                          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200"
-                        >
-                          {index + 1}. {sort.field} {sort.direction === 'asc' ? '↑' : '↓'}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={handleToggleAdvancedSorting}
-                      className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
-                    >
-                      Configure
-                    </button>
-                    <button
-                      onClick={handleClearAllSorting}
-                      className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
-                    >
-                      Clear All
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )} */}
 
             {loading.employees && (
               <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -1708,9 +1574,10 @@ const handleStatusChange = useCallback((selectedStatuses) => {
                 totalPages={pagination.totalPages}
                 totalItems={pagination.count || pagination.totalItems}
                 pageSize={pagination.pageSize}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={setPageSize}
+                onPageChange={handlePageChange}        
+                onPageSizeChange={handlePageSizeChange} 
                 loading={loading.employees}
+                preserveFilters={isWrapperFilterApplied}
                 darkMode={darkMode}
                 showQuickJump={true}
                 showPageSizeSelector={true}
@@ -1787,7 +1654,8 @@ const handleStatusChange = useCallback((selectedStatuses) => {
               onClick={() => {
                 initialized.current = false;
                 lastApiParamsRef.current = null;
-                showInfo('Reloading application...');
+                lockedBusinessFunction.current = null;
+           
                 window.location.reload();
               }}
               className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"

@@ -1,4 +1,4 @@
-// src/hooks/useEmployees.js - FIXED: Runtime error həll edildi
+// src/hooks/useEmployees.js 
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback, useEffect, useState, useRef } from 'react';
 import {
@@ -13,16 +13,12 @@ import {
   bulkRemoveTags,
   assignLineManager,
   bulkAssignLineManager,
-  extendEmployeeContract,
-  bulkExtendContracts,
   fetchEmployeeGrading,
- 
   exportEmployees,
   downloadEmployeeTemplate,
   bulkUploadEmployees,
   fetchEmployeeActivities,
   fetchEmployeeDirectReports,
-  fetchEmployeeStatusPreview,
   toggleOrgChartVisibility,
   bulkToggleOrgChartVisibility,
   setSelectedEmployees,
@@ -72,13 +68,10 @@ import {
   selectAllGradingLevels,
   selectActivities,
   selectDirectReports,
-  selectStatusPreviews,
   selectViewMode,
   selectShowAdvancedFilters,
   selectShowGradingPanel,
   selectGradingMode,
-  selectContractExpiryAlerts,
-  selectContractsExpiringSoon,
   selectFormattedEmployees,
   selectSortingForBackend,
   selectFilteredEmployeesCount,
@@ -87,15 +80,12 @@ import {
   selectGetSortIndex,
   selectApiParams,
   selectSelectionInfo,
-  selectEmployeesNeedingGrades,
   selectEmployeesByGradeLevel,
   selectEmployeesByPositionGroup,
-  selectGradingProgress,
   selectGradingDistribution,
   selectEmployeesByStatus,
   selectEmployeesByDepartment,
   selectNewHires,
-  selectEmployeesNeedingAttention,
   selectIsAnyLoading,
   selectHasAnyError,
   selectDashboardSummary,
@@ -110,7 +100,6 @@ import {
   selectProfilePhotoSuccess,
 } from '../store/slices/employeeSlice';
 
-// Reference data import
 import {
   fetchBusinessFunctions,
   fetchJobFunctions,
@@ -140,7 +129,6 @@ export const useEmployees = () => {
   const sorting = useSelector(selectSorting);
   const activities = useSelector(selectActivities);
   const directReports = useSelector(selectDirectReports);
-  const statusPreviews = useSelector(selectStatusPreviews);
   const viewMode = useSelector(selectViewMode);
   const showAdvancedFilters = useSelector(selectShowAdvancedFilters);
   
@@ -150,19 +138,12 @@ export const useEmployees = () => {
   const allGradingLevels = useSelector(selectAllGradingLevels);
   const showGradingPanel = useSelector(selectShowGradingPanel);
   const gradingMode = useSelector(selectGradingMode);
-  const employeesNeedingGrades = useSelector(selectEmployeesNeedingGrades);
   const employeesByGradeLevel = useSelector(selectEmployeesByGradeLevel);
   const employeesByPositionGroup = useSelector(selectEmployeesByPositionGroup);
-  const gradingProgress = useSelector(selectGradingProgress);
   const gradingDistribution = useSelector(selectGradingDistribution);
-  
-  // Analytics & statistics selectors
-  const contractExpiryAlerts = useSelector(selectContractExpiryAlerts);
-  const contractsExpiringSoon = useSelector(selectContractsExpiringSoon);
   const employeesByStatus = useSelector(selectEmployeesByStatus);
   const employeesByDepartment = useSelector(selectEmployeesByDepartment);
   const newHires = useSelector(selectNewHires);
-  const employeesNeedingAttention = useSelector(selectEmployeesNeedingAttention);
   const dashboardSummary = useSelector(selectDashboardSummary);
   const employeeMetrics = useSelector(selectEmployeeMetrics);
   
@@ -173,8 +154,7 @@ export const useEmployees = () => {
   const selectionInfo = useSelector(selectSelectionInfo);
   const isAnyLoading = useSelector(selectIsAnyLoading);
   const hasAnyError = useSelector(selectHasAnyError);
-
-const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
+  const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
   const profilePhotoError = useSelector(selectProfilePhotoError);
   const profilePhotoSuccess = useSelector(selectProfilePhotoSuccess);
 
@@ -216,36 +196,17 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     dispatch(bulkAddTags({ employee_ids, tag_id })), [dispatch]);
   const bulkRemoveTagsAction = useCallback((employee_ids, tag_id) => 
     dispatch(bulkRemoveTags({ employee_ids, tag_id })), [dispatch]);
-  
-  // Line manager management
   const assignLineManagerAction = useCallback((employee_id, line_manager_id) => 
     dispatch(assignLineManager({ employee_id, line_manager_id })), [dispatch]);
   const bulkAssignLineManagerAction = useCallback((employee_ids, line_manager_id) => 
     dispatch(bulkAssignLineManager({ employee_ids, line_manager_id })), [dispatch]);
-  
-  // Contract management
-  const extendEmployeeContractAction = useCallback((data) => dispatch(extendEmployeeContract(data)), [dispatch]);
-  const bulkExtendContractsAction = useCallback((data) => dispatch(bulkExtendContracts(data)), [dispatch]);
-  
 
-  
-  // Grading management
   const fetchEmployeeGradingAction = useCallback(() => dispatch(fetchEmployeeGrading()), [dispatch]);
-  
-  
-  
-  // Export & template
   const exportEmployeesAction = useCallback((format, params) => dispatch(exportEmployees({ format, params })), [dispatch]);
   const downloadEmployeeTemplateAction = useCallback(() => dispatch(downloadEmployeeTemplate()), [dispatch]);
   const bulkUploadEmployeesAction = useCallback((file) => dispatch(bulkUploadEmployees(file)), [dispatch]);
-  
-  // Activities & org chart
   const fetchEmployeeActivitiesAction = useCallback((employeeId) => dispatch(fetchEmployeeActivities(employeeId)), [dispatch]);
   const fetchEmployeeDirectReportsAction = useCallback((employeeId) => dispatch(fetchEmployeeDirectReports(employeeId)), [dispatch]);
-  const fetchEmployeeStatusPreviewAction = useCallback((employeeId) => dispatch(fetchEmployeeStatusPreview(employeeId)), [dispatch]);
-
-  
-  // Selection management
   const setSelectedEmployeesAction = useCallback((employees) => dispatch(setSelectedEmployees(employees)), [dispatch]);
   const toggleEmployeeSelectionAction = useCallback((employeeId) => dispatch(toggleEmployeeSelection(employeeId)), [dispatch]);
   const selectAllEmployeesAction = useCallback(() => dispatch(selectAllEmployees()), [dispatch]);
@@ -289,7 +250,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
   
 
 
-   const uploadProfilePhotoAction = useCallback((employeeId, file) => 
+  const uploadProfilePhotoAction = useCallback((employeeId, file) => 
     dispatch(uploadEmployeeProfilePhoto({ employeeId, file })), [dispatch]);
   
   const deleteProfilePhotoAction = useCallback((employeeId) => 
@@ -304,17 +265,10 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
   const setProfilePhotoLoadingAction = useCallback((loading) => 
     dispatch(setProfilePhotoLoading(loading)), [dispatch]);
 
-
-  // Quick actions
   const setQuickFilterAction = useCallback((type, value) => dispatch(setQuickFilter({ type, value })), [dispatch]);
   const optimisticUpdateEmployeeAction = useCallback((id, updates) => dispatch(optimisticUpdateEmployee({ id, updates })), [dispatch]);
 
-
-
-  // Filter options loading
   const fetchFilterOptionsAction = useCallback(() => {
-
-    
     if (isInitialized.current) {
   
       return Promise.resolve();
@@ -335,12 +289,12 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     });
   }, [dispatch]);
 
-  // Advanced filtering functions
+
   const searchEmployeesAdvancedAction = useCallback((searchParams) => {
     const enhancedParams = {
       ...apiParams,
       ...searchParams,
-      // Ensure proper formatting for backend
+    
       search: searchParams.generalSearch || searchParams.search,
       employee_search: searchParams.employeeSearch,
       line_manager_search: searchParams.managerSearch,
@@ -377,17 +331,10 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
       'noManager': { line_manager: null },
       'needsGrading': { grading_level: [] },
       'newHires': { years_of_service_range: { min: 0, max: 0.25 } },
-      'veterans': { years_of_service_range: { min: 5, max: null } },
-      'contractEnding': { contract_expiring_days: 30 },
       'managers': { direct_reports_count_min: 1 },
       'orgChartVisible': { is_visible_in_org_chart: true },
       'orgChartHidden': { is_visible_in_org_chart: false },
-      'needsAttention': {
-        status_needs_update: true,
-        contract_expiring_days: 60,
-        line_manager: null,
-        grading_level: []
-      }
+     
     };
     
     const presetFilters = presets[presetName];
@@ -416,9 +363,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     });
   }, [dispatch]);
 
-  // Enhanced sorting functions
   const setMultipleSortingAction = useCallback((sortingArray) => {
-    // Convert sorting array to proper format for backend
     const formattedSorting = sortingArray.map(sort => ({
       field: sort.field,
       direction: sort.direction || 'asc'
@@ -446,7 +391,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
         { field: 'full_name', direction: 'asc' }
       ],
       'status_priority': [
-        { field: 'status_needs_update', direction: 'desc' },
+     
         { field: 'status_name', direction: 'asc' },
         { field: 'full_name', direction: 'asc' }
       ]
@@ -458,80 +403,44 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     }
   }, [setMultipleSortingAction]);
 
-  // CRUD actions - backend endpointlərinə uyğun və genişləndirilmiş
   const actions = {
-    // Fetch operations
     fetchEmployees: fetchEmployeesAction,
     fetchEmployee: fetchEmployeeAction,
-    fetchFilterOptions: fetchFilterOptionsAction,
-    
-    // Create/Update/Delete
+    fetchFilterOptions: fetchFilterOptionsAction, 
     createEmployee: createEmployeeAction,
     updateEmployee: updateEmployeeAction,
-
-    
-    // Statistics
     fetchStatistics: fetchStatisticsAction,
-    
-  uploadProfilePhoto: uploadProfilePhotoAction,
+    uploadProfilePhoto: uploadProfilePhotoAction,
     deleteProfilePhoto: deleteProfilePhotoAction,
     clearProfilePhotoError: clearProfilePhotoErrorAction,
     clearProfilePhotoSuccess: clearProfilePhotoSuccessAction,
     setProfilePhotoLoading: setProfilePhotoLoadingAction,
-
- 
-    // ORG CHART VISIBILITY - YENİ FUNKSİYALAR
     toggleOrgChartVisibility: toggleOrgChartVisibilityAction,
     bulkToggleOrgChartVisibility: bulkToggleOrgChartVisibilityAction,
     showInOrgChart: showInOrgChartAction,
     hideFromOrgChart: hideFromOrgChartAction,
-    
-    // Tag management
     addEmployeeTag: addEmployeeTagAction,
     removeEmployeeTag: removeEmployeeTagAction,
     bulkAddTags: bulkAddTagsAction,
     bulkRemoveTags: bulkRemoveTagsAction,
-    
-    // Line manager management
     assignLineManager: assignLineManagerAction,
     bulkAssignLineManager: bulkAssignLineManagerAction,
-    
-    // Contract management
-    extendEmployeeContract: extendEmployeeContractAction,
-    bulkExtendContracts: bulkExtendContractsAction,
- 
- 
-    
-    // Grading management
     fetchEmployeeGrading: fetchEmployeeGradingAction,
-   
-    
-    // Export & template
     exportEmployees: exportEmployeesAction,
     downloadEmployeeTemplate: downloadEmployeeTemplateAction,
     bulkUploadEmployees: bulkUploadEmployeesAction,
-    
-    // Activities & org chart
     fetchEmployeeActivities: fetchEmployeeActivitiesAction,
     fetchEmployeeDirectReports: fetchEmployeeDirectReportsAction,
-    fetchEmployeeStatusPreview: fetchEmployeeStatusPreviewAction,
-  
-    
-    // Selection management
     setSelectedEmployees: setSelectedEmployeesAction,
     toggleEmployeeSelection: toggleEmployeeSelectionAction,
     selectAllEmployees: selectAllEmployeesAction,
     selectAllVisible: selectAllVisibleAction,
     clearSelection: clearSelectionAction,
-    
-    // Filter management - Enhanced
     setCurrentFilters: setCurrentFiltersAction,
     addFilter: addFilterAction,
     removeFilter: removeFilterAction,
     clearFilters: clearFiltersAction,
     updateFilter: updateFilterAction,
-    
-    // ADVANCED FILTERING - YENİ FUNKSİYALAR
     searchEmployeesAdvanced: searchEmployeesAdvancedAction,
     setDateRangeFilter: setDateRangeFilterAction,
     setNumericRangeFilter: setNumericRangeFilterAction,
@@ -539,27 +448,19 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     setBooleanFilter: setBooleanFilterAction,
     applyFilterPreset: applyFilterPresetAction,
     clearFilterType: clearFilterTypeAction,
-    
-    // Sorting management - Enhanced Multiple Sorting
     setSorting: setSortingAction,
     addSort: addSortAction,
     removeSort: removeSortAction,
     clearSorting: clearSortingAction,
     toggleSort: toggleSortAction,
-    
-    // ENHANCED SORTING - YENİ FUNKSİYALAR
     setMultipleSorting: setMultipleSortingAction,
     addSortToMultiple: addSortToMultipleAction,
     reorderSorts: reorderSortsAction,
     applySortPreset: applySortPresetAction,
-    
-    // Pagination
     setPageSize: setPageSizeAction,
     setCurrentPage: setCurrentPageAction,
     goToNextPage: goToNextPageAction,
     goToPreviousPage: goToPreviousPageAction,
-    
-    // UI state
     toggleAdvancedFilters: toggleAdvancedFiltersAction,
     setShowAdvancedFilters: setShowAdvancedFiltersAction,
     setViewMode: setViewModeAction,
@@ -567,22 +468,18 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     toggleGradingPanel: toggleGradingPanelAction,
     setGradingMode: setGradingModeAction,
     
-    // Error management
+
     clearErrors: clearErrorsAction,
     clearError: clearErrorAction,
     setError: setErrorAction,
     clearCurrentEmployee: clearCurrentEmployeeAction,
-    
-    // Quick actions
     setQuickFilter: setQuickFilterAction,
     optimisticUpdateEmployee: optimisticUpdateEmployeeAction,
  
 
   };
 
-  // Computed values - Enhanced
   const computed = {
-    // Loading states
     isLoading: loading.employees || loading.creating || loading.updating || loading.deleting,
     isCreating: loading.creating,
     isUpdating: loading.updating,
@@ -591,22 +488,16 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     isLoadingTemplate: loading.template,
     isLoadingGrading: loading.grading,
     isLoadingUpload: loading.upload,
-    isLoadingContractAlerts: loading.contractAlerts,
     isLoadingOrgChart: loading.orgChart || false,
-    
-
-
     isUploadingProfilePhoto: profilePhotoLoading,
     hasProfilePhotoError: !!profilePhotoError,
     hasProfilePhotoSuccess: profilePhotoSuccess,
 
-    // Selection
     hasSelection: selectedEmployees.length > 0,
     selectionCount: selectedEmployees.length,
     isAllSelected: selectionInfo.isAllSelected,
     isPartialSelection: selectionInfo.isPartialSelection,
     
-    // Filters - Enhanced
     hasActiveFilters: Object.keys(currentFilters).length > 0 || appliedFilters.length > 0,
     activeFilterCount: Object.keys(currentFilters).length + appliedFilters.length,
     hasSearchFilters: !!(currentFilters.search || currentFilters.employee_search || 
@@ -616,51 +507,35 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     hasBooleanFilters: !!(currentFilters.is_active !== undefined || 
                          currentFilters.is_visible_in_org_chart !== undefined),
     
-    // Sorting - Enhanced
     hasSorting: sorting.length > 0,
     sortingCount: sorting.length,
     hasMultipleSorts: sorting.length > 1,
     primarySort: sorting.length > 0 ? sorting[0] : null,
     
-    // Pagination
     hasNextPage: pagination.hasNext,
     hasPreviousPage: pagination.hasPrevious,
     totalPages: pagination.totalPages,
     totalItems: pagination.totalItems,
     
-    // Data
     isEmpty: formattedEmployees.length === 0,
     filteredCount: filteredEmployeesCount,
     totalEmployees: employees.length,
-    
-    // Grading
-    gradingProgress: gradingProgress,
-    needsGradingCount: employeesNeedingGrades.length,
+
     gradedEmployeesCount: gradingStatistics.gradedEmployees,
     
-    // Analytics - Enhanced
     activeEmployeesCount: statistics.active_employees,
     newHiresCount: statistics.recent_hires_30_days,
     onLeaveCount: employeesByStatus['ON_LEAVE'] || 0,
     onboardingCount: employeesByStatus['ONBOARDING'] || 0,
     probationCount: employeesByStatus['PROBATION'] || 0,
-    contractEndingCount: employeesNeedingAttention.contractEnding?.length || 0,
-    statusUpdateCount: employeesNeedingAttention.statusUpdate?.length || 0,
-    noManagerCount: employeesNeedingAttention.noLineManager?.length || 0,
-    
-    // Org Chart
+
     orgChartVisibleCount: employees.filter(emp => emp.is_visible_in_org_chart).length,
     orgChartHiddenCount: employees.filter(emp => !emp.is_visible_in_org_chart).length,
     managersCount: employees.filter(emp => (emp.direct_reports_count || 0) > 0).length,
-    
-    // Contract alerts
-    totalExpiringContracts: contractExpiryAlerts.total_expiring,
-    urgentContracts: contractExpiryAlerts.urgent_employees?.length || 0,
+
   };
 
-  // Helper functions - Enhanced
   const helpers = {
-    // Data refresh helpers
     refreshEmployees: useCallback(() => {
       const currentParams = JSON.stringify(apiParams);
       if (lastFetchParams.current !== currentParams) {
@@ -690,23 +565,19 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
      
     }, [dispatch, apiParams]),
     
-    // Filter helpers - Enhanced
     buildQueryParams: useCallback(() => apiParams, [apiParams]),
     
     hasActiveFilters: useCallback(() => {
       return Object.keys(currentFilters).length > 0 || appliedFilters.length > 0;
     }, [currentFilters, appliedFilters]),
     
-    // Advanced search helper
     performAdvancedSearch: useCallback((searchCriteria) => {
       const searchParams = {
-        // Text searches
         search: searchCriteria.generalSearch,
         employee_search: searchCriteria.employeeSearch,
         line_manager_search: searchCriteria.managerSearch,
         job_title_search: searchCriteria.jobTitleSearch,
         
-        // Multi-select filters
         business_function: searchCriteria.businessFunctions,
         department: searchCriteria.departments,
         unit: searchCriteria.units,
@@ -719,21 +590,16 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
         tags: searchCriteria.tags,
         gender: searchCriteria.genders,
         
-        // Date ranges
         start_date_range: searchCriteria.startDateRange,
         contract_end_date_range: searchCriteria.contractEndDateRange,
         
-        // Numeric ranges
         years_of_service_range: searchCriteria.serviceYearsRange,
         
-        // Boolean filters
         is_active: searchCriteria.isActive,
         is_visible_in_org_chart: searchCriteria.isOrgChartVisible,
         is_deleted: searchCriteria.includeDeleted,
         
-        // Special filters
-        status_needs_update: searchCriteria.needsStatusUpdate,
-        contract_expiring_days: searchCriteria.contractExpiringDays
+       
       };
       
       // Remove undefined values
@@ -847,7 +713,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
       return { isValid: errors.length === 0, errors, validSorts };
     }, []),
     
-    // Selection helpers - Enhanced
+ 
     isSelected: useCallback((employeeId) => selectedEmployees.includes(employeeId), [selectedEmployees]),
     
     selectByFilter: useCallback((filterCriteria) => {
@@ -891,18 +757,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
       helpers.selectByFilter({ department: departments[0] }); // For single department
     }, []),
     
-    selectNeedingAttention: useCallback(() => {
-      const needingAttention = [
-        ...employeesNeedingAttention.noLineManager || [],
-        ...employeesNeedingAttention.noGrading || [],
-        ...employeesNeedingAttention.contractEnding || [],
-        ...employeesNeedingAttention.statusUpdate || []
-      ];
-      
-      const uniqueIds = [...new Set(needingAttention.map(emp => emp.id))];
-      dispatch(setSelectedEmployees(uniqueIds));
-    }, [employeesNeedingAttention, dispatch]),
-    
+  
     // Export helpers - Enhanced
     exportWithCurrentFilters: useCallback((format = 'excel', options = {}) => {
       const exportParams = {
@@ -948,7 +803,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
       // Validate operation
       const validOperations = [
         'delete', 'restore', 'add_tag', 'remove_tag', 'assign_manager',
-        'extend_contracts', 'update_grades', 'show_in_org_chart', 'hide_from_org_chart'
+       'update_grades', 'show_in_org_chart', 'hide_from_org_chart'
       ];
       
       if (!validOperations.includes(operation)) {
@@ -964,9 +819,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
           return dispatch(bulkRemoveTags({ employee_ids: employeeIds, tag_id: operationData.tagId }));
         case 'assign_manager':
           return dispatch(bulkAssignLineManager({ employee_ids: employeeIds, line_manager_id: operationData.managerId }));
-        case 'extend_contracts':
-          return dispatch(bulkExtendContracts({ employee_ids: employeeIds, ...operationData }));
-       
+
         case 'show_in_org_chart':
           return dispatch(bulkToggleOrgChartVisibility({ employeeIds, setVisible: true }));
         case 'hide_from_org_chart':
@@ -1022,7 +875,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
       };
     }, []),
     
-    // Employee status helpers - Enhanced
+    
     getEmployeeStatusInfo: useCallback((employee) => {
       const status = employee.status_name || employee.status || 'Unknown';
       const color = employee.status_color || '#gray';
@@ -1037,53 +890,24 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
         isOnboarding: status === 'ONBOARDING',
         isProbation: status === 'PROBATION',
         isInactive: status === 'INACTIVE',
-        needsUpdate: employee.status_needs_update === true,
         displayName: status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
       };
     }, []),
     
-    // Contract helpers - Enhanced
     getContractInfo: useCallback((employee) => {
       const duration = employee.contract_duration || 'UNKNOWN';
       const startDate = employee.contract_start_date || employee.start_date;
       const endDate = employee.contract_end_date || employee.end_date;
-      const isPermanent = duration === 'PERMANENT';
-      
-      let urgency = 'normal';
-      let daysRemaining = null;
-      
-      if (!isPermanent && endDate) {
-        const today = new Date();
-        const contractEnd = new Date(endDate);
-        const diffTime = contractEnd - today;
-        daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (daysRemaining < 0) urgency = 'expired';
-        else if (daysRemaining <= 7) urgency = 'critical';
-        else if (daysRemaining <= 30) urgency = 'urgent';
-        else if (daysRemaining <= 60) urgency = 'attention';
-      }
-      
+    
       return {
         duration,
         startDate,
         endDate,
-        isPermanent,
-        isTemporary: !isPermanent,
-        urgency,
-        daysRemaining,
-        extensionsCount: employee.contract_extensions || 0,
-        lastExtensionDate: employee.last_extension_date,
-        renewalStatus: employee.renewal_status || 'NOT_APPLICABLE',
-        isExpiringSoon: daysRemaining !== null && daysRemaining <= 30 && daysRemaining >= 0,
-        isExpired: daysRemaining !== null && daysRemaining < 0
       };
     }, []),
     
-    // Grading helpers - Enhanced
     getGradingInfo: useCallback((employee) => {
       const level = employee.grading_level;
-      const display = employee.grading_display || (level ? level : 'No Grade');
       const hasGrade = !!level;
       
       // Find full grading level info
@@ -1103,7 +927,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
       };
     }, [allGradingLevels]),
     
-    // Organizational helpers - Enhanced
+  
     getOrganizationalInfo: useCallback((employee) => {
       return {
         businessFunction: {
@@ -1144,89 +968,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
         ].filter(Boolean).join(' > ')
       };
     }, []),
-    
-    // Analytics helpers - Enhanced
-    getEmployeeAnalytics: useCallback(() => {
-      const analytics = {
-        overview: {
-          total: computed.totalEmployees,
-          active: computed.activeEmployeesCount,
-          inactive: computed.totalEmployees - computed.activeEmployeesCount,
-          newHires: computed.newHiresCount,
-          onLeave: computed.onLeaveCount,
-          onboarding: computed.onboardingCount,
-          probation: computed.probationCount
-        },
-        management: {
-          managers: computed.managersCount,
-          noLineManager: computed.noManagerCount,
-          managementCoverage: computed.totalEmployees > 0 ? 
-            ((computed.totalEmployees - computed.noManagerCount) / computed.totalEmployees) * 100 : 0
-        },
-        performance: {
-          graded: computed.gradedEmployeesCount,
-          needsGrading: computed.needsGradingCount,
-          gradingProgress: computed.gradingProgress
-        },
-        contracts: {
-          expiring: computed.contractEndingCount,
-          urgent: computed.urgentContracts,
-          total: computed.totalExpiringContracts
-        },
-        orgChart: {
-          visible: computed.orgChartVisibleCount,
-          hidden: computed.orgChartHiddenCount,
-          participation: computed.totalEmployees > 0 ? 
-            (computed.orgChartVisibleCount / computed.totalEmployees) * 100 : 0
-        },
-        statusUpdates: {
-          needed: computed.statusUpdateCount,
-          percentage: computed.totalEmployees > 0 ? 
-            (computed.statusUpdateCount / computed.totalEmployees) * 100 : 0
-        }
-      };
-      
-      return analytics;
-    }, [computed]),
-    
-    // Get KPI summary
-    getKPISummary: useCallback(() => {
-      const analytics = helpers.getEmployeeAnalytics();
-      
-      return {
-        headcount: {
-          value: analytics.overview.total,
-          trend: analytics.overview.newHires > 0 ? 'up' : 'stable',
-          status: analytics.overview.total > 0 ? 'good' : 'warning'
-        },
-        activeRate: {
-          value: analytics.overview.total > 0 ? 
-            (analytics.overview.active / analytics.overview.total) * 100 : 0,
-          status: analytics.overview.active / analytics.overview.total > 0.9 ? 'good' : 'warning'
-        },
-        managementCoverage: {
-          value: analytics.management.managementCoverage,
-          status: analytics.management.managementCoverage > 90 ? 'good' : 
-                 analytics.management.managementCoverage > 75 ? 'warning' : 'critical'
-        },
-        gradingProgress: {
-          value: analytics.performance.gradingProgress,
-          status: analytics.performance.gradingProgress > 80 ? 'good' :
-                 analytics.performance.gradingProgress > 60 ? 'warning' : 'critical'
-        },
-        contractRisk: {
-          value: analytics.contracts.total > 0 ? 
-            (analytics.contracts.expiring / analytics.overview.total) * 100 : 0,
-          status: analytics.contracts.expiring === 0 ? 'good' :
-                 analytics.contracts.expiring < analytics.overview.total * 0.1 ? 'warning' : 'critical'
-        },
-        orgChartParticipation: {
-          value: analytics.orgChart.participation,
-          status: analytics.orgChart.participation > 90 ? 'good' :
-                 analytics.orgChart.participation > 75 ? 'warning' : 'critical'
-        }
-      };
-    }, [])
+
   };
 
   // Add circular reference fix for helpers
@@ -1251,18 +993,18 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
   }, [actions.fetchFilterOptions]);
 
   // Controlled fetching with parameter comparison
-  useEffect(() => {
-    if (isInitialized.current) {
-      const currentParams = JSON.stringify(apiParams);
-      if (lastFetchParams.current !== currentParams) {
+  // useEffect(() => {
+  //   if (isInitialized.current) {
+  //     const currentParams = JSON.stringify(apiParams);
+  //     if (lastFetchParams.current !== currentParams) {
 
-        lastFetchParams.current = currentParams;
-        dispatch(fetchEmployees(apiParams));
-      }
-    }
-  }, [apiParams, dispatch]);
+  //       lastFetchParams.current = currentParams;
+  //       dispatch(fetchEmployees(apiParams));
+  //     }
+  //   }
+  // }, [apiParams, dispatch]);
 
-  // Initialize statistics and grading data only once
+
   useEffect(() => {
     if (isInitialized.current && statistics.total_employees === 0) {
     
@@ -1272,7 +1014,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     }
   }, [isInitialized.current, statistics.total_employees, dispatch]);
 
-  // Return hook interface - Enhanced
+
   return {
     // Data
     employees,
@@ -1286,53 +1028,39 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     sorting,
     activities,
     directReports,
-    statusPreviews,
+ 
     viewMode,
     showAdvancedFilters,
-    
-
-
-     profilePhotoLoading,
+    profilePhotoLoading,
     profilePhotoError,
     profilePhotoSuccess,
-    // Grading data
     gradingData,
     gradingStatistics,
     allGradingLevels,
     showGradingPanel,
     gradingMode,
-    employeesNeedingGrades,
     employeesByGradeLevel,
     employeesByPositionGroup,
-    gradingProgress,
+   
     gradingDistribution,
-    
-    // Analytics data
-    contractExpiryAlerts,
-    contractsExpiringSoon,
     employeesByStatus,
     employeesByDepartment,
     newHires,
-    employeesNeedingAttention,
+
     dashboardSummary,
     employeeMetrics,
-    
-    // Loading & error states
+
     loading,
     error,
     isAnyLoading,
     hasAnyError,
-    
-    // Computed values - Enhanced
+
     ...computed,
-    
-    // Actions - Enhanced
+
     ...actions,
-    
-    // Helper functions - Enhanced
+
     ...helpers,
     
-    // Raw selectors for advanced usage
     getSortDirection,
     isSorted,
     getSortIndex,
@@ -1343,7 +1071,6 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
   };
 };
 
-// Employee form management hook - Enhanced
 export const useEmployeeForm = (initialData = null) => {
   const [formData, setFormData] = useState(initialData || {});
   const [errors, setErrors] = useState({});
@@ -1518,101 +1245,14 @@ export const useEmployeeForm = (initialData = null) => {
   };
 };
 
-// Contract management hook - Enhanced
-export const useContractManagement = () => {
-  const dispatch = useDispatch();
-  const contractExpiryAlerts = useSelector(selectContractExpiryAlerts);
-  const contractsExpiringSoon = useSelector(selectContractsExpiringSoon);
-  const loading = useSelector(selectEmployeeLoading);
-  const error = useSelector(selectEmployeeError);
-
- 
-
-  const extendContract = useCallback((data) => {
-    return dispatch(extendEmployeeContract(data));
-  }, [dispatch]);
-
-  const bulkExtendContracts = useCallback((data) => {
-    return dispatch(bulkExtendContracts(data));
-  }, [dispatch]);
-
-  const getContractUrgency = useCallback((employee) => {
-    if (!employee.contract_end_date || employee.contract_duration === 'PERMANENT') {
-      return 'none';
-    }
-    
-    const endDate = new Date(employee.contract_end_date);
-    const today = new Date();
-    const diffTime = endDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) return 'expired';
-    if (diffDays <= 7) return 'critical';
-    if (diffDays <= 30) return 'urgent';
-    if (diffDays <= 60) return 'attention';
-    return 'normal';
-  }, []);
-
-  const getContractsByUrgency = useCallback(() => {
-    const contracts = contractExpiryAlerts.all_employees || [];
-    
-    return contracts.reduce((acc, emp) => {
-      const urgency = getContractUrgency(emp);
-      if (!acc[urgency]) acc[urgency] = [];
-      acc[urgency].push(emp);
-      return acc;
-    }, {});
-  }, [contractExpiryAlerts, getContractUrgency]);
-  
-  // Enhanced contract analysis
-  const getContractAnalysis = useCallback(() => {
-    const contracts = contractExpiryAlerts.all_employees || [];
-    const analysis = {
-      total: contracts.length,
-      byUrgency: getContractsByUrgency(),
-      byDepartment: contractExpiryAlerts.department_breakdown || {},
-      byLineManager: contractExpiryAlerts.line_manager_breakdown || {},
-      recommendations: contractExpiryAlerts.notification_recommendations || {}
-    };
-    
-    return analysis;
-  }, [contractExpiryAlerts, getContractsByUrgency]);
-
-  // Initialize only once
-  useEffect(() => {
-    let isInitialized = false;
-    if (!isInitialized) {
-      isInitialized = true;
-      refreshAlerts();
-    }
-  }, [refreshAlerts]);
-
-  return {
-    contractExpiryAlerts,
-    contractsExpiringSoon,
-    loading: loading.contractAlerts,
-    error: error.contractAlerts,
-    refreshAlerts,
-    extendContract,
-    bulkExtendContracts,
-    getContractUrgency,
-    getContractsByUrgency,
-    getContractAnalysis,
-    hasExpiringContracts: contractExpiryAlerts.total_expiring > 0,
-    urgentContractsCount: contractExpiryAlerts.urgent_employees?.length || 0,
-    totalExpiringCount: contractExpiryAlerts.total_expiring || 0
-  };
-};
-
-// Employee grading hook - Enhanced
 export const useEmployeeGrading = () => {
   const dispatch = useDispatch();
   const gradingData = useSelector(selectGradingData);
   const gradingStatistics = useSelector(selectGradingStatistics);
   const allGradingLevels = useSelector(selectAllGradingLevels);
-  const employeesNeedingGrades = useSelector(selectEmployeesNeedingGrades);
+
   const employeesByGradeLevel = useSelector(selectEmployeesByGradeLevel);
-  const gradingProgress = useSelector(selectGradingProgress);
+
   const loading = useSelector(selectEmployeeLoading);
   const error = useSelector(selectEmployeeError);
 
@@ -1621,96 +1261,6 @@ export const useEmployeeGrading = () => {
   }, [dispatch]);
 
 
-
-  const gradeAllInPositionGroup = useCallback((positionGroupId, gradingLevel) => {
-    const employeesInGroup = gradingData.employees?.filter(
-      emp => emp.position_group === positionGroupId
-    ) || [];
-    
-    if (employeesInGroup.length === 0) {
-      throw new Error('No employees found in this position group');
-    }
-
-    const updates = employeesInGroup.map(emp => ({
-      employee_id: emp.id || emp.employee_id,
-      grading_level: gradingLevel
-    }));
-
-    return bulkUpdateGrades(updates);
-  }, [gradingData, bulkUpdateGrades]);
-
-  const getGradingRecommendations = useCallback(() => {
-    const employees = gradingData.employees || [];
-    const recommendations = [];
-
-    employees.forEach(emp => {
-      if (!emp.grading_level) {
-        let recommendedLevel = '_M'; // Default to median
-        
-        // Enhanced logic for recommendations
-        const serviceYears = emp.years_of_service || 0;
-        const isManager = emp.direct_reports_count > 0;
-        const positionLevel = emp.position_group_level || 999;
-        
-        // Position-based recommendations
-        if (positionLevel <= 2) { // Senior positions
-          recommendedLevel = serviceYears > 3 ? '_UQ' : '_M';
-        } else if (positionLevel <= 4) { // Mid-level positions
-          recommendedLevel = serviceYears > 5 ? '_UQ' : serviceYears > 2 ? '_M' : '_LQ';
-        } else { // Junior positions
-          recommendedLevel = serviceYears > 3 ? '_M' : '_LQ';
-        }
-        
-        // Manager adjustment
-        if (isManager && serviceYears > 2) {
-          recommendedLevel = recommendedLevel === '_LQ' ? '_M' : 
-                            recommendedLevel === '_M' ? '_UQ' : '_UQ';
-        }
-
-        recommendations.push({
-          employee_id: emp.id || emp.employee_id,
-          employee_name: emp.name,
-          current_level: emp.grading_level,
-          recommended_level: recommendedLevel,
-          confidence: 'medium',
-          reasons: [
-            `${serviceYears.toFixed(1)} years of service`,
-            isManager ? 'Management role' : 'Individual contributor',
-            `Position level: ${positionLevel}`
-          ].filter(Boolean)
-        });
-      }
-    });
-
-    return recommendations;
-  }, [gradingData]);
-  
-  // Enhanced grading analysis
-  const getGradingAnalysis = useCallback(() => {
-    const employees = gradingData.employees || [];
-    const analysis = {
-      overview: {
-        total: employees.length,
-        graded: employees.filter(emp => emp.grading_level).length,
-        ungraded: employees.filter(emp => !emp.grading_level).length,
-        progress: gradingProgress
-      },
-      distribution: employeesByGradeLevel,
-      byPositionGroup: employees.reduce((acc, emp) => {
-        const pg = emp.position_group_name || 'Unknown';
-        if (!acc[pg]) acc[pg] = { total: 0, graded: 0, ungraded: 0 };
-        acc[pg].total++;
-        if (emp.grading_level) acc[pg].graded++;
-        else acc[pg].ungraded++;
-        return acc;
-      }, {}),
-      recommendations: getGradingRecommendations()
-    };
-    
-    return analysis;
-  }, [gradingData, gradingProgress, employeesByGradeLevel, getGradingRecommendations]);
-
-  // Fetch if data is empty
   useEffect(() => {
     if (!gradingData.employees || gradingData.employees.length === 0) {
       refreshGradingData();
@@ -1721,127 +1271,12 @@ export const useEmployeeGrading = () => {
     gradingData,
     gradingStatistics,
     allGradingLevels,
-    employeesNeedingGrades,
     employeesByGradeLevel,
-    gradingProgress,
     loading: loading.grading,
     error: error.grading,
     refreshGradingData,
-    updateSingleGrade,
-    bulkUpdateGrades,
-    gradeAllInPositionGroup,
-    getGradingRecommendations,
-    getGradingAnalysis,
-    hasUngradedEmployees: employeesNeedingGrades.length > 0,
-    gradingCompletionRate: gradingProgress,
     totalEmployeesCount: gradingStatistics.totalEmployees,
-    gradedEmployeesCount: gradingStatistics.gradedEmployees,
-    ungradedEmployeesCount: gradingStatistics.ungradedEmployees
-  };
-};
-
-// Employee analytics hook - Enhanced
-export const useEmployeeAnalytics = () => {
-  const statistics = useSelector(selectStatistics);
-  const employeesByStatus = useSelector(selectEmployeesByStatus);
-  const employeesByDepartment = useSelector(selectEmployeesByDepartment);
-  const employeeMetrics = useSelector(selectEmployeeMetrics);
-  const dashboardSummary = useSelector(selectDashboardSummary);
-  const newHires = useSelector(selectNewHires);
-  const employeesNeedingAttention = useSelector(selectEmployeesNeedingAttention);
-
-  const getAnalyticsData = useCallback(() => {
-    return {
-      overview: {
-        totalEmployees: statistics.total_employees,
-        activeEmployees: statistics.active_employees,
-        inactiveEmployees: statistics.inactive_employees,
-        newHires: statistics.recent_hires_30_days,
-        contractEnding: statistics.upcoming_contract_endings_30_days
-      },
-      distribution: {
-        byStatus: statistics.by_status,
-        byBusinessFunction: statistics.by_business_function,
-        byPositionGroup: statistics.by_position_group,
-        byContractDuration: statistics.by_contract_duration
-      },
-      trends: {
-        monthlyHires: newHires.length,
-        retentionIndicators: {
-          noLineManager: employeesNeedingAttention.noLineManager?.length || 0,
-          onLeave: employeesNeedingAttention.onLeave?.length || 0,
-          statusUpdatesNeeded: employeesNeedingAttention.statusUpdate?.length || 0
-        }
-      },
-      performance: {
-        gradingProgress: employeeMetrics.performance?.gradingProgress || 0,
-        averageServiceYears: employeeMetrics.performance?.averageServiceYears || 0
-      },
-      demographics: {
-        genderDistribution: employeeMetrics.diversity?.genderDistribution || {},
-        averageAge: employeeMetrics.diversity?.averageAge || 0
-      }
-    };
-  }, [statistics, employeeMetrics, newHires, employeesNeedingAttention]);
-
-  const getKPIs = useCallback(() => {
-    const analytics = getAnalyticsData();
-    
-    return {
-      headcount: {
-        total: analytics.overview.totalEmployees,
-        active: analytics.overview.activeEmployees,
-        growth: analytics.trends.monthlyHires
-      },
-      engagement: {
-        retention: 100 - ((analytics.trends.retentionIndicators.onLeave / analytics.overview.totalEmployees) * 100),
-        managementCoverage: 100 - ((analytics.trends.retentionIndicators.noLineManager / analytics.overview.totalEmployees) * 100)
-      },
-      performance: {
-        gradingCompletion: analytics.performance.gradingProgress,
-        averageTenure: analytics.performance.averageServiceYears
-      },
-      risk: {
-        contractRisk: (analytics.overview.contractEnding / analytics.overview.totalEmployees) * 100,
-        statusRisk: (analytics.trends.retentionIndicators.statusUpdatesNeeded / analytics.overview.totalEmployees) * 100
-      }
-    };
-  }, [getAnalyticsData]);
-  
-  // Enhanced analytics with trends
-  const getAdvancedAnalytics = useCallback(() => {
-    const basicAnalytics = getAnalyticsData();
-    const kpis = getKPIs();
-    
-    return {
-      ...basicAnalytics,
-      kpis,
-      insights: {
-        topConcerns: [
-          ...(kpis.engagement.managementCoverage < 90 ? ['Management Coverage'] : []),
-          ...(kpis.performance.gradingCompletion < 80 ? ['Grading Completion'] : []),
-          ...(kpis.risk.contractRisk > 10 ? ['Contract Risk'] : []),
-          ...(kpis.risk.statusRisk > 5 ? ['Status Updates'] : [])
-        ],
-        recommendations: [
-          ...(kpis.engagement.managementCoverage < 90 ? ['Assign line managers to all employees'] : []),
-          ...(kpis.performance.gradingCompletion < 80 ? ['Complete performance grading'] : []),
-          ...(kpis.risk.contractRisk > 10 ? ['Review expiring contracts'] : [])
-        ]
-      }
-    };
-  }, [getAnalyticsData, getKPIs]);
-
-  return {
-    statistics,
-    employeesByStatus,
-    employeesByDepartment,
-    employeeMetrics,
-    dashboardSummary,
-    getAnalyticsData,
-    getKPIs,
-    getAdvancedAnalytics,
-    hasData: statistics.total_employees > 0
+    gradedEmployeesCount: gradingStatistics.gradedEmployees
   };
 };
 

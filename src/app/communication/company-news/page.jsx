@@ -180,24 +180,26 @@ export default function CompanyNewsPage() {
   };
 
   const handleEditNews = (item, e) => {
-    e.stopPropagation();
-    
-    if (!permissions?.is_admin) {
-      showError('Only Admin can edit news');
-      return;
-    }
-    
-    setEditingNews({
-      ...item,
-      tags: item.tags_list || [],
-      imagePreview: item.image_url,
-      targetGroups: item.target_groups_info?.map(g => g.id) || [],
-      notifyMembers: item.notify_members,
-      isPinned: item.is_pinned,
-      authorDisplayName: item.author_display_name
-    });
-    setShowFormModal(true);
-  };
+  e.stopPropagation();
+  
+  if (!permissions?.is_admin) {
+    showError('Only Admin can edit news');
+    return;
+  }
+  
+  // ✅ Bütün field-ləri düzgün map et
+  setEditingNews({
+    ...item,  // ✅ Əvvəlcə bütün original data-nı götür
+    tags: item.tags_list || [],  // ✅ tags_list-dən tags-a
+    imagePreview: item.image_url,  // ✅ image_url-dən imagePreview-a
+    targetGroups: item.target_groups_info?.map(g => g.id) || [],  // ✅ ID array-inə çevir
+    notifyMembers: item.notify_members,
+    isPinned: item.is_pinned,
+    authorDisplayName: item.author_display_name,
+    isPublished: item.is_published  // ✅ Əlavə et
+  });
+  setShowFormModal(true);
+};
 
   const handleDeleteNews = (item, e) => {
     e.stopPropagation();

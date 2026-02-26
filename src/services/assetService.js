@@ -139,7 +139,7 @@ export const assetService = {
       serial_number: assetData.serial_number
     };
     
-    console.log('🎯 Creating asset with payload:', payload);
+ 
     const response = await api.post('/assets/assets/', payload);
     return response.data;
   },
@@ -166,7 +166,7 @@ export const assetService = {
       condition_on_checkout: assignmentData.condition_on_checkout || 'GOOD'
     };
     
-    console.log('🎯 Assignment payload:', payload);
+  
     const response = await api.post('/assets/assets/assign-to-employee/', payload);
     return response.data;
   },
@@ -351,7 +351,6 @@ export const transferService = {
   
   // Deprecated - use employeeApproveTransfer instead
   approveTransfer: async (transferId, data) => {
-    console.warn('⚠️ approveTransfer is deprecated, use employeeApproveTransfer instead');
     return await transferService.employeeApproveTransfer(transferId, data);
   }
 };

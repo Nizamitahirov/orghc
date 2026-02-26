@@ -245,11 +245,7 @@ const gradingSlice = createSlice({
   name: 'grading',
   initialState,
   reducers: {
-    // Enhanced input handlers
-    setScenarioInputs: (state, action) => {
-      state.scenarioInputs = { ...state.scenarioInputs, ...action.payload };
- 
-    },
+  
     
     updateScenarioInput: (state, action) => {
       const { field, value } = action.payload;
@@ -527,7 +523,6 @@ const gradingSlice = createSlice({
 });
 
 export const { 
-  setScenarioInputs, 
   updateScenarioInput, 
   updateGradeInput,
   updateGlobalHorizontalInterval,

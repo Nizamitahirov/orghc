@@ -180,7 +180,7 @@ export default function MySchedulesTab({
                       value={filters.employee_name}
                       onChange={(e) => handleFilterChange({...filters, employee_name: e.target.value})}
                       placeholder="Search employee..."
-                      className="w-full pl-7 pr-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                      className="w-full pl-7 pr-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-almet-sapphire border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                     />
                   </div>
                 </div>
@@ -210,7 +210,7 @@ export default function MySchedulesTab({
                     value={filters.vacation_type}
                     onChange={(e) => handleFilterChange({...filters, vacation_type: e.target.value})}
                     placeholder="Search..."
-                    className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                    className="w-full px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-almet-sapphire border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                   />
                 </div>
 
@@ -222,7 +222,7 @@ export default function MySchedulesTab({
                     type="date"
                     value={filters.start_date}
                     onChange={(e) => handleFilterChange({...filters, start_date: e.target.value})}
-                    className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                    className="w-full px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-almet-sapphire text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                   />
                 </div>
 
@@ -234,7 +234,7 @@ export default function MySchedulesTab({
                     type="date"
                     value={filters.end_date}
                     onChange={(e) => handleFilterChange({...filters, end_date: e.target.value})}
-                    className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                    className="w-full px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-almet-sapphire border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                   />
                 </div>
               </div>

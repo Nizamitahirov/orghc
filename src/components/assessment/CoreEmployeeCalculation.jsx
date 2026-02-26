@@ -16,6 +16,7 @@ import StatusBadge from './StatusBadge';
 import ActionButton from './ActionButton';
 import CollapsibleGroup from './CollapsibleGroup';
 import CoreAssessmentCharts  from './charts/CoreAssessmentCharts';
+import referenceDataAPI from '@/store/api/referenceDataAPI';
 const GapIndicator = ({ gap }) => {
   if (gap > 0) {
     return (
@@ -107,7 +108,7 @@ const CoreEmployeeCalculation = () => {
   });
   const [userPermissions, setUserPermissions] = useState(null);
 
-// ✅ Fetch permissions on mount
+
 useEffect(() => {
   const fetchPermissions = async () => {
     try {
@@ -120,7 +121,7 @@ useEffect(() => {
   fetchPermissions();
 }, []);
 
-// ✅ Helper function
+
 const isEmployeeOnlyAccess = () => {
   return userPermissions && !userPermissions.is_admin && !userPermissions.is_manager;
 };
@@ -181,12 +182,12 @@ const isEmployeeOnlyAccess = () => {
   const getJobTitlesForPositionGroup = (positionGroupId) => {
   if (!positionGroupId) return uniqueJobTitles;
   
-  // ✅ Filter employees by position group
+ 
   const employeesInGroup = employees.filter(emp => emp.position_group_level === positionGroupId);
   
   // ✅ Get unique job titles and sort
   const jobTitlesInGroup = [...new Set(employeesInGroup.map(emp => emp.job_title).filter(Boolean))]
-    .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase(), 'az')); // ✅ Düzgün sort
+    .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase(), 'az'));
   
   // ✅ Map to dropdown format with title case
   return jobTitlesInGroup.map((title, index) => ({ 
@@ -215,36 +216,79 @@ const isEmployeeOnlyAccess = () => {
       setEditPositionFormData(prev => ({ ...prev, job_title: '' }));
     }
   }, [editPositionFormData.position_group, employees, uniqueJobTitles]);
+  const [companies, setCompanies] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState('');
 
-  // Data fetching
-  const fetchData = async () => {
-    setIsLoading(true);
-    setError(null);
+  const fetchCompanies = async () => {
+  try {
+    const response = await referenceDataAPI.getBusinessFunctionDropdown();
+    setCompanies(response.data || []);
+
+  } catch (err) {
+    console.error('Error fetching companies:', err);
+    showError('Failed to load companies');
+  }
+};
+
+  useEffect(() => {
+    if (userPermissions?.is_admin) {
+      fetchCompanies();
+    }
+  }, [userPermissions]);
+ useEffect(() => {
+    fetchData();
+  }, [selectedCompany]);
+ const fetchData = async () => {
+  setIsLoading(true);
+  setError(null);
+  
+  try {
+    // ✅ Build params with proper type conversion
+    const employeeParams = {};
     
-    try {
-      const [
-        positionAssessmentsRes, 
-        employeeAssessmentsRes, 
-        employeesRes, 
-        positionGroupsRes,
-        coreScalesRes,
-        skillGroupsRes
-      ] = await Promise.all([
-        assessmentApi.positionCore.getAll(),
-        assessmentApi.employeeCore.getAll(),
-        assessmentApi.employees.getAll(),
-        assessmentApi.positionGroups.getAll(),
-        assessmentApi.coreScales.getAll(),
-        competencyApi.skillGroups.getAll()
-      ]);
+
+    
+    if (selectedCompany && selectedCompany !== '') {
+      // ✅ CRITICAL: Ensure it's sent as a number
+      const companyId = parseInt(selectedCompany, 10);
       
-      setPositionAssessments(positionAssessmentsRes.results || []);
-      setEmployeeAssessments(employeeAssessmentsRes.results || []);
+      if (isNaN(companyId)) {
+        console.error('❌ Invalid company ID:', selectedCompany);
+      } else {
+        employeeParams.company = companyId;  // ✅ Send as 'company' (backend will use it)
+    
+      }
+    } else {
+      console.log('⚠️ No company filter - showing all');
+    }
+    
+
+
+    const [
+      positionAssessmentsRes, 
+      employeeAssessmentsRes, 
+      employeesRes, 
+      positionGroupsRes,
+      coreScalesRes,
+      skillGroupsRes
+    ] = await Promise.all([
+      assessmentApi.positionCore.getAll(),
+      assessmentApi.employeeCore.getAll(employeeParams),  // ✅ Pass params
+      assessmentApi.employees.getAll(),
+      assessmentApi.positionGroups.getAll(),
+      assessmentApi.coreScales.getAll(),
+      competencyApi.skillGroups.getAll()
+    ]);
+    
+
+    
+    setPositionAssessments(positionAssessmentsRes.results || []);
+    setEmployeeAssessments(employeeAssessmentsRes.results || []);
+    setEmployees(employeesRes.results || []);
+    setPositionGroups(positionGroupsRes.results || []);
+    setCoreScales(coreScalesRes.results || []);
       const employeesList = employeesRes.results || [];
       setEmployees(employeesList);
-      setPositionGroups(positionGroupsRes.results || []);
-      setCoreScales(coreScalesRes.results || []);
-      
       // Extract unique job titles from employees
       const jobTitles = [...new Set(employeesList.map(emp => emp.job_title).filter(Boolean))]
   .sort((a, b) => a.localeCompare(b, 'az')); // ✅ Azərbaycan əlifbası ilə sort
@@ -278,9 +322,7 @@ setUniqueJobTitles(jobTitles.map(title => ({
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+ 
 
   // Position Group change handler for create modal
   const handlePositionGroupChange = (positionGroupId) => {
@@ -300,8 +342,7 @@ setUniqueJobTitles(jobTitles.map(title => ({
     }));
   };
 
-  // Employee selection handler
-  // ✅ DÜZGÜN VERSİYA
+
 const handleEmployeeChange = async (employeeId) => {
   setTemplateError(null);
   const selectedEmployee = employees.find(e => e.id === employeeId);
@@ -311,18 +352,18 @@ const handleEmployeeChange = async (employeeId) => {
     return;
   }
 
-  console.log('Selected employee:', selectedEmployee); // ✅ Debug log
+
   setSelectedEmployeeInfo(selectedEmployee);
   
   // ✅ ƏVVƏLCƏ API-dən template yoxla
   setEmployeeFormData(prev => ({ ...prev, employee: employeeId }));
   
   try {
-    console.log('Fetching template for employee:', employeeId); // ✅ Debug log
+  
     
     const response = await assessmentApi.positionCore.getForEmployee(employeeId);
     
-    console.log('API Response:', response); // ✅ Debug log
+
     
     if (response.assessment_template) {
       // ✅ SONRA duplicate yoxla
@@ -645,7 +686,7 @@ const handleEmployeeChange = async (employeeId) => {
     );
   };
 
-  // Data filtering
+ 
   const filteredPositionAssessments = positionAssessments.filter(assessment => 
     assessment.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     assessment.position_group_name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -698,7 +739,7 @@ const handleEmployeeChange = async (employeeId) => {
   </div>
 )}
 
-{/* ✅ 5. Update Filters section (around line 585) */}
+
 <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
   <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
     <div className="flex flex-col sm:flex-row gap-2 flex-1">
@@ -712,7 +753,24 @@ const handleEmployeeChange = async (employeeId) => {
           className="w-full pl-9 pr-3 py-2 border outline-0 border-gray-300 rounded-md text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire focus:outline-none"
         />
       </div>
-      
+      {!isEmployeeOnlyAccess() && userPermissions?.is_admin && activeTab === 'employee' && (
+              <select
+  value={selectedCompany}
+  onChange={(e) => {
+    const value = e.target.value;
+   
+    setSelectedCompany(value);  // ✅ This triggers useEffect
+  }}
+  className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire min-w-[160px]"
+>
+  <option value="">All Companies</option>
+  {companies.map(company => (
+    <option key={company.value} value={company.value}>
+      {company.label} 
+    </option>
+  ))}
+</select>
+            )}
       {!isEmployeeOnlyAccess() && activeTab === 'employee' && (
         <select
           value={selectedStatus}
@@ -738,7 +796,6 @@ const handleEmployeeChange = async (employeeId) => {
   </div>
 </div>
 
-      {/* Main Content */}
 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
   {!isEmployeeOnlyAccess() && activeTab === 'position' ? (
     <div className="overflow-x-auto">

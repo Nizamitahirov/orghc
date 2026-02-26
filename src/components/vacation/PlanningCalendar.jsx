@@ -1,4 +1,4 @@
-// components/vacation/PlanningCalendar.jsx - ✅ COMPLETE VERSION
+// components/vacation/PlanningCalendar.jsx - ✅ COMPLETE FIXED VERSION
 
 import { useState, useEffect } from 'react';
 import { Star, CheckCircle } from 'lucide-react';
@@ -182,24 +182,44 @@ export default function PlanningCalendar({
     }
   };
 
-  const handleMouseUp = () => {
-    if (isDragging && dragStart && dragEnd) {
-      const start = dragStart < dragEnd ? dragStart : dragEnd;
-      const end = dragStart < dragEnd ? dragEnd : dragStart;
-      
-      // ✅ FIX: Use formatDate which now uses local date
-      const startStr = formatDate(start);
-      const endStr = formatDate(end);
-      
-      console.log('🔍 DEBUG - Selected:', { startStr, endStr, start, end });
-      
-      onRangeSelect(startStr, endStr);
-    }
+
+const handleMouseUp = () => {
+  if (isDragging && dragStart && dragEnd) {
+    let start = dragStart < dragEnd ? dragStart : dragEnd;
+    let end = dragStart < dragEnd ? dragEnd : dragStart;
     
-    setIsDragging(false);
-    setDragStart(null);
-    setDragEnd(null);
-  };
+    // ✅ AZ üçün: Extend to Sunday if full workweek selected
+    if (!businessFunctionCode || businessFunctionCode.toUpperCase() !== 'UK') {
+      const startDay = start.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+      const endDay = end.getDay();
+      
+      // ✅ Check if user selected Monday to Friday
+      if (startDay === 1 && endDay === 5) {
+        // Extend to Sunday
+        while (end.getDay() !== 0) { // 0 = Sunday
+          const nextDay = new Date(end);
+          nextDay.setDate(nextDay.getDate() + 1);
+          end = nextDay;
+          
+          // Safety: stop after adding 2 days
+          if (end.getDay() === 0) break;
+        }
+      }
+    }
+    // ✅ UK üçün: No extension - keep user selection exactly as-is
+    
+    const startStr = formatDate(start);
+    const endStr = formatDate(end);
+    
+
+    
+    onRangeSelect(startStr, endStr);
+  }
+  
+  setIsDragging(false);
+  setDragStart(null);
+  setDragEnd(null);
+};
 
   const renderCalendar = () => {
     const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth);
@@ -270,29 +290,29 @@ export default function PlanningCalendar({
           
           {/* ✅ Existing Schedule Indicator */}
           {isExistingSchedule && !past && (
-  <div className="space-y-0.5">
-    {/* Get the schedule for this date to show status */}
-    {(() => {
-      const schedule = selectedRanges.find(range => 
-        range.isExisting && dateStr >= range.start && dateStr <= range.end
-      );
-      
-      return (
-        <>
-          <div className="text-[9px] text-green-700 dark:text-green-400 font-medium flex items-center gap-0.5">
-            <CheckCircle className="w-2.5 h-2.5" />
-            SCHEDULED
-          </div>
-          {schedule && schedule.status === 'PENDING_MANAGER' && (
-            <div className="text-[8px] text-amber-600 dark:text-amber-400 font-medium">
-              (Pending)
+            <div className="space-y-0.5">
+              {/* Get the schedule for this date to show status */}
+              {(() => {
+                const schedule = selectedRanges.find(range => 
+                  range.isExisting && dateStr >= range.start && dateStr <= range.end
+                );
+                
+                return (
+                  <>
+                    <div className="text-[9px] text-green-700 dark:text-green-400 font-medium flex items-center gap-0.5">
+                      <CheckCircle className="w-2.5 h-2.5" />
+                      SCHEDULED
+                    </div>
+                    {schedule && schedule.status === 'PENDING_MANAGER' && (
+                      <div className="text-[8px] text-amber-600 dark:text-amber-400 font-medium">
+                        (Pending)
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
-        </>
-      );
-    })()}
-  </div>
-)}
           
           {/* ✅ Display holidays */}
           {dayHolidays.length > 0 && !past && (
@@ -420,7 +440,10 @@ export default function PlanningCalendar({
             </div>
           </div>
           <span className="text-almet-waterloo dark:text-gray-400 italic">
-            Click and drag to select date ranges
+            {businessFunctionCode === 'UK' 
+              ? 'Click and drag to select weeks (Mon-Fri)' 
+              : 'Click and drag to select date ranges'
+            }
           </span>
         </div>
       </div>

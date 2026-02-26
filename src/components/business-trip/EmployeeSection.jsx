@@ -80,7 +80,7 @@ export const EmployeeSection = ({
                 value={formData.employeeName} 
                 onChange={(e) => setFormData(prev => ({...prev, employeeName: e.target.value}))} 
                 disabled={requester === 'for_me'} 
-                className="w-full px-3 py-2.5 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
+                className="w-full px-3 py-2.5 text-xs border focus:outline-none focus:ring-1 focus:ring-almet-sapphire outline-0 border-almet-mystic dark:border-almet-comet rounded-lg  focus:border-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
               />
             </div>
             <div>
@@ -90,7 +90,7 @@ export const EmployeeSection = ({
                 value={formData.phoneNumber} 
                 onChange={(e) => setFormData(prev => ({...prev, phoneNumber: e.target.value}))} 
                 disabled={requester === 'for_me'} 
-                className="w-full px-3 py-2.5 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
+                className="w-full px-3 py-2.5 focus:outline-none focus:ring-1 focus:ring-almet-sapphire text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg  focus:border-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
               />
             </div>
           </div>
@@ -109,7 +109,7 @@ export const EmployeeSection = ({
                   value={formData[field]} 
                   onChange={(e) => setFormData(prev => ({...prev, [field]: e.target.value}))} 
                   disabled={requester === 'for_me'} 
-                  className="w-full px-3 py-2.5 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
+                  className="w-full px-3 py-2.5 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
                 />
               </div>
             ))}
@@ -122,7 +122,7 @@ export const EmployeeSection = ({
               value={formData.lineManager} 
               onChange={(e) => setFormData(prev => ({...prev, lineManager: e.target.value}))} 
               disabled={requester === 'for_me'} 
-              className="w-full px-3 py-2.5 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
+              className="w-full px-3 py-2.5 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
             />
           </div>
         </div>

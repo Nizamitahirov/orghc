@@ -44,7 +44,7 @@ export const ScheduleSection = ({
                     type="date"
                     value={schedule.date}
                     onChange={(e) => onChange(schedule.id, 'date', e.target.value)}
-                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
                   />
                 </div>
                 <div>
@@ -54,7 +54,7 @@ export const ScheduleSection = ({
                     value={schedule.from_location}
                     onChange={(e) => onChange(schedule.id, 'from_location', e.target.value)}
                     placeholder="Location"
-                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
                   />
                 </div>
                 <div>
@@ -64,7 +64,7 @@ export const ScheduleSection = ({
                     value={schedule.to_location}
                     onChange={(e) => onChange(schedule.id, 'to_location', e.target.value)}
                     placeholder="Location"
-                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
                   />
                 </div>
                 <div>
@@ -74,7 +74,7 @@ export const ScheduleSection = ({
                     value={schedule.notes}
                     onChange={(e) => onChange(schedule.id, 'notes', e.target.value)}
                     placeholder="Optional"
-                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
                   />
                 </div>
               </div>

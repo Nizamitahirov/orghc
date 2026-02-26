@@ -78,7 +78,7 @@ export default function Login() {
               {/* Title */}
               <h1 className="text-3xl font-bold text-almet-sapphire dark:text-white mb-4 leading-tight">
              
-                   Up Intranet 
+                   My Almet
               </h1>
               
               {/* Description */}

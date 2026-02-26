@@ -13,14 +13,7 @@ export default function CrudModal({ context, darkMode }) {
     businessFunctions, departments
   } = context;
 
-  // DEBUG: formData dəyişəndə log et
-  React.useEffect(() => {
-    if (showCrudModal) {
-      console.log('CrudModal - formData updated:', formData);
-      console.log('CrudModal - crudModalType:', crudModalType);
-      console.log('CrudModal - crudModalMode:', crudModalMode);
-    }
-  }, [formData, showCrudModal, crudModalType, crudModalMode]);
+
 
   if (!showCrudModal) return null;
 

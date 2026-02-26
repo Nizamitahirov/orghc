@@ -119,9 +119,6 @@ export const trainingAPI = {
     }
   },
 
-
-
-
   // Delete training
   delete: async (id) => {
     try {
@@ -207,8 +204,6 @@ export const trainingAssignmentAPI = {
       throw error;
     }
   },
-
-
 
   // Delete assignment
   delete: async (id) => {
@@ -307,8 +302,6 @@ export const trainingMaterialAPI = {
     }
   },
 
-
-
   // Delete material
   delete: async (id) => {
     try {
@@ -316,6 +309,114 @@ export const trainingMaterialAPI = {
       return response.data;
     } catch (error) {
       console.error('Error deleting material:', error);
+      throw error;
+    }
+  }
+};
+
+// ============================================
+// 📋 TRAINING REQUESTS
+// ============================================
+
+export const trainingRequestAPI = {
+  // Get all training requests
+  getAll: async (params = {}) => {
+    try {
+      const response = await api.get(`${TRAINING_BASE}/requests/`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching training requests:', error);
+      throw error;
+    }
+  },
+
+  // Get single training request
+  getById: async (id) => {
+    try {
+      const response = await api.get(`${TRAINING_BASE}/requests/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching training request:', error);
+      throw error;
+    }
+  },
+
+  // Create training request
+  create: async (data) => {
+    try {
+      const response = await api.post(`${TRAINING_BASE}/requests/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating training request:', error);
+      throw error;
+    }
+  },
+
+  // Update training request
+  update: async (id, data) => {
+    try {
+      const response = await api.put(`${TRAINING_BASE}/requests/${id}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating training request:', error);
+      throw error;
+    }
+  },
+
+  // Delete training request
+  delete: async (id) => {
+    try {
+      const response = await api.delete(`${TRAINING_BASE}/requests/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting training request:', error);
+      throw error;
+    }
+  },
+
+  // ✅ Get my training requests
+  getMyRequests: async (params = {}) => {
+    try {
+      const response = await api.get(`${TRAINING_BASE}/requests/my_requests/`, { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching my requests:', error);
+      throw error;
+    }
+  },
+
+  // ✅ Get pending approval requests
+  getPendingApproval: async () => {
+    try {
+      const response = await api.get(`${TRAINING_BASE}/requests/pending_approval/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching pending approvals:', error);
+      throw error;
+    }
+  },
+
+  // ✅ Approve or reject request
+  approveReject: async (id, data) => {
+    try {
+      const response = await api.post(
+        `${TRAINING_BASE}/requests/${id}/approve_reject/`,
+        data
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error approving/rejecting request:', error);
+      throw error;
+    }
+  },
+
+  // ✅ Get statistics
+  getStatistics: async () => {
+    try {
+      const response = await api.get(`${TRAINING_BASE}/requests/statistics/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching statistics:', error);
       throw error;
     }
   }
@@ -420,5 +521,6 @@ export default {
   trainings: trainingAPI,
   assignments: trainingAssignmentAPI,
   materials: trainingMaterialAPI,
+  requests: trainingRequestAPI,
   helpers: trainingHelpers
 };

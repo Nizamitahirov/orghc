@@ -110,7 +110,7 @@ const EmployeeTableHeader = ({
             onClick={handleSort("position_group_level")}
             title="Sort by position group level (Ctrl+Click for multi-sort)"
           >
-            Position & Grade
+            Hierarchys 
             <SortingIndicator 
               direction={getSortDirection("position_group_level")} 
               index={getSortIndex ? getSortIndex("position_group_level") : undefined}

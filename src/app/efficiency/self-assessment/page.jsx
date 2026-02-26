@@ -48,7 +48,7 @@ const SelfAssessment = () => {
 
   useEffect(() => {
     fetchInitialData();
-    checkForDraftAssessment(); // Check for existing draft
+    checkForDraftAssessment();
   }, []);
 
   const fetchInitialData = async () => {
@@ -59,8 +59,6 @@ const SelfAssessment = () => {
         selfAssessmentService.getActivePeriod().catch(() => null),
         jobDescriptionService.getMyAccessInfo()
       ]);
-      
-
       
       setStats(statsData);
       setActivePeriod(activePeriodData);
@@ -154,12 +152,10 @@ const SelfAssessment = () => {
     }
   };
 
-  // Check if we have a draft assessment on load
   const checkForDraftAssessment = async () => {
     try {
       const assessments = await selfAssessmentService.getMyAssessments();
       
-      // Check for active period first
       const activePeriodData = activePeriod || await selfAssessmentService.getActivePeriod().catch(() => null);
       
       if (!activePeriodData) {
@@ -167,17 +163,13 @@ const SelfAssessment = () => {
         return;
       }
       
-      // Find assessment for active period
       const activeAssessment = assessments.find(a => a.period === activePeriodData.id);
       
       if (activeAssessment) {
-        console.log('Found assessment for active period:', activeAssessment);
         
-        // Load full assessment details for any status
         const fullAssessment = await selfAssessmentService.getAssessment(activeAssessment.id);
         setCurrentAssessment(fullAssessment);
         
-        // If DRAFT, load existing ratings for editing
         if (fullAssessment.status === 'DRAFT') {
           if (fullAssessment.skill_ratings && fullAssessment.skill_ratings.length > 0) {
             const existingRatings = {};
@@ -288,7 +280,6 @@ const SelfAssessment = () => {
   };
 
   const showToast = (message, type = 'info') => {
-    // Simple toast notification
     alert(message);
   };
 
@@ -303,7 +294,6 @@ const SelfAssessment = () => {
       await selfAssessmentService.createAssessmentPeriod(newPeriod);
       showToast('Period created successfully!', 'success');
       
-      // Reset form
       setNewPeriod({
         name: '',
         start_date: '',
@@ -313,7 +303,6 @@ const SelfAssessment = () => {
       });
       setShowCreatePeriod(false);
       
-      // Refresh periods
       await fetchAllPeriods();
       await fetchInitialData();
     } catch (error) {
@@ -326,13 +315,13 @@ const SelfAssessment = () => {
 
   const RatingStars = ({ currentRating, onChange, disabled = false }) => {
     return (
-      <div className="flex gap-1.5">
+      <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map(star => (
           <button
             key={star}
             onClick={() => !disabled && onChange(star)}
             disabled={disabled}
-            className={`w-8 h-8 rounded-lg text-sm font-semibold transition-all transform hover:scale-110 ${
+            className={`w-7 h-7 rounded-lg text-xs font-semibold transition-all transform hover:scale-110 ${
               star <= currentRating
                 ? 'bg-gradient-to-br from-almet-sapphire to-almet-astral text-white shadow-md'
                 : disabled 
@@ -359,7 +348,7 @@ const SelfAssessment = () => {
       REVIEWED: <CheckCircle className="w-3 h-3" />
     };
     return (
-      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${styles[status] || styles.DRAFT}`}>
+      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium ${styles[status] || styles.DRAFT}`}>
         {icons[status]}
         {status}
       </span>
@@ -390,8 +379,8 @@ const SelfAssessment = () => {
       <DashboardLayout>
         <div className="flex items-center justify-center h-screen">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-almet-mystic border-t-almet-sapphire mx-auto mb-4"></div>
-            <p className="text-almet-waterloo font-medium">Loading Assessment System...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-almet-mystic border-t-almet-sapphire mx-auto mb-4"></div>
+            <p className="text-almet-waterloo font-medium text-sm">Loading Assessment System...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -400,27 +389,27 @@ const SelfAssessment = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-4  min-h-screen">
+      <div className="p-3 min-h-screen">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="bg-white rounded-xl shadow-lg p-4 mb-4 border border-almet-mystic">
+          {/* Header - Font sizes reduced */}
+          <div className="bg-white rounded-xl shadow-lg p-3 mb-3 border border-almet-mystic">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-almet-sapphire to-almet-astral flex items-center justify-center shadow-lg">
-                  <Award className="w-6 h-6 text-white" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-almet-sapphire to-almet-astral flex items-center justify-center shadow-lg">
+                  <Award className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-almet-cloud-burst">Core Skills Assessment</h1>
-                  <p className="text-xs text-almet-waterloo mt-0.5">
+                  <h1 className="text-base font-bold text-almet-cloud-burst">Core Skills Assessment</h1>
+                  <p className="text-[10px] text-almet-waterloo mt-0.5">
                     Evaluate your technical skills and track progress over time
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 {userAccess && (
-                  <div className="flex items-center gap-2 px-3 py-2 bg-almet-mystic rounded-lg">
-                    <Shield className="w-3.5 h-3.5 text-almet-sapphire" />
-                    <span className="text-xs font-medium text-almet-cloud-burst">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-almet-mystic rounded-lg">
+                    <Shield className="w-3 h-3 text-almet-sapphire" />
+                    <span className="text-[10px] font-medium text-almet-cloud-burst">
                       {userAccess.access_level}
                     </span>
                   </div>
@@ -431,9 +420,9 @@ const SelfAssessment = () => {
                       setShowSettings(true);
                       fetchAllPeriods();
                     }}
-                    className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all text-sm"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all text-[11px]"
                   >
-                    <Settings className="w-3.5 h-3.5" />
+                    <Settings className="w-3 h-3" />
                     <span className="font-medium">Settings</span>
                   </button>
                 )}
@@ -441,17 +430,17 @@ const SelfAssessment = () => {
             </div>
           </div>
 
-          {/* Active Period Banner */}
+          {/* Active Period Banner - Font sizes reduced */}
           {activePeriod && (
-            <div className="bg-almet-steel-blue rounded-xl shadow-lg p-3 mb-4 text-white relative overflow-hidden">
+            <div className="bg-almet-steel-blue rounded-xl shadow-lg p-2.5 mb-3 text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-24 -mt-24"></div>
               <div className="relative z-10">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Calendar className="w-5 h-5" />
+                  <div className="flex items-center gap-2.5">
+                    <Calendar className="w-4 h-4" />
                     <div>
-                      <h3 className="font-bold text-sm">{activePeriod.name}</h3>
-                      <p className="text-xs opacity-90 mt-0.5">
+                      <h3 className="font-bold text-xs">{activePeriod.name}</h3>
+                      <p className="text-[10px] opacity-90 mt-0.5">
                         Deadline: {new Date(activePeriod.submission_deadline).toLocaleDateString('en-US', {
                           year: 'numeric',
                           month: 'long',
@@ -461,72 +450,68 @@ const SelfAssessment = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-xl font-bold">{activePeriod.days_remaining}</div>
-                    <div className="text-xs opacity-90">days remaining</div>
+                    <div className="text-lg font-bold">{activePeriod.days_remaining}</div>
+                    <div className="text-[10px] opacity-90">days remaining</div>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Stats Cards */}
+          {/* Stats Cards - Font sizes reduced */}
           {stats && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-              <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-almet-sapphire hover:shadow-lg transition-shadow">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-almet-mystic flex items-center justify-center">
-                    <Award className="w-4 h-4 text-almet-sapphire" />
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-2.5 mb-3">
+              <div className="bg-white rounded-xl shadow-md p-3 border-l-4 border-almet-sapphire hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="w-7 h-7 rounded-lg bg-almet-mystic flex items-center justify-center">
+                    <Award className="w-3.5 h-3.5 text-almet-sapphire" />
                   </div>
-                  <span className="text-xs font-semibold text-almet-waterloo uppercase">My Assessments</span>
+                  <span className="text-[10px] font-semibold text-almet-waterloo uppercase">My Assessments</span>
                 </div>
-                <div className='flex gap-4 items-center'>
-
-                <div className="text-2xl font-bold text-almet-cloud-burst">{stats.my_assessments_count}</div>
-                <p className="text-xs text-almet-waterloo mt-0.5">Total completed</p>
+                <div className='flex gap-3 items-center'>
+                  <div className="text-xl font-bold text-almet-cloud-burst">{stats.my_assessments_count}</div>
+                  <p className="text-[10px] text-almet-waterloo">Total completed</p>
                 </div>
               </div>
 
-              <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-almet-astral hover:shadow-lg transition-shadow">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4 text-almet-astral" />
+              <div className="bg-white rounded-xl shadow-md p-3 border-l-4 border-almet-astral hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <TrendingUp className="w-3.5 h-3.5 text-almet-astral" />
                   </div>
-                  <span className="text-xs font-semibold text-almet-waterloo uppercase">My Avg Score</span>
+                  <span className="text-[10px] font-semibold text-almet-waterloo uppercase">My Avg Score</span>
                 </div>
-                <div className='flex gap-4 items-center'>
-
-                <div className="text-2xl font-bold text-almet-astral">{stats.my_average_score.toFixed(1)}</div>
-                <p className="text-xs text-almet-waterloo mt-0.5">Out of 5.0</p>
+                <div className='flex gap-3 items-center'>
+                  <div className="text-xl font-bold text-almet-astral">{stats.my_average_score.toFixed(1)}</div>
+                  <p className="text-[10px] text-almet-waterloo">Out of 5.0</p>
                 </div>
               </div>
 
               {(userAccess?.is_manager || userAccess?.is_admin) && (
                 <>
-                  <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-green-500 hover:shadow-lg transition-shadow">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
-                        <Users className="w-4 h-4 text-green-600" />
+                  <div className="bg-white rounded-xl shadow-md p-3 border-l-4 border-green-500 hover:shadow-lg transition-shadow">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="w-7 h-7 rounded-lg bg-green-50 flex items-center justify-center">
+                        <Users className="w-3.5 h-3.5 text-green-600" />
                       </div>
-                      <span className="text-xs font-semibold text-almet-waterloo uppercase">Team</span>
+                      <span className="text-[10px] font-semibold text-almet-waterloo uppercase">Team</span>
                     </div>
-                    <div className='flex gap-4 items-center'>
-
-                    <div className="text-2xl font-bold text-green-600">{stats.team_assessments_count || 0}</div>
-                    <p className="text-xs text-almet-waterloo mt-0.5">Team assessments</p>
+                    <div className='flex gap-3 items-center'>
+                      <div className="text-xl font-bold text-green-600">{stats.team_assessments_count || 0}</div>
+                      <p className="text-[10px] text-almet-waterloo">Team assessments</p>
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-orange-500 hover:shadow-lg transition-shadow">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
-                        <Clock className="w-4 h-4 text-orange-600" />
+                  <div className="bg-white rounded-xl shadow-md p-3 border-l-4 border-orange-500 hover:shadow-lg transition-shadow">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center">
+                        <Clock className="w-3.5 h-3.5 text-orange-600" />
                       </div>
-                      <span className="text-xs font-semibold text-almet-waterloo uppercase">Pending</span>
+                      <span className="text-[10px] font-semibold text-almet-waterloo uppercase">Pending</span>
                     </div>
-                    <div className='flex gap-4 items-center'>
-
-                    <div className="text-2xl font-bold text-orange-600">{stats.pending_reviews || 0}</div>
-                    <p className="text-xs text-almet-waterloo mt-0.5">Awaiting review</p>
+                    <div className='flex gap-3 items-center'>
+                      <div className="text-xl font-bold text-orange-600">{stats.pending_reviews || 0}</div>
+                      <p className="text-[10px] text-almet-waterloo">Awaiting review</p>
                     </div>
                   </div>
                 </>
@@ -534,32 +519,32 @@ const SelfAssessment = () => {
             </div>
           )}
 
-          {/* Tabs */}
-          <div className="bg-white rounded-xl shadow-md mb-4 overflow-hidden">
+          {/* Tabs - Font sizes reduced */}
+          <div className="bg-white rounded-xl shadow-md mb-3 overflow-hidden">
             <div className="flex border-b border-almet-mystic">
               <button
                 onClick={() => setActiveTab('overview')}
-                className={`flex-1 px-4 py-3 font-semibold transition-all text-sm ${
+                className={`flex-1 px-3 py-2.5 font-semibold transition-all text-xs ${
                   activeTab === 'overview'
                     ? 'bg-gradient-to-b from-almet-sapphire/10 to-transparent border-b-3 border-almet-sapphire text-almet-sapphire'
                     : 'text-almet-waterloo hover:bg-almet-mystic/50'
                 }`}
               >
-                <div className="flex items-center justify-center gap-2">
-                  <BarChart3 className="w-4 h-4" />
+                <div className="flex items-center justify-center gap-1.5">
+                  <BarChart3 className="w-3.5 h-3.5" />
                   Overview
                 </div>
               </button>
               <button
                 onClick={() => setActiveTab('assessment')}
-                className={`flex-1 px-4 py-3 font-semibold transition-all text-sm ${
+                className={`flex-1 px-3 py-2.5 font-semibold transition-all text-xs ${
                   activeTab === 'assessment'
                     ? 'bg-gradient-to-b from-almet-sapphire/10 to-transparent border-b-3 border-almet-sapphire text-almet-sapphire'
                     : 'text-almet-waterloo hover:bg-almet-mystic/50'
                 }`}
               >
-                <div className="flex items-center justify-center gap-2">
-                  <Code className="w-4 h-4" />
+                <div className="flex items-center justify-center gap-1.5">
+                  <Code className="w-3.5 h-3.5" />
                   Assessment
                 </div>
               </button>
@@ -568,14 +553,14 @@ const SelfAssessment = () => {
                   setActiveTab('history');
                   fetchMyAssessments();
                 }}
-                className={`flex-1 px-4 py-3 font-semibold transition-all text-sm ${
+                className={`flex-1 px-3 py-2.5 font-semibold transition-all text-xs ${
                   activeTab === 'history'
                     ? 'bg-gradient-to-b from-almet-sapphire/10 to-transparent border-b-3 border-almet-sapphire text-almet-sapphire'
                     : 'text-almet-waterloo hover:bg-almet-mystic/50'
                 }`}
               >
-                <div className="flex items-center justify-center gap-2">
-                  <History className="w-4 h-4" />
+                <div className="flex items-center justify-center gap-1.5">
+                  <History className="w-3.5 h-3.5" />
                   My History
                 </div>
               </button>
@@ -585,14 +570,14 @@ const SelfAssessment = () => {
                     setActiveTab('team');
                     fetchTeamAssessments();
                   }}
-                  className={`flex-1 px-4 py-3 font-semibold transition-all text-sm ${
+                  className={`flex-1 px-3 py-2.5 font-semibold transition-all text-xs ${
                     activeTab === 'team'
                       ? 'bg-gradient-to-b from-almet-sapphire/10 to-transparent border-b-3 border-almet-sapphire text-almet-sapphire'
                       : 'text-almet-waterloo hover:bg-almet-mystic/50'
                   }`}
                 >
-                  <div className="flex items-center justify-center gap-2">
-                    <Users className="w-4 h-4" />
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Users className="w-3.5 h-3.5" />
                     Team
                   </div>
                 </button>
@@ -600,13 +585,13 @@ const SelfAssessment = () => {
             </div>
           </div>
 
-          {/* Tab Content - Overview */}
+          {/* Tab Content - Overview - Font sizes reduced */}
           {activeTab === 'overview' && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Quick Actions */}
-              <div className="bg-white rounded-xl shadow-md p-4">
-                <h3 className="text-base font-bold text-almet-cloud-burst mb-3 flex items-center gap-2">
-                  <Star className="w-4 h-4 text-almet-sapphire" />
+              <div className="bg-white rounded-xl shadow-md p-3">
+                <h3 className="text-sm font-bold text-almet-cloud-burst mb-2.5 flex items-center gap-1.5">
+                  <Star className="w-3.5 h-3.5 text-almet-sapphire" />
                   Quick Actions
                 </h3>
                 <div className="flex flex-wrap gap-2">
@@ -616,23 +601,23 @@ const SelfAssessment = () => {
                         await fetchSkillGroups();
                         setActiveTab('assessment');
                       }}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transition-all text-sm font-medium"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transition-all text-xs font-medium"
                     >
-                      <Edit3 className="w-4 h-4" />
+                      <Edit3 className="w-3.5 h-3.5" />
                       Continue Draft Assessment
                     </button>
                   ) : currentAssessment && (currentAssessment.status === 'SUBMITTED' || currentAssessment.status === 'REVIEWED') ? (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium cursor-not-allowed">
-                      <CheckCircle className="w-4 h-4" />
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium cursor-not-allowed">
+                      <CheckCircle className="w-3.5 h-3.5" />
                       Assessment Already Submitted for Active Period
                     </div>
                   ) : (
                     <button
                       onClick={handleStartAssessment}
                       disabled={!activePeriod || saving}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="w-3.5 h-3.5" />
                       {saving ? 'Loading...' : 'Start New Assessment'}
                     </button>
                   )}
@@ -641,16 +626,16 @@ const SelfAssessment = () => {
                       setActiveTab('history');
                       fetchMyAssessments();
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all text-sm font-medium"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all text-xs font-medium"
                   >
-                    <History className="w-4 h-4" />
+                    <History className="w-3.5 h-3.5" />
                     View History
                   </button>
                 </div>
                 {!activePeriod && (
-                  <div className="flex items-center gap-2 mt-3 p-2.5 bg-orange-50 border border-orange-200 rounded-lg">
-                    <AlertCircle className="w-4 h-4 text-orange-600" />
-                    <p className="text-xs text-orange-700 font-medium">
+                  <div className="flex items-center gap-1.5 mt-2.5 p-2 bg-orange-50 border border-orange-200 rounded-lg">
+                    <AlertCircle className="w-3.5 h-3.5 text-orange-600" />
+                    <p className="text-[10px] text-orange-700 font-medium">
                       No active assessment period available
                     </p>
                   </div>
@@ -659,701 +644,694 @@ const SelfAssessment = () => {
 
               {/* Current Period Assessment Status */}
               {activePeriod && currentAssessment && (
-                <div className="bg-white rounded-xl shadow-md p-4">
-                  <h3 className="text-base font-bold text-almet-cloud-burst mb-3 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-almet-sapphire" />
+                <div className="bg-white rounded-xl shadow-md p-3">
+                  <h3 className="text-sm font-bold text-almet-cloud-burst mb-2.5 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-almet-sapphire" />
                     Current Period Assessment
                   </h3>
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-almet-mystic/50 to-transparent rounded-lg">
+                  <div className="flex items-center justify-between p-2.5 bg-gradient-to-r from-almet-mystic/50 to-transparent rounded-lg">
                     <div>
-                      <p className="font-semibold text-almet-cloud-burst text-sm">
+                      <p className="font-semibold text-almet-cloud-burst text-xs">
                         {activePeriod.name}
                       </p>
-                      <p className="text-xs text-almet-waterloo mt-1">
+                      <p className="text-[10px] text-almet-waterloo mt-0.5">
                         {currentAssessment.submitted_at 
                           ? `Submitted: ${new Date(currentAssessment.submitted_at).toLocaleDateString()}`
                           : 'Draft - In Progress'}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-almet-sapphire">
+                        <div className="text-xl font-bold text-almet-sapphire">
                           {currentAssessment.overall_score || 'N/A'}
                         </div>
-                        <p className="text-xs text-almet-waterloo">Score</p>
+                        <p className="text-[10px] text-almet-waterloo">Score</p>
                       </div>
                       {getStatusBadge(currentAssessment.status)}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Last Assessment Summary */}
-              {stats?.my_last_assessment && (!currentAssessment || currentAssessment.period !== stats.my_last_assessment.period) && (
-                <div className="bg-white rounded-xl shadow-md p-4">
-                  <h3 className="text-base font-bold text-almet-cloud-burst mb-3 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-almet-sapphire" />
-                    Last Assessment
-                  </h3>
-                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-almet-mystic/50 to-transparent rounded-lg">
-                    <div>
-                      <p className="font-semibold text-almet-cloud-burst text-sm">
-                        {stats.my_last_assessment.period_name}
-                      </p>
-                      <p className="text-xs text-almet-waterloo mt-1">
-                        {stats.my_last_assessment.submitted_at 
-                          ? `Submitted: ${new Date(stats.my_last_assessment.submitted_at).toLocaleDateString()}`
-                          : 'Draft'}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-almet-sapphire">
-                          {stats.my_last_assessment.overall_score || 'N/A'}
-                        </div>
-                        <p className="text-xs text-almet-waterloo">Score</p>
-                      </div>
-                      {getStatusBadge(stats.my_last_assessment.status)}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Tab Content - Assessment */}
-          {activeTab === 'assessment' && (
-            <div className="space-y-4">
-              {!currentAssessment ? (
-                <div className="bg-white rounded-xl shadow-md p-12 text-center">
-                  <div className="w-20 h-20 rounded-full bg-almet-mystic flex items-center justify-center mx-auto mb-6">
-                    <Code className="w-10 h-10 text-almet-sapphire" />
-                  </div>
-                  <h3 className="text-xl font-bold text-almet-cloud-burst mb-3">No Active Assessment</h3>
-                  <p className="text-almet-waterloo mb-6">
-                    Start a new assessment to rate your skills for the current period
+</div>
+</div>
+</div>
+)}
+{/* Last Assessment Summary */}
+          {stats?.my_last_assessment && (!currentAssessment || currentAssessment.period !== stats.my_last_assessment.period) && (
+            <div className="bg-white rounded-xl shadow-md p-3">
+              <h3 className="text-sm font-bold text-almet-cloud-burst mb-2.5 flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5 text-almet-sapphire" />
+                Last Assessment
+              </h3>
+              <div className="flex items-center justify-between p-2.5 bg-gradient-to-r from-almet-mystic/50 to-transparent rounded-lg">
+                <div>
+                  <p className="font-semibold text-almet-cloud-burst text-xs">
+                    {stats.my_last_assessment.period_name}
                   </p>
-                  <button
-                    onClick={handleStartAssessment}
-                    disabled={!activePeriod || saving}
-                    className="px-6 py-3 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium disabled:opacity-50"
-                  >
-                    <Plus className="w-5 h-5 inline mr-2" />
-                    Start Assessment
-                  </button>
+                  <p className="text-[10px] text-almet-waterloo mt-0.5">
+                    {stats.my_last_assessment.submitted_at 
+                      ? `Submitted: ${new Date(stats.my_last_assessment.submitted_at).toLocaleDateString()}`
+                      : 'Draft'}
+                  </p>
                 </div>
-              ) : currentAssessment.status === 'SUBMITTED' || currentAssessment.status === 'REVIEWED' ? (
-                // Show submitted assessment details
-                <div className="bg-white rounded-xl shadow-md p-6">
-                  <div className="flex items-center justify-between mb-6 pb-4 border-b border-almet-mystic">
-                    <div>
-                      <h3 className="text-xl font-bold text-almet-cloud-burst">Assessment Submitted</h3>
-                      <p className="text-sm text-almet-waterloo mt-1">
-                        Submitted: {currentAssessment.submitted_at 
-                          ? new Date(currentAssessment.submitted_at).toLocaleDateString()
-                          : 'N/A'}
-                      </p>
+                <div className="flex items-center gap-2.5">
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-almet-sapphire">
+                      {stats.my_last_assessment.overall_score || 'N/A'}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-center">
-                        <div className="text-3xl font-bold text-almet-sapphire">
-                          {currentAssessment.overall_score || 'N/A'}
-                        </div>
-                        <p className="text-xs text-almet-waterloo">Overall Score</p>
-                      </div>
-                      {getStatusBadge(currentAssessment.status)}
-                    </div>
+                    <p className="text-[10px] text-almet-waterloo">Score</p>
                   </div>
-
-                  {/* Skill Ratings Display */}
-                  <div className="space-y-4">
-                    <h4 className="font-bold text-almet-cloud-burst flex items-center gap-2">
-                      <Award className="w-5 h-5 text-almet-sapphire" />
-                      Your Skill Ratings
-                    </h4>
-                    
-                    {currentAssessment.skill_ratings && currentAssessment.skill_ratings.length > 0 ? (
-                      <div className="space-y-3">
-                        {currentAssessment.skill_ratings.map(rating => (
-                          <div key={rating.id} className="border border-almet-mystic rounded-lg p-4 bg-gradient-to-r from-almet-mystic/10 to-transparent">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-semibold text-almet-cloud-burst text-sm">
-                                {rating.skill_info?.name || 'Skill'}
-                              </span>
-                              <div className="flex items-center gap-3">
-                                <RatingStars currentRating={rating.rating} disabled={true} />
-                                <span className="text-xs font-medium text-almet-waterloo">({rating.rating_level})</span>
-                              </div>
-                            </div>
-                            {rating.self_comment && (
-                              <div className="mt-2 text-xs text-almet-cloud-burst bg-blue-50 p-2.5 rounded-lg border border-blue-200">
-                                <span className="font-semibold">Your Comment:</span>
-                                <p className="mt-1">{rating.self_comment}</p>
-                              </div>
-                            )}
-                            {rating.manager_comment && (
-                              <div className="mt-2 text-xs text-almet-cloud-burst bg-green-50 p-2.5 rounded-lg border border-green-200">
-                                <span className="font-semibold">Manager Feedback:</span>
-                                <p className="mt-1">{rating.manager_comment}</p>
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-almet-waterloo">No skill ratings found</p>
-                    )}
-                  </div>
-
-                  {/* Manager Comments */}
-                  {currentAssessment.manager_comments && (
-                    <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-transparent rounded-xl border border-green-200">
-                      <h4 className="font-bold text-almet-cloud-burst mb-2 flex items-center gap-2">
-                        <MessageSquare className="w-4 h-4 text-green-600" />
-                        Manager Overall Comments
-                      </h4>
-                      <p className="text-sm text-almet-cloud-burst">{currentAssessment.manager_comments}</p>
-                      {currentAssessment.manager_reviewed_at && (
-                        <p className="text-xs text-almet-waterloo mt-2">
-                          Reviewed on {new Date(currentAssessment.manager_reviewed_at).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <>
-                  {/* Assessment Progress */}
-                  <div className="bg-white rounded-xl shadow-md p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="font-semibold text-almet-cloud-burst">Assessment Progress</span>
-                      <span className="text-sm text-almet-waterloo">
-                        {Object.keys(ratings).length} / {
-                          skillGroups.reduce((sum, g) => sum + (g.skills?.length || 0), 0)
-                        } skills rated
-                      </span>
-                    </div>
-                    <div className="w-full bg-almet-mystic rounded-full h-3 overflow-hidden">
-                      <div
-                        className="h-3 rounded-full bg-gradient-to-r from-almet-sapphire to-almet-astral transition-all duration-500"
-                        style={{
-                          width: `${
-                            skillGroups.length > 0
-                              ? (Object.keys(ratings).length / skillGroups.reduce((sum, g) => sum + (g.skills?.length || 0), 1)) * 100
-                              : 0
-                          }%`
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Skill Groups */}
-                  {skillGroups.length > 0 ? (
-                    skillGroups.map((group) => {
-                      const isExpanded = expandedGroups[group.id];
-                      return (
-                        <div key={group.id} className="bg-white rounded-xl shadow-md overflow-hidden">
-                          <button
-                            onClick={() => toggleGroup(group.id)}
-                            className="w-full p-5 flex items-center justify-between hover:bg-almet-mystic/30 transition-colors"
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-almet-sapphire to-almet-astral flex items-center justify-center">
-                                <Code className="w-5 h-5 text-white" />
-                              </div>
-                              <div className="text-left">
-                                <h2 className="font-bold text-almet-cloud-burst">{group.name}</h2>
-                                <span className="text-xs text-almet-waterloo">{group.skills?.length || 0} skills</span>
-                              </div>
-                            </div>
-                            {isExpanded ? 
-                              <ChevronUp className="w-5 h-5 text-almet-waterloo" /> : 
-                              <ChevronDown className="w-5 h-5 text-almet-waterloo" />
-                            }
-                          </button>
-                          
-                          {isExpanded && (
-                            <div className="px-5 pb-5 space-y-4 bg-gradient-to-b from-almet-mystic/20 to-transparent">
-                              {group.skills?.map(skill => (
-                                <div key={skill.id} className="p-4 bg-white rounded-lg border border-almet-mystic shadow-sm hover:shadow-md transition-shadow">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <span className="font-semibold text-almet-cloud-burst">{skill.name}</span>
-                                    <RatingStars
-                                      currentRating={ratings[skill.id]?.rating || 0}
-                                      onChange={(rating) => handleRatingChange(skill.id, rating)}
-                                    />
-                                  </div>
-                                  <textarea
-                                    value={ratings[skill.id]?.comment || ''}
-                                    onChange={(e) => handleCommentChange(skill.id, e.target.value)}
-                                    placeholder="Add your reflection on this skill (optional)"
-                                    className="w-full text-sm p-3 border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none"
-                                    rows={2}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="bg-white rounded-xl shadow-md p-12 text-center">
-                      <p className="text-almet-waterloo">No skill groups available</p>
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="sticky bottom-4 flex justify-end gap-3 p-3 bg-white rounded-xl shadow-lg border border-almet-mystic">
-                    <button
-                      onClick={handleSaveAssessment}
-                      disabled={saving}
-                      className="flex items-center gap-2 px-6 py-2 text-sm bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all font-medium disabled:opacity-50"
-                    >
-                      <Save className="w-4 h-4" />
-                      {saving ? 'Saving...' : 'Save Draft'}
-                    </button>
-                    <button
-                      onClick={handleSubmitAssessment}
-                      disabled={saving || Object.keys(ratings).length === 0}
-                      className="flex items-center gap-2 px-6 py-2 text-sm bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-xl transition-all font-medium disabled:opacity-50"
-                    >
-                      <Send className="w-4 h-4" />
-                      {saving ? 'Submitting...' : 'Submit Assessment'}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Tab Content - History */}
-          {activeTab === 'history' && (
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-bold text-almet-cloud-burst mb-4 flex items-center gap-2">
-                <History className="w-5 h-5 text-almet-sapphire" />
-                Assessment History
-              </h3>
-              {myAssessments.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 rounded-full bg-almet-mystic flex items-center justify-center mx-auto mb-4">
-                    <History className="w-8 h-8 text-almet-waterloo" />
-                  </div>
-                  <p className="text-almet-waterloo">No assessments found</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {myAssessments.map((assessment) => (
-                    <div
-                      key={assessment.id}
-                      className="flex items-center justify-between p-4 bg-gradient-to-r from-almet-mystic/30 to-transparent rounded-lg hover:shadow-md transition-all border border-almet-mystic"
-                    >
-                      <div>
-                        <p className="font-semibold text-almet-cloud-burst">{assessment.period_name}</p>
-                        <p className="text-sm text-almet-waterloo mt-1">
-                          {assessment.submitted_at 
-                            ? `Submitted: ${new Date(assessment.submitted_at).toLocaleDateString()}`
-                            : 'Draft'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-center">
-                          <p className="text-2xl font-bold text-almet-sapphire">
-                            {assessment.overall_score || 'N/A'}
-                          </p>
-                          <p className="text-xs text-almet-waterloo">Score</p>
-                        </div>
-                        {getStatusBadge(assessment.status)}
-                        <button
-                          onClick={() => handleViewAssessment(assessment.id)}
-                          className="p-2 text-almet-sapphire hover:bg-almet-sapphire hover:text-white rounded-lg transition-all"
-                        >
-                          <Eye className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Tab Content - Team */}
-          {activeTab === 'team' && (
-            <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="text-lg font-bold text-almet-cloud-burst mb-4 flex items-center gap-2">
-                <Users className="w-5 h-5 text-almet-sapphire" />
-                Team Assessments
-              </h3>
-              {teamAssessments.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 rounded-full bg-almet-mystic flex items-center justify-center mx-auto mb-4">
-                    <Users className="w-8 h-8 text-almet-waterloo" />
-                  </div>
-                  <p className="text-almet-waterloo">No team assessments found</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {teamAssessments.map((assessment) => (
-                    <div
-                      key={assessment.id}
-                      className="flex items-center justify-between p-4 bg-gradient-to-r from-almet-mystic/30 to-transparent rounded-lg hover:shadow-md transition-all border border-almet-mystic"
-                    >
-                      <div>
-                        <p className="font-semibold text-almet-cloud-burst">{assessment.employee_name}</p>
-                        <p className="text-sm text-almet-waterloo">{assessment.period_name}</p>
-                        <p className="text-xs text-almet-waterloo mt-1">
-                          {assessment.submitted_at 
-                            ? `Submitted: ${new Date(assessment.submitted_at).toLocaleDateString()}`
-                            : 'Draft'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-center">
-                          <p className="text-2xl font-bold text-almet-sapphire">
-                            {assessment.overall_score || 'N/A'}
-                          </p>
-                          <p className="text-xs text-almet-waterloo">Score</p>
-                        </div>
-                        {getStatusBadge(assessment.status)}
-                        <button
-                          onClick={() => handleViewAssessment(assessment.id)}
-                          className="p-2 text-almet-sapphire hover:bg-almet-sapphire hover:text-white rounded-lg transition-all"
-                        >
-                          <Eye className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Assessment Detail Modal */}
-          {selectedAssessment && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-                <div className="p-6 border-b border-almet-mystic flex items-center justify-between bg-gradient-to-r from-almet-mystic/50 to-transparent sticky top-0 bg-white z-10">
-                  <div>
-                    <h3 className="text-xl font-bold text-almet-cloud-burst">
-                      {selectedAssessment.employee_name}
-                    </h3>
-                    <p className="text-sm text-almet-waterloo">{selectedAssessment.employee_position}</p>
-                    <p className="text-sm font-medium text-almet-sapphire mt-1">
-                      {selectedAssessment.period_info?.name}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setSelectedAssessment(null)}
-                    className="text-almet-waterloo hover:text-almet-cloud-burst hover:bg-almet-mystic rounded-lg p-2 transition-all"
-                  >
-                    <span className="text-2xl">×</span>
-                  </button>
-                </div>
-                
-                <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-                  {/* Overall Score */}
-                  <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-28 h-28 rounded-full bg-gradient-to-br from-almet-sapphire/20 to-almet-astral/20 border-4 border-almet-sapphire/30 mb-4">
-                      <span className="text-5xl font-bold text-almet-sapphire">
-                        {selectedAssessment.overall_score || 'N/A'}
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-bold text-almet-cloud-burst">Overall Score</h3>
-                    <p className="text-sm text-almet-waterloo">Out of 5.0</p>
-                    <div className="mt-3">
-                      {getStatusBadge(selectedAssessment.status)}
-                    </div>
-                  </div>
-
-                  {/* Radar Chart */}
-                  {selectedAssessment.skill_ratings?.length > 0 && (
-                    <div className="mb-8 p-6 bg-gradient-to-br from-almet-mystic/30 to-transparent rounded-xl">
-                      <h4 className="font-bold text-almet-cloud-burst mb-4 flex items-center gap-2">
-                        <BarChart3 className="w-5 h-5 text-almet-sapphire" />
-                        Skills Overview
-                      </h4>
-                      <ResponsiveContainer width="100%" height={300}>
-                        <RadarChart data={getRadarData(selectedAssessment)}>
-                          <PolarGrid stroke="#e7ebf1" />
-                          <PolarAngleAxis dataKey="category" tick={{ fontSize: 11, fill: '#7a829a' }} />
-                          <PolarRadiusAxis angle={90} domain={[0, 5]} tick={{ fontSize: 10, fill: '#7a829a' }} />
-                          <Radar
-                            name="Score"
-                            dataKey="score"
-                            stroke="#30539b"
-                            fill="#30539b"
-                            fillOpacity={0.6}
-                          />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {/* Skill Ratings */}
-                  <div>
-                    <h4 className="font-bold text-almet-cloud-burst mb-4 flex items-center gap-2">
-                      <Award className="w-5 h-5 text-almet-sapphire" />
-                      Skill Ratings
-                    </h4>
-                    <div className="space-y-4">
-                      {selectedAssessment.skill_ratings?.map(rating => (
-                        <div key={rating.id} className="border border-almet-mystic rounded-xl p-4 bg-gradient-to-r from-almet-mystic/10 to-transparent">
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="font-semibold text-almet-cloud-burst">
-                              {rating.skill_info?.name}
-                            </span>
-                            <div className="flex items-center gap-3">
-                              <RatingStars currentRating={rating.rating} disabled={true} />
-                              <span className="text-sm font-medium text-almet-waterloo">({rating.rating_level})</span>
-                            </div>
-                          </div>
-                          {rating.self_comment && (
-                            <div className="mt-3 text-sm text-almet-cloud-burst bg-blue-50 p-3 rounded-lg border border-blue-200">
-                              <span className="font-semibold flex items-center gap-2">
-                                <MessageSquare className="w-4 h-4" />
-                                Self Comment:
-                              </span>
-                              <p className="mt-1">{rating.self_comment}</p>
-                            </div>
-                          )}
-                          {rating.manager_comment && (
-                            <div className="mt-3 text-sm text-almet-cloud-burst bg-green-50 p-3 rounded-lg border border-green-200">
-                              <span className="font-semibold flex items-center gap-2">
-                                <CheckCircle className="w-4 h-4" />
-                                Manager Feedback:
-                              </span>
-                              <p className="mt-1">{rating.manager_comment}</p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Manager Comments */}
-                  {selectedAssessment.manager_comments && (
-                    <div className="mt-6 p-5 bg-gradient-to-r from-green-50 to-transparent rounded-xl border border-green-200">
-                      <h4 className="font-bold text-almet-cloud-burst mb-2 flex items-center gap-2">
-                        <MessageSquare className="w-5 h-5 text-green-600" />
-                        Manager Overall Comments
-                      </h4>
-                      <p className="text-sm text-almet-cloud-burst">{selectedAssessment.manager_comments}</p>
-                      <p className="text-xs text-almet-waterloo mt-2">
-                        - {selectedAssessment.manager_name} on {new Date(selectedAssessment.manager_reviewed_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="p-6 border-t border-almet-mystic bg-gradient-to-b from-transparent to-almet-mystic/20">
-                  <button
-                    onClick={() => setSelectedAssessment(null)}
-                    className="w-full px-6 py-3 bg-gradient-to-r text-xs from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Settings Modal - Admin Only */}
-          {showSettings && userAccess?.is_admin && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-                <div className="px-4 py-2 border-b border-almet-mystic flex items-center justify-between bg-gradient-to-r text-almet-sapphire ">
-                  <div className="flex items-center gap-3">
-                    <Settings className="w-6 h-6" />
-                    <h3 className="text-xl font-bold ">Assessment Period Settings</h3>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setShowSettings(false);
-                      setShowCreatePeriod(false);
-                    }}
-                    className="hover:bg-white/20 rounded-lg p-2 transition-all"
-                  >
-                    <span className="text-2xl">×</span>
-                  </button>
-                </div>
-                
-                <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-                  {!showCreatePeriod ? (
-                    <>
-                      <div className="flex justify-between items-center mb-6">
-                        <h4 className="font-bold text-almet-cloud-burst text-lg">Assessment Periods</h4>
-                        <button
-                          onClick={() => setShowCreatePeriod(true)}
-                          className="flex text-xs items-center gap-2 px-4 py-2 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium"
-                        >
-                          <Plus className="w-4 h-4" />
-                          Create New Period
-                        </button>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        {allPeriods.length === 0 ? (
-                          <div className="text-center py-8">
-                            <Calendar className="w-8 h-8 text-almet-waterloo mx-auto mb-4" />
-                            <p className="text-almet-waterloo">No periods found. Create your first period!</p>
-                          </div>
-                        ) : (
-                          allPeriods.map(period => (
-                            <div key={period.id} className="p-4 border border-almet-mystic rounded-xl flex items-center justify-between hover:shadow-md transition-all bg-gradient-to-r from-almet-mystic/20 to-transparent">
-                              <div className="flex-1">
-                                <p className="font-semibold text-almet-cloud-burst text-lg">{period.name}</p>
-                                <p className="text-sm text-almet-waterloo mt-1">
-                                  {new Date(period.start_date).toLocaleDateString()} - {new Date(period.end_date).toLocaleDateString()}
-                                </p>
-                                <p className="text-xs text-almet-waterloo mt-1">
-                                  Deadline: {new Date(period.submission_deadline).toLocaleDateString()}
-                                </p>
-                          
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {period.is_active ? (
-                                  <span className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium flex items-center gap-2">
-                                    <CheckCircle className="w-4 h-4" />
-                                    Active
-                                  </span>
-                                ) : (
-                                  <button
-                                    onClick={async () => {
-                                      try {
-                                        await selfAssessmentService.activatePeriod(period.id);
-                                        fetchAllPeriods();
-                                        fetchInitialData();
-                                        showToast('Period activated successfully', 'success');
-                                      } catch (error) {
-                                        showToast('Failed to activate period', 'error');
-                                      }
-                                    }}
-                                    className="px-4 py-2 bg-almet-sapphire text-white rounded-lg text-sm font-medium hover:bg-almet-astral transition-all"
-                                  >
-                                    Activate
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-3 mb-6">
-                        <button
-                          onClick={() => setShowCreatePeriod(false)}
-                          className="p-2 hover:bg-almet-mystic rounded-lg transition-all"
-                        >
-                          <ChevronDown className="w-5 h-5 rotate-90 text-almet-sapphire" />
-                        </button>
-                        <h4 className="font-bold text-almet-cloud-burst text-lg">Create New Assessment Period</h4>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-almet-cloud-burst mb-2">
-                            Period Name *
-                          </label>
-                          <input
-                            type="text"
-                            value={newPeriod.name}
-                            onChange={(e) => setNewPeriod({...newPeriod, name: e.target.value})}
-                            placeholder="e.g., H1 2025, Q1 2025"
-                            className="w-full px-4 py-2 text-xs border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-almet-cloud-burst mb-2">
-                              Start Date *
-                            </label>
-                            <input
-                              type="date"
-                              value={newPeriod.start_date}
-                              onChange={(e) => setNewPeriod({...newPeriod, start_date: e.target.value})}
-                              className="w-full px-4 py-2 text-xs border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-almet-cloud-burst mb-2">
-                              End Date *
-                            </label>
-                            <input
-                              type="date"
-                              value={newPeriod.end_date}
-                              onChange={(e) => setNewPeriod({...newPeriod, end_date: e.target.value})}
-                              className="w-full px-4 py-2 text-xs border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-sm font-medium text-almet-cloud-burst mb-2">
-                              Submission Deadline *
-                            </label>
-                            <input
-                              type="date"
-                              value={newPeriod.submission_deadline}
-                              onChange={(e) => setNewPeriod({...newPeriod, submission_deadline: e.target.value})}
-                              className="w-full px-4 py-2 text-xs border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
-                            />
-                          </div>
-                        </div>
-
-              
-                      </div>
-
-                      <div className="flex gap-3 pt-4">
-                        <button
-                          onClick={() => {
-                            setShowCreatePeriod(false);
-                            setNewPeriod({
-                              name: '',
-                              start_date: '',
-                              end_date: '',
-                              submission_deadline: '',
-                              status: 'UPCOMING'
-                            });
-                          }}
-                          className="flex-1 px-6 py-1.5 text-xs bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all font-medium"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={handleCreatePeriod}
-                          disabled={saving}
-                          className="flex-1 px-6 py-1.5 text-xs bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium disabled:opacity-50"
-                        >
-                          {saving ? 'Creating...' : 'Create Period'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="p-6 border-t border-almet-mystic">
-                  <button
-                    onClick={() => {
-                      setShowSettings(false);
-                      setShowCreatePeriod(false);
-                    }}
-                    className="w-full px-6 py-3 text-xs bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all font-medium"
-                  >
-                    Close
-                  </button>
+                  {getStatusBadge(stats.my_last_assessment.status)}
                 </div>
               </div>
             </div>
           )}
         </div>
-      </div>
-    </DashboardLayout>
-  );
-};
+      )}
 
+      {/* Tab Content - Assessment */}
+      {activeTab === 'assessment' && (
+        <div className="space-y-3">
+          {!currentAssessment ? (
+            <div className="bg-white rounded-xl shadow-md p-10 text-center">
+              <div className="w-16 h-16 rounded-full bg-almet-mystic flex items-center justify-center mx-auto mb-5">
+                <Code className="w-8 h-8 text-almet-sapphire" />
+              </div>
+              <h3 className="text-lg font-bold text-almet-cloud-burst mb-2.5">No Active Assessment</h3>
+              <p className="text-almet-waterloo text-xs mb-5">
+                Start a new assessment to rate your skills for the current period
+              </p>
+              <button
+                onClick={handleStartAssessment}
+                disabled={!activePeriod || saving}
+                className="px-5 py-2.5 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium text-sm disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4 inline mr-1.5" />
+                Start Assessment
+              </button>
+            </div>
+          ) : currentAssessment.status === 'SUBMITTED' || currentAssessment.status === 'REVIEWED' ? (
+            <div className="bg-white rounded-xl shadow-md p-5">
+              <div className="flex items-center justify-between mb-5 pb-3 border-b border-almet-mystic">
+                <div>
+                  <h3 className="text-lg font-bold text-almet-cloud-burst">Assessment Submitted</h3>
+                  <p className="text-xs text-almet-waterloo mt-0.5">
+                    Submitted: {currentAssessment.submitted_at 
+                      ? new Date(currentAssessment.submitted_at).toLocaleDateString()
+                      : 'N/A'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-almet-sapphire">
+                      {currentAssessment.overall_score || 'N/A'}
+                    </div>
+                    <p className="text-[10px] text-almet-waterloo">Overall Score</p>
+                  </div>
+                  {getStatusBadge(currentAssessment.status)}
+                </div>
+              </div>
+
+              {/* Skill Ratings Display */}
+              <div className="space-y-3">
+                <h4 className="font-bold text-almet-cloud-burst text-sm flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-almet-sapphire" />
+                  Your Skill Ratings
+                </h4>
+                
+                {currentAssessment.skill_ratings && currentAssessment.skill_ratings.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {currentAssessment.skill_ratings.map(rating => (
+                      <div key={rating.id} className="border border-almet-mystic rounded-lg p-3 bg-gradient-to-r from-almet-mystic/10 to-transparent">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="font-semibold text-almet-cloud-burst text-xs">
+                            {rating.skill_info?.name || 'Skill'}
+                          </span>
+                          <div className="flex items-center gap-2.5">
+                            <RatingStars currentRating={rating.rating} disabled={true} />
+                            <span className="text-[10px] font-medium text-almet-waterloo">({rating.rating_level})</span>
+                          </div>
+                        </div>
+                        {rating.self_comment && (
+                          <div className="mt-1.5 text-[10px] text-almet-cloud-burst bg-blue-50 p-2 rounded-lg border border-blue-200">
+                            <span className="font-semibold">Your Comment:</span>
+                            <p className="mt-0.5">{rating.self_comment}</p>
+                          </div>
+                        )}
+                        {rating.manager_comment && (
+                          <div className="mt-1.5 text-[10px] text-almet-cloud-burst bg-green-50 p-2 rounded-lg border border-green-200">
+                            <span className="font-semibold">Manager Feedback:</span>
+                            <p className="mt-0.5">{rating.manager_comment}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-almet-waterloo">No skill ratings found</p>
+                )}
+              </div>
+
+              {/* Manager Comments */}
+              {currentAssessment.manager_comments && (
+                <div className="mt-5 p-3 bg-gradient-to-r from-green-50 to-transparent rounded-xl border border-green-200">
+                  <h4 className="font-bold text-almet-cloud-burst text-xs mb-1.5 flex items-center gap-1.5">
+                    <MessageSquare className="w-3.5 h-3.5 text-green-600" />
+                    Manager Overall Comments
+                  </h4>
+                  <p className="text-xs text-almet-cloud-burst">{currentAssessment.manager_comments}</p>
+                  {currentAssessment.manager_reviewed_at && (
+                    <p className="text-[10px] text-almet-waterloo mt-1.5">
+                      Reviewed on {new Date(currentAssessment.manager_reviewed_at).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Assessment Progress */}
+              <div className="bg-white rounded-xl shadow-md p-4">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="font-semibold text-almet-cloud-burst text-xs">Assessment Progress</span>
+                  <span className="text-[10px] text-almet-waterloo">
+                    {Object.keys(ratings).length} / {
+                      skillGroups.reduce((sum, g) => sum + (g.skills?.length || 0), 0)
+                    } skills rated
+                  </span>
+                </div>
+                <div className="w-full bg-almet-mystic rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="h-2.5 rounded-full bg-gradient-to-r from-almet-sapphire to-almet-astral transition-all duration-500"
+                    style={{
+                      width: `${
+                        skillGroups.length > 0
+                          ? (Object.keys(ratings).length / skillGroups.reduce((sum, g) => sum + (g.skills?.length || 0), 1)) * 100
+                          : 0
+                      }%`
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Skill Groups */}
+              {skillGroups.length > 0 ? (
+                skillGroups.map((group) => {
+                  const isExpanded = expandedGroups[group.id];
+                  return (
+                    <div key={group.id} className="bg-white rounded-xl shadow-md overflow-hidden">
+                      <button
+                        onClick={() => toggleGroup(group.id)}
+                        className="w-full p-4 flex items-center justify-between hover:bg-almet-mystic/30 transition-colors"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-almet-sapphire to-almet-astral flex items-center justify-center">
+                            <Code className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="text-left">
+                            <h2 className="font-bold text-almet-cloud-burst text-sm">{group.name}</h2>
+                            <span className="text-[10px] text-almet-waterloo">{group.skills?.length || 0} skills</span>
+                          </div>
+                        </div>
+                        {isExpanded ? 
+                          <ChevronUp className="w-4 h-4 text-almet-waterloo" /> : 
+                          <ChevronDown className="w-4 h-4 text-almet-waterloo" />
+                        }
+                      </button>
+                      
+                      {isExpanded && (
+                        <div className="px-4 pb-4 space-y-3 bg-gradient-to-b from-almet-mystic/20 to-transparent">
+                          {group.skills?.map(skill => (
+                            <div key={skill.id} className="p-3 bg-white rounded-lg border border-almet-mystic shadow-sm hover:shadow-md transition-shadow">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-semibold text-almet-cloud-burst text-xs">{skill.name}</span>
+                                <RatingStars
+                                  currentRating={ratings[skill.id]?.rating || 0}
+                                  onChange={(rating) => handleRatingChange(skill.id, rating)}
+                                />
+                              </div>
+                              <textarea
+                                value={ratings[skill.id]?.comment || ''}
+                                onChange={(e) => handleCommentChange(skill.id, e.target.value)}
+                                placeholder="Add your reflection on this skill (optional)"
+                                className="w-full text-[11px] p-2.5 border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none"
+                                rows={2}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="bg-white rounded-xl shadow-md p-10 text-center">
+                  <p className="text-almet-waterloo text-xs">No skill groups available</p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="sticky bottom-4 flex justify-end gap-2.5 p-2.5 bg-white rounded-xl shadow-lg border border-almet-mystic">
+                <button
+                  onClick={handleSaveAssessment}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 px-5 py-1.5 text-xs bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all font-medium disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  {saving ? 'Saving...' : 'Save Draft'}
+                </button>
+                <button
+                  onClick={handleSubmitAssessment}
+                  disabled={saving || Object.keys(ratings).length === 0}
+                  className="flex items-center gap-1.5 px-5 py-1.5 text-xs bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-xl transition-all font-medium disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  {saving ? 'Submitting...' : 'Submit Assessment'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Tab Content - History */}
+      {activeTab === 'history' && (
+        <div className="bg-white rounded-xl shadow-md p-5">
+          <h3 className="text-base font-bold text-almet-cloud-burst mb-3 flex items-center gap-1.5">
+            <History className="w-4 h-4 text-almet-sapphire" />
+            Assessment History
+          </h3>
+          {myAssessments.length === 0 ? (
+            <div className="text-center py-10">
+              <div className="w-14 h-14 rounded-full bg-almet-mystic flex items-center justify-center mx-auto mb-3">
+                <History className="w-7 h-7 text-almet-waterloo" />
+              </div>
+              <p className="text-almet-waterloo text-xs">No assessments found</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {myAssessments.map((assessment) => (
+                <div
+                  key={assessment.id}
+                  className="flex items-center justify-between p-3 bg-gradient-to-r from-almet-mystic/30 to-transparent rounded-lg hover:shadow-md transition-all border border-almet-mystic"
+                >
+                  <div>
+                    <p className="font-semibold text-almet-cloud-burst text-xs">{assessment.period_name}</p>
+                    <p className="text-[10px] text-almet-waterloo mt-0.5">
+                      {assessment.submitted_at 
+                        ? `Submitted: ${new Date(assessment.submitted_at).toLocaleDateString()}`
+                        : 'Draft'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-center">
+                      <p className="text-xl font-bold text-almet-sapphire">
+                        {assessment.overall_score || 'N/A'}
+                      </p>
+                      <p className="text-[10px] text-almet-waterloo">Score</p>
+                    </div>
+                    {getStatusBadge(assessment.status)}
+                    <button
+                      onClick={() => handleViewAssessment(assessment.id)}
+                      className="p-1.5 text-almet-sapphire hover:bg-almet-sapphire hover:text-white rounded-lg transition-all"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab Content - Team */}
+      {activeTab === 'team' && (
+        <div className="bg-white rounded-xl shadow-md p-5">
+          <h3 className="text-base font-bold text-almet-cloud-burst mb-3 flex items-center gap-1.5">
+            <Users className="w-4 h-4 text-almet-sapphire" />
+            Team Assessments
+          </h3>
+          {teamAssessments.length === 0 ? (
+            <div className="text-center py-10">
+              <div className="w-14 h-14 rounded-full bg-almet-mystic flex items-center justify-center mx-auto mb-3">
+                <Users className="w-7 h-7 text-almet-waterloo" />
+              </div>
+              <p className="text-almet-waterloo text-xs">No team assessments found</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {teamAssessments.map((assessment) => (
+                <div
+                  key={assessment.id}
+                  className="flex items-center justify-between p-3 bg-gradient-to-r from-almet-mystic/30 to-transparent rounded-lg hover:shadow-md transition-all border border-almet-mystic"
+                >
+                  <div>
+                    <p className="font-semibold text-almet-cloud-burst text-xs">{assessment.employee_name}</p>
+                    <p className="text-[10px] text-almet-waterloo">{assessment.period_name}</p>
+                    <p className="text-[10px] text-almet-waterloo mt-0.5">
+                      {assessment.submitted_at 
+                        ? `Submitted: ${new Date(assessment.submitted_at).toLocaleDateString()}`
+                        : 'Draft'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-center">
+                      <p className="text-xl font-bold text-almet-sapphire">
+                        {assessment.overall_score || 'N/A'}
+                      </p>
+                      <p className="text-[10px] text-almet-waterloo">Score</p>
+                    </div>
+                    {getStatusBadge(assessment.status)}
+                    <button
+                      onClick={() => handleViewAssessment(assessment.id)}
+                      className="p-1.5 text-almet-sapphire hover:bg-almet-sapphire hover:text-white rounded-lg transition-all"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Assessment Detail Modal - başlığı da təmizlə, yerdə qalan hissələr də eyni şəkildə davam etsin */}
+      {selectedAssessment && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="p-5 border-b border-almet-mystic flex items-center justify-between bg-gradient-to-r from-almet-mystic/50 to-transparent sticky top-0 bg-white z-10">
+              <div>
+                <h3 className="text-lg font-bold text-almet-cloud-burst">
+                  {selectedAssessment.employee_name}
+                </h3>
+                <p className="text-xs text-almet-waterloo">{selectedAssessment.employee_position}</p>
+                <p className="text-xs font-medium text-almet-sapphire mt-0.5">
+                  {selectedAssessment.period_info?.name}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedAssessment(null)}
+                className="text-almet-waterloo hover:text-almet-cloud-burst hover:bg-almet-mystic rounded-lg p-2 transition-all"
+              >
+                <span className="text-2xl">×</span>
+              </button>
+            </div>
+            
+            <div className="p-5 overflow-y-auto max-h-[calc(90vh-200px)]">
+              {/* Overall Score */}
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-almet-sapphire/20 to-almet-astral/20 border-4 border-almet-sapphire/30 mb-3">
+                  <span className="text-4xl font-bold text-almet-sapphire">
+                    {selectedAssessment.overall_score || 'N/A'}
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-almet-cloud-burst">Overall Score</h3>
+                <p className="text-xs text-almet-waterloo">Out of 5.0</p>
+                <div className="mt-2.5">
+                  {getStatusBadge(selectedAssessment.status)}
+                </div>
+              </div>
+
+              {/* Radar Chart */}
+              {selectedAssessment.skill_ratings?.length > 0 && (
+                <div className="mb-6 p-5 bg-gradient-to-br from-almet-mystic/30 to-transparent rounded-xl">
+                  <h4 className="font-bold text-almet-cloud-burst text-sm mb-3 flex items-center gap-1.5">
+                    <BarChart3 className="w-4 h-4 text-almet-sapphire" />
+                    Skills Overview
+                  </h4>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <RadarChart data={getRadarData(selectedAssessment)}>
+                      <PolarGrid stroke="#e7ebf1" />
+                      <PolarAngleAxis dataKey="category" tick={{ fontSize: 10, fill: '#7a829a' }} />
+                      <PolarRadiusAxis angle={90} domain={[0, 5]} tick={{ fontSize: 9, fill: '#7a829a' }} />
+                      <Radar
+                        name="Score"
+                        dataKey="score"
+                        stroke="#30539b"
+                        fill="#30539b"
+                        fillOpacity={0.6}
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {/* Skill Ratings */}
+              <div>
+                <h4 className="font-bold text-almet-cloud-burst text-sm mb-3 flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-almet-sapphire" />
+                  Skill Ratings
+                </h4>
+                <div className="space-y-3">
+                  {selectedAssessment.skill_ratings?.map(rating => (
+                    <div key={rating.id} className="border border-almet-mystic rounded-xl p-3 bg-gradient-to-r from-almet-mystic/10 to-transparent">
+                      <div className="flex items-center justify-between mb-2.5">
+                        <span className="font-semibold text-almet-cloud-burst text-xs">
+                          {rating.skill_info?.name}
+                        </span>
+                        <div className="flex items-center gap-2.5">
+                          <RatingStars currentRating={rating.rating} disabled={true} />
+                          <span className="text-[10px] font-medium text-almet-waterloo">({rating.rating_level})</span>
+                        </div>
+                      </div>
+                      {rating.self_comment && (
+                        <div className="mt-2.5 text-[10px] text-almet-cloud-burst bg-blue-50 p-2.5 rounded-lg border border-blue-200">
+                          <span className="font-semibold flex items-center gap-1.5">
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            Self Comment:
+                          </span>
+                          <p className="mt-0.5">{rating.self_comment}</p>
+                        </div>
+                      )}
+                      {rating.manager_comment && (
+                        <div className="mt-2.5 text-[10px] text-almet-cloud-burst bg-green-50 p-2.5 rounded-lg border border-green-200">
+                          <span className="font-semibold flex items-center gap-1.5">
+                            <CheckCircle className="w-3.5 h-3.5" />
+                            Manager Feedback:
+                          </span>
+                          <p className="mt-0.5">{rating.manager_comment}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Manager Comments */}
+              {selectedAssessment.manager_comments && (
+                <div className="mt-5 p-4 bg-gradient-to-r from-green-50 to-transparent rounded-xl border border-green-200">
+                  <h4 className="font-bold text-almet-cloud-burst text-xs mb-1.5 flex items-center gap-1.5">
+                    <MessageSquare className="w-4 h-4 text-green-600" />
+                    Manager Overall Comments
+                  </h4>
+                  <p className="text-xs text-almet-cloud-burst">{selectedAssessment.manager_comments}</p>
+                  <p className="text-[10px] text-almet-waterloo mt-1.5">
+                    - {selectedAssessment.manager_name} on {new Date(selectedAssessment.manager_reviewed_at).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-5 border-t border-almet-mystic bg-gradient-to-b from-transparent to-almet-mystic/20">
+              <button
+                onClick={() => setSelectedAssessment(null)}
+                className="w-full px-5 py-2.5 bg-gradient-to-r text-xs from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal - Admin Only */}
+      {showSettings && userAccess?.is_admin && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div className="px-4 py-2 border-b border-almet-mystic flex items-center justify-between bg-gradient-to-r text-almet-sapphire">
+              <div className="flex items-center gap-2.5">
+                <Settings className="w-5 h-5" />
+                <h3 className="text-lg font-bold">Assessment Period Settings</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowSettings(false);
+                  setShowCreatePeriod(false);
+                }}
+                className="hover:bg-white/20 rounded-lg p-2 transition-all"
+              >
+                <span className="text-2xl">×</span>
+              </button>
+            </div>
+            
+            <div className="p-5 overflow-y-auto max-h-[calc(90vh-200px)]">
+              {!showCreatePeriod ? (
+                <>
+                  <div className="flex justify-between items-center mb-5">
+                    <h4 className="font-bold text-almet-cloud-burst text-base">Assessment Periods</h4>
+                    <button
+                      onClick={() => setShowCreatePeriod(true)}
+                      className="flex text-xs items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Create New Period
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-2.5">
+                    {allPeriods.length === 0 ? (
+                      <div className="text-center py-6">
+                        <Calendar className="w-7 h-7 text-almet-waterloo mx-auto mb-3" />
+                        <p className="text-almet-waterloo text-xs">No periods found. Create your first period!</p>
+                      </div>
+                    ) : (
+                      allPeriods.map(period => (
+                        <div key={period.id} className="p-3 border border-almet-mystic rounded-xl flex items-center justify-between hover:shadow-md transition-all bg-gradient-to-r from-almet-mystic/20 to-transparent">
+                          <div className="flex-1">
+                            <p className="font-semibold text-almet-cloud-burst text-base">{period.name}</p>
+                            <p className="text-xs text-almet-waterloo mt-0.5">
+                              {new Date(period.start_date).toLocaleDateString()} - {new Date(period.end_date).toLocaleDateString()}
+                            </p>
+                            <p className="text-[10px] text-almet-waterloo mt-0.5">
+                              Deadline: {new Date(period.submission_deadline).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {period.is_active ? (
+                              <span className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-medium flex items-center gap-1.5">
+                                <CheckCircle className="w-3.5 h-3.5" />
+Active
+</span>
+) : (
+<button
+onClick={async () => {
+try {
+await selfAssessmentService.activatePeriod(period.id);
+fetchAllPeriods();
+fetchInitialData();
+showToast('Period activated successfully', 'success');
+} catch (error) {
+showToast('Failed to activate period', 'error');
+}
+}}
+className="px-3 py-1.5 bg-almet-sapphire text-white rounded-lg text-xs font-medium hover:bg-almet-astral transition-all"
+>
+Activate
+</button>
+)}
+</div>
+</div>
+))
+)}
+</div>
+</>
+) : (
+<div className="space-y-5">
+<div className="flex items-center gap-2.5 mb-5">
+<button
+onClick={() => setShowCreatePeriod(false)}
+className="p-1.5 hover:bg-almet-mystic rounded-lg transition-all"
+>
+<ChevronDown className="w-4 h-4 rotate-90 text-almet-sapphire" />
+</button>
+<h4 className="font-bold text-almet-cloud-burst text-base">Create New Assessment Period</h4>
+</div>
+<div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-almet-cloud-burst mb-1.5">
+                        Period Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={newPeriod.name}
+                        onChange={(e) => setNewPeriod({...newPeriod, name: e.target.value})}
+                        placeholder="e.g., H1 2025, Q1 2025"
+                        className="w-full px-3 py-2 text-xs border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-almet-cloud-burst mb-1.5">
+                          Start Date *
+                        </label>
+                        <input
+                          type="date"
+                          value={newPeriod.start_date}
+                          onChange={(e) => setNewPeriod({...newPeriod, start_date: e.target.value})}
+                          className="w-full px-3 py-2 text-xs border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-almet-cloud-burst mb-1.5">
+                          End Date *
+                        </label>
+                        <input
+                          type="date"
+                          value={newPeriod.end_date}
+                          onChange={(e) => setNewPeriod({...newPeriod, end_date: e.target.value})}
+                          className="w-full px-3 py-2 text-xs border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-almet-cloud-burst mb-1.5">
+                          Submission Deadline *
+                        </label>
+                        <input
+                          type="date"
+                          value={newPeriod.submission_deadline}
+                          onChange={(e) => setNewPeriod({...newPeriod, submission_deadline: e.target.value})}
+                          className="w-full px-3 py-2 text-xs border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2.5 pt-3">
+                    <button
+                      onClick={() => {
+                        setShowCreatePeriod(false);
+                        setNewPeriod({
+                          name: '',
+                          start_date: '',
+                          end_date: '',
+                          submission_deadline: '',
+                          status: 'UPCOMING'
+                        });
+                      }}
+                      className="flex-1 px-5 py-1.5 text-xs bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleCreatePeriod}
+                      disabled={saving}
+                      className="flex-1 px-5 py-1.5 text-xs bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium disabled:opacity-50"
+                    >
+                      {saving ? 'Creating...' : 'Create Period'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-5 border-t border-almet-mystic">
+              <button
+                onClick={() => {
+                  setShowSettings(false);
+                  setShowCreatePeriod(false);
+                }}
+                className="w-full px-5 py-2.5 text-xs bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+</DashboardLayout>
+);
+};
 export default SelfAssessment;

@@ -1,4 +1,4 @@
-// components/handovers/CreateHandoverModal.jsx - IMPROVED DESIGN
+// components/handovers/CreateHandoverModal.jsx - UPDATED
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -47,9 +47,6 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
   const [activeStep, setActiveStep] = useState(1);
 
   const { showSuccess, showError, showWarning } = useToast();
-  const [selectedHandoverType, setSelectedHandoverType] = useState(null);
-  const isResignation = selectedHandoverType?.name?.toLowerCase() === 'resignation';
-
 
   // Load initial data
   useEffect(() => {
@@ -124,11 +121,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
   };
 
   const removeDate = (index) => {
-    if (dates.length > 1) {
-      setDates(dates.filter((_, i) => i !== index));
-    } else {
-      showWarning('At least one important date is required');
-    }
+    setDates(dates.filter((_, i) => i !== index));
   };
 
   // Handle file attachments
@@ -167,11 +160,10 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
- 
   // Handle next step
   const handleNextStep = () => {
     if (validateStep(activeStep)) {
-      setActiveStep(prev => Math.min(prev + 1, 4));
+      setActiveStep(prev => Math.min(prev + 1, 3)); // ⭐ 3 steps now
     } else {
       showError('Please fix the errors before continuing');
     }
@@ -181,17 +173,18 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
   const handlePrevStep = () => {
     setActiveStep(prev => Math.max(prev - 1, 1));
   };
+
   const getHandoverTypeName = (typeId) => {
     const type = handoverTypes.find(t => t.id === typeId);
     return type?.name?.toLowerCase() || '';
   };
 
-  // Helper to check if current type is resignation
   const isResignationType = () => {
     if (!formData.handover_type) return false;
     const typeName = getHandoverTypeName(formData.handover_type);
     return typeName.includes('resignation');
   };
+
   // Validate form
   const validateStep = (step) => {
     const newErrors = {};
@@ -213,16 +206,13 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
         newErrors.start_date = 'Start date is required';
       }
       
-      // ✅ Check if resignation
       const typeName = getHandoverTypeName(formData.handover_type);
       const isResignation = typeName.includes('resignation');
       
-      // ✅ End date validation - yalnız resignation deyilsə və ya doldurulubsa
       if (!isResignation && !formData.end_date) {
         newErrors.end_date = 'End date is required';
       }
       
-      // ✅ Əgər end_date doldurulubsa, validate et
       if (formData.end_date) {
         if (formData.start_date && new Date(formData.start_date) >= new Date(formData.end_date)) {
           newErrors.end_date = 'End date must be after start date';
@@ -230,21 +220,18 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
       }
     }
 
+    // ⭐ Step 2 - Tasks & Dates (dates optional)
     if (step === 2) {
       const validTasks = tasks.filter(t => t.description.trim());
       if (validTasks.length === 0) {
         newErrors.tasks = 'At least one task with description is required';
       }
+      
+      // ⭐ Dates are now OPTIONAL - no validation
     }
 
+    // ⭐ Step 3 - Additional Information
     if (step === 3) {
-      const validDates = dates.filter(d => d.date && d.description.trim());
-      if (validDates.length === 0) {
-        newErrors.dates = 'At least one important date is required';
-      }
-    }
-
-    if (step === 4) {
       const hasAnyField = formData.contacts || formData.access_info || 
                           formData.documents_info || formData.open_issues || 
                           formData.notes || attachments.length > 0;
@@ -258,13 +245,12 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-
   // Handle form submit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     let isValid = true;
-    for (let step = 1; step <= 4; step++) {
+    for (let step = 1; step <= 3; step++) { // ⭐ 3 steps now
       if (!validateStep(step)) {
         isValid = false;
         setActiveStep(step);
@@ -285,6 +271,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
           comment: t.comment
         }));
 
+      // ⭐ Dates optional - filter only filled ones
       const dates_data = dates
         .filter(d => d.date && d.description.trim())
         .map(d => ({
@@ -294,8 +281,9 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
 
       const handoverData = {
         ...formData,
+        end_date: formData.end_date || null, // ⭐ null if empty
         tasks_data,
-        dates_data
+        dates_data: dates_data.length > 0 ? dates_data : [] // ⭐ empty array if no dates
       };
 
       const result = await handoverService.createHandover(handoverData);
@@ -330,12 +318,11 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
     { value: 'POSTPONED', label: 'Postponed' },
   ];
 
-  // Steps configuration
+  // ⭐ Steps configuration - 3 steps now
   const steps = [
     { id: 1, label: 'Basic Info', icon: Users },
-    { id: 2, label: 'Tasks', icon: FileText },
-    { id: 3, label: 'Dates', icon: Calendar },
-    { id: 4, label: 'Details', icon: Folder },
+    { id: 2, label: 'Tasks & Dates', icon: FileText }, // ⭐ Combined
+    { id: 3, label: 'Details', icon: Folder },
   ];
 
   // Step indicator
@@ -430,7 +417,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                 </h3>
               </div>
 
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Handing Over Employee */}
                 <div>
                   <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
@@ -503,7 +490,6 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                       if (errors.handover_type) {
                         setErrors(prev => ({ ...prev, handover_type: '' }));
                       }
-                      // Clear end_date error when type changes
                       if (errors.end_date) {
                         setErrors(prev => ({ ...prev, end_date: '' }));
                       }
@@ -532,7 +518,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                       name="start_date"
                       value={formData.start_date}
                       onChange={handleInputChange}
-                      className={`w-full outline-0 pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
+                      className={`w-full outline-0 focus:outline-none   pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
                         errors.start_date ? 'border-red-500' : 'border-almet-bali-hai dark:border-gray-700'
                       }`}
                       required
@@ -543,7 +529,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                   )}
                 </div>
 
-                {/* End Date - ✅ with dynamic label */}
+                {/* End Date */}
                 <div>
                   <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
                     End Date {!isResignationType() && <span className="text-red-500">*</span>}
@@ -561,7 +547,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                       value={formData.end_date}
                       onChange={handleInputChange}
                       min={formData.start_date}
-                      className={`w-full outline-0 pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
+                      className={`w-full outline-0 focus:outline-none  pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
                         errors.end_date ? 'border-red-500' : 'border-almet-bali-hai dark:border-gray-700'
                       }`}
                       required={!isResignationType()}
@@ -573,7 +559,6 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                 </div>
               </div>
 
-              {/* Date Range Info - only show if both dates exist */}
               {formData.start_date && formData.end_date && new Date(formData.start_date) < new Date(formData.end_date) && (
                 <div className="bg-almet-mystic/50 dark:bg-almet-cloud-burst/10 border border-almet-bali-hai/50 dark:border-almet-cloud-burst/30 rounded-lg p-3.5">
                   <div className="flex items-start gap-2.5">
@@ -588,7 +573,6 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                 </div>
               )}
 
-              {/* Open-ended Resignation Warning - only show if resignation and no end date */}
               {isResignationType() && !formData.end_date && (
                 <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg p-3.5">
                   <div className="flex items-start gap-2.5">
@@ -605,175 +589,186 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
             </div>
           )}
             
-          {/* Step 2: Tasks Section */}
+          {/* ⭐ Step 2: Tasks & Important Dates (Combined) */}
           {activeStep === 2 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-almet-sapphire" />
-                  <h3 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
-                    Tasks & Responsibilities *
-                  </h3>
+            <div className="space-y-5">
+              {/* Tasks Section */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-almet-sapphire" />
+                    <h3 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
+                      Tasks & Responsibilities *
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addTask}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs bg-almet-mystic dark:bg-almet-cloud-burst/20 text-almet-sapphire rounded-lg hover:bg-almet-bali-hai/20 transition-colors font-medium"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Task
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={addTask}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs bg-almet-mystic dark:bg-almet-cloud-burst/20 text-almet-sapphire rounded-lg hover:bg-almet-bali-hai/20 transition-colors font-medium"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add Task
-                </button>
-              </div>
 
-              {errors.tasks && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2.5">
-                  <p className="text-red-700 dark:text-red-400 text-xs">{errors.tasks}</p>
-                </div>
-              )}
+                {errors.tasks && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2.5 mb-3">
+                    <p className="text-red-700 dark:text-red-400 text-xs">{errors.tasks}</p>
+                  </div>
+                )}
 
-              <div className="space-y-2.5">
-                {tasks.map((task, index) => (
-                  <div key={index} className="bg-almet-mystic/50 dark:bg-gray-800 p-3.5 rounded-lg border border-almet-bali-hai/50 dark:border-gray-700">
-                    <div className="flex items-start gap-2.5">
-                      <div className="flex-1 space-y-2.5">
-                        <div>
-                          <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
-                            Task Description *
-                          </label>
-                          <textarea
-                            value={task.description}
-                            onChange={(e) => handleTaskChange(index, 'description', e.target.value)}
-                            className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                            rows="2"
-                            placeholder="Enter task description..."
-                            required
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2.5">
+                <div className="space-y-2.5">
+                  {tasks.map((task, index) => (
+                    <div key={index} className="bg-almet-mystic/50 dark:bg-gray-800 p-3.5 rounded-lg border border-almet-bali-hai/50 dark:border-gray-700">
+                      <div className="flex items-start gap-2.5">
+                        <div className="flex-1 space-y-2.5">
                           <div>
                             <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
-                              Initial Status
+                              Task Description *
                             </label>
-                            <select
-                              value={task.status}
-                              onChange={(e) => handleTaskChange(index, 'status', e.target.value)}
-                              className="w-full px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                            >
-                              {taskStatusOptions.map(option => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
-                              Comment
-                            </label>
-                            <input
-                              type="text"
-                              value={task.comment}
-                              onChange={(e) => handleTaskChange(index, 'comment', e.target.value)}
-                              className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                              placeholder="Add comment..."
+                            <textarea
+                              value={task.description}
+                              onChange={(e) => handleTaskChange(index, 'description', e.target.value)}
+                              className="w-full outline-0 px-3 focus:outline-none  py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                              rows="2"
+                              placeholder="Enter task description..."
+                              required
                             />
                           </div>
+
+                          <div className="grid grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
+                                Initial Status
+                              </label>
+                              <select
+                                value={task.status}
+                                onChange={(e) => handleTaskChange(index, 'status', e.target.value)}
+                                className="w-full px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                              >
+                                {taskStatusOptions.map(option => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
+                                Comment
+                              </label>
+                              <input
+                                type="text"
+                                value={task.comment}
+                                onChange={(e) => handleTaskChange(index, 'comment', e.target.value)}
+                                className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                                placeholder="Add comment..."
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => removeTask(index)}
+                          disabled={tasks.length === 1}
+                          className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ⭐ Important Dates Section - OPTIONAL */}
+              <div className="border-t border-almet-mystic dark:border-gray-700 pt-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-almet-sapphire" />
+                    <h3 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
+                      Important Dates
+                    </h3>
+                    <span className="ml-2 px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded text-xs font-medium">
+                      Optional
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addDate}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 text-xs bg-almet-mystic dark:bg-almet-cloud-burst/20 text-almet-sapphire rounded-lg hover:bg-almet-bali-hai/20 transition-colors font-medium"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Date
+                  </button>
+                </div>
+
+                {dates.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {dates.map((dateItem, index) => (
+                      <div key={index} className="bg-blue-50/50 dark:bg-blue-900/10 p-3.5 rounded-lg border border-blue-200/50 dark:border-blue-800/50">
+                        <div className="flex items-start gap-2.5">
+                          <div className="flex-1 grid grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
+                                Date
+                              </label>
+                              <input
+                                type="date"
+                                value={dateItem.date}
+                                onChange={(e) => handleDateChange(index, 'date', e.target.value)}
+                                className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
+                                Description
+                              </label>
+                              <input
+                                type="text"
+                                value={dateItem.description}
+                                onChange={(e) => handleDateChange(index, 'description', e.target.value)}
+                                className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                                placeholder="Enter description..."
+                              />
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => removeDate(index)}
+                            className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
-
-                      <button
-                        type="button"
-                        onClick={() => removeTask(index)}
-                        disabled={tasks.length === 1}
-                        className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <div className="text-center py-6 bg-blue-50/30 dark:bg-blue-900/5 border border-dashed border-blue-200 dark:border-blue-800/30 rounded-lg">
+                    <Calendar className="w-10 h-10 text-blue-300 dark:text-blue-700 mx-auto mb-2" />
+                    <p className="text-xs text-almet-waterloo dark:text-gray-400 mb-2">
+                      No important dates added yet
+                    </p>
+                    <button
+                      type="button"
+                      onClick={addDate}
+                      className="text-xs text-almet-sapphire hover:text-almet-cloud-burst font-medium"
+                    >
+                      Click "Add Date" to add important dates
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          {/* Step 3: Important Dates */}
+          {/* ⭐ Step 3: Additional Information */}
           {activeStep === 3 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-almet-sapphire" />
-                  <h3 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
-                    Important Dates *
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={addDate}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs bg-almet-mystic dark:bg-almet-cloud-burst/20 text-almet-sapphire rounded-lg hover:bg-almet-bali-hai/20 transition-colors font-medium"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add Date
-                </button>
-              </div>
-
-              {errors.dates && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2.5">
-                  <p className="text-red-700 dark:text-red-400 text-xs">{errors.dates}</p>
-                </div>
-              )}
-
-              <div className="space-y-2.5">
-                {dates.map((dateItem, index) => (
-                  <div key={index} className="bg-almet-mystic/50 dark:bg-gray-800 p-3.5 rounded-lg border border-almet-bali-hai/50 dark:border-gray-700">
-                    <div className="flex items-start gap-2.5">
-                      <div className="flex-1 grid grid-cols-2 gap-2.5">
-                        <div>
-                          <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
-                            Date *
-                          </label>
-                          <input
-                            type="date"
-                            value={dateItem.date}
-                            onChange={(e) => handleDateChange(index, 'date', e.target.value)}
-                            className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                            required
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
-                            Description *
-                          </label>
-                          <input
-                            type="text"
-                            value={dateItem.description}
-                            onChange={(e) => handleDateChange(index, 'description', e.target.value)}
-                            className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                            placeholder="Enter description..."
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => removeDate(index)}
-                        disabled={dates.length === 1}
-                        className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Step 4: Additional Information */}
-          {activeStep === 4 && (
             <div className="space-y-3.5">
               <div className="flex items-center gap-2 mb-2">
                 <Folder className="w-4 h-4 text-almet-sapphire" />
@@ -802,7 +797,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                     name="contacts"
                     value={formData.contacts}
                     onChange={handleInputChange}
-                    className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                     rows="2"
                     placeholder="List important contacts..."
                   />
@@ -818,7 +813,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                     name="access_info"
                     value={formData.access_info}
                     onChange={handleInputChange}
-                    className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                     rows="2"
                     placeholder="System names, accounts..."
                   />
@@ -834,7 +829,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                     name="documents_info"
                     value={formData.documents_info}
                     onChange={handleInputChange}
-                    className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                     rows="2"
                     placeholder="File locations, shared drives..."
                   />
@@ -850,7 +845,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                     name="open_issues"
                     value={formData.open_issues}
                     onChange={handleInputChange}
-                    className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                     rows="2"
                     placeholder="Unresolved problems, pending actions..."
                   />
@@ -866,7 +861,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                     name="notes"
                     value={formData.notes}
                     onChange={handleInputChange}
-                    className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                     rows="3"
                     placeholder="Additional notes, tips, recommendations..."
                   />
@@ -937,6 +932,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
             </div>
           )}
 
+          {/* Footer Buttons */}
           <div className="flex items-center justify-between gap-3 pt-5 mt-5 border-t border-almet-mystic dark:border-gray-700">
             {/* Back Button */}
             <button

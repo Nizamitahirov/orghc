@@ -23,9 +23,7 @@ const AssignmentDetailModal = ({
   // Update local state when assignment prop changes
   React.useEffect(() => {
     if (assignment) {
-      console.log('Assignment received in modal:', assignment);
-      console.log('Materials in assignment:', assignment.materials);
-      console.log('Training materials:', assignment.training_materials);
+
       setLocalAssignment(assignment);
     }
   }, [assignment]);
@@ -46,7 +44,6 @@ const AssignmentDetailModal = ({
     setCompletingMaterialId(materialId);
     try {
       const response = await trainingService.assignments.completeMaterial(localAssignment.id, materialId);
-      console.log('Complete material response:', response);
       
       // Refresh assignment details to get updated data
       const updatedAssignment = await trainingService.assignments.getById(localAssignment.id);

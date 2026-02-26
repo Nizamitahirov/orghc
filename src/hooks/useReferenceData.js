@@ -71,14 +71,9 @@ import {
   selectEmployeeTagsForDropdown,
   selectContractConfigsForDropdown,
   selectReferenceDataForEmployeeForm,
-  selectDepartmentsByBusinessFunction,
-  selectUnitsByDepartment,
-  selectTagsByType,
   selectPositionGroupGradingLevels,
   selectIsDataStale,
-  selectIsValidBusinessFunction,
-  selectIsValidDepartment,
-  selectIsValidUnit
+
 } from '../store/slices/referenceDataSlice';
 
 export const useReferenceData = () => {

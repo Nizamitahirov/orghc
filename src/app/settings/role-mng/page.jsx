@@ -599,8 +599,6 @@ export default function RoleAccessManagementPage() {
     id: emp.id
   }));
 
-  console.log('Employee Options:', employeeOptions);
-  console.log(employees)
 
   const roleOptions = roles.map(role => ({
     value: role.id,

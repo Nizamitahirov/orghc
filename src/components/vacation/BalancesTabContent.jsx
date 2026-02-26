@@ -18,7 +18,7 @@ import SearchableDropdown from "@/components/common/SearchableDropdown";
 import PlanningStatisticsModal from './PlanningStatisticsModal';
 
 const BalancesTabContent = ({ 
-  userAccess,
+  userPermissions ,
   darkMode, 
   showSuccess, 
   showError,
@@ -156,7 +156,7 @@ const BalancesTabContent = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Name or ID..."
-              className="w-full pl-10 pr-4 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+              className="w-full pl-10 pr-4 py-2 text-xs border  focus:outline-none focus:ring-1 focus:ring-almet-sapphire outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
             />
           </div>
         </div>
@@ -195,7 +195,7 @@ const BalancesTabContent = ({
               setFilters((prev) => ({ ...prev, year: e.target.value }));
               setTimeout(() => fetchBalances(), 100);
             }}
-            className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+            className="w-full px-3 py-2 text-xs border outline-0 focus:outline-none focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
           />
         </div>
 
@@ -205,7 +205,7 @@ const BalancesTabContent = ({
           {(userPermissions.is_admin || userPermissions.is_manager) && (
             <button
               onClick={() => setShowStatsModal(true)}
-              className="px-4 py-2.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all flex items-center gap-2 shadow-sm"
+              className="px-4 py-2 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all flex items-center gap-2 shadow-sm"
             >
               <BarChart3 className="w-4 h-4" />
               Planning Stats
@@ -215,7 +215,7 @@ const BalancesTabContent = ({
           <button
             type="button"
             onClick={() => setShowFilters((prev) => !prev)}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm bg-almet-mystic dark:bg-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/60 dark:hover:bg-gray-600 transition-all"
+            className="flex items-center gap-2 px-4 py-2 text-xs bg-almet-mystic dark:bg-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/60 dark:hover:bg-gray-600 transition-all"
           >
             <Filter className="w-4 h-4" />
             More Filters
@@ -225,7 +225,7 @@ const BalancesTabContent = ({
             <button
               type="button"
               onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-sm"
+              className="flex items-center gap-2 px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-sm"
             >
               <Download className="w-4 h-4" />
               Export
@@ -237,7 +237,7 @@ const BalancesTabContent = ({
             <button
               type="button"
               onClick={handleClearFilters}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+              className="flex items-center gap-2 px-4 py-2 text-xs border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
             >
               <X className="w-4 h-4" />
               Clear
@@ -299,7 +299,7 @@ const BalancesTabContent = ({
                   }))
                 }
                 placeholder="0"
-                className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 text-xs border outline-0 focus:outline-none focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
               />
             </div>
 
@@ -318,7 +318,7 @@ const BalancesTabContent = ({
                   }))
                 }
                 placeholder="28"
-                className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 text-xs border outline-0 focus:outline-none focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
               />
             </div>
           </div>
@@ -327,14 +327,14 @@ const BalancesTabContent = ({
             <button
               type="button"
               onClick={handleApplyFilters}
-              className="px-4 py-2 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all"
+              className="px-4 py-2 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all"
             >
               Apply Filters
             </button>
             <button
               type="button"
               onClick={handleClearFilters}
-              className="px-4 py-2 text-sm border border-almet-mystic dark:border-almet-comet text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
+              className="px-4 py-2 text-xs border border-almet-mystic dark:border-almet-comet text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
             >
               Clear All
             </button>
@@ -413,7 +413,7 @@ const BalancesTabContent = ({
                                 used_days: e.target.value,
                               }))
                             }
-                            className="w-20 px-2 py-1 text-sm text-center border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded dark:bg-gray-700 dark:text-white"
+                            className="w-20 px-2 py-1 text-sm text-center border focus:outline-none focus:ring-1 focus:ring-almet-sapphire inset-0 outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded dark:bg-gray-700 dark:text-white"
                           />
                         ) : (
                           <span className="text-sm font-semibold text-orange-600">
@@ -433,7 +433,7 @@ const BalancesTabContent = ({
                                 scheduled_days: e.target.value,
                               }))
                             }
-                            className="w-20 px-2 py-1 text-sm text-center border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded dark:bg-gray-700 dark:text-white"
+                            className="w-20 px-2 py-1 text-sm text-center border focus:outline-none focus:ring-1 focus:ring-almet-sapphire outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded dark:bg-gray-700 dark:text-white"
                           />
                         ) : (
                           <span className="text-sm font-semibold text-almet-steel-blue">

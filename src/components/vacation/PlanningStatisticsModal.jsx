@@ -225,7 +225,7 @@ export default function PlanningStatisticsModal({
                   setCurrentPage(1);
                 }}
                 placeholder="Search by name, ID, or department..."
-                className="w-full pl-10 pr-4 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                className="w-full pl-10 pr-4 py-2 text-sm border focus:outline-none focus:ring-1 focus:ring-almet-sapphire outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
               />
             </div>
 

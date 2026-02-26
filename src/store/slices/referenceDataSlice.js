@@ -1,10 +1,6 @@
-// src/store/slices/referenceDataSlice.js - Job Titles əlavə edilib
+
 import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { referenceDataAPI } from '../api/referenceDataAPI';
-
-// ========================================
-// ASYNC THUNKS - FETCH OPERATIONS
-// ========================================
 
 export const fetchBusinessFunctions = createAsyncThunk(
   'referenceData/fetchBusinessFunctions',
@@ -54,7 +50,6 @@ export const fetchJobFunctions = createAsyncThunk(
   }
 );
 
-// NEW: Job Titles fetch
 export const fetchJobTitles = createAsyncThunk(
   'referenceData/fetchJobTitles',
   async (_, { rejectWithValue }) => {
@@ -127,9 +122,6 @@ export const fetchPositionGroupGradingLevels = createAsyncThunk(
   }
 );
 
-// ========================================
-// ASYNC THUNKS - JOB TITLES CRUD (NEW)
-// ========================================
 
 export const createJobTitle = createAsyncThunk(
   'referenceData/createJobTitle',
@@ -170,10 +162,6 @@ export const deleteJobTitle = createAsyncThunk(
   }
 );
 
-// ========================================
-// ASYNC THUNKS - Companys CRUD
-// ========================================
-
 export const createBusinessFunction = createAsyncThunk(
   'referenceData/createBusinessFunction',
   async (data, { rejectWithValue, dispatch }) => {
@@ -212,10 +200,6 @@ export const deleteBusinessFunction = createAsyncThunk(
     }
   }
 );
-
-// ========================================
-// ASYNC THUNKS - DEPARTMENTS CRUD
-// ========================================
 
 export const createDepartment = createAsyncThunk(
   'referenceData/createDepartment',
@@ -265,10 +249,6 @@ export const deleteDepartment = createAsyncThunk(
     }
   }
 );
-
-// ========================================
-// ASYNC THUNKS - UNITS CRUD
-// ========================================
 
 export const createUnit = createAsyncThunk(
   'referenceData/createUnit',
@@ -1609,32 +1589,9 @@ export const selectReferenceDataForEmployeeForm = createSelector(
   })
 );
 
-// Filtered data selectors
-export const selectDepartmentsByBusinessFunction = createSelector(
-  [selectDepartments, (state, businessFunctionId) => businessFunctionId],
-  (departments, businessFunctionId) => {
-    if (!businessFunctionId) return [];
-    const numericId = typeof businessFunctionId === 'string' ? parseInt(businessFunctionId) : businessFunctionId;
-    return departments.filter(dept => dept.business_function === numericId);
-  }
-);
 
-export const selectUnitsByDepartment = createSelector(
-  [selectUnits, (state, departmentId) => departmentId],
-  (units, departmentId) => {
-    if (!departmentId) return [];
-    const numericId = typeof departmentId === 'string' ? parseInt(departmentId) : departmentId;
-    return units.filter(unit => unit.department === numericId);
-  }
-);
 
-export const selectTagsByType = createSelector(
-  [selectEmployeeTags, (state, tagType) => tagType],
-  (tags, tagType) => {
-    if (!tagType) return tags;
-    return tags.filter(tag => tag.tag_type === tagType);
-  }
-);
+
 
 export const selectPositionGroupGradingLevels = createSelector(
   [selectGradingLevels, (state, positionGroupId) => positionGroupId],
@@ -1653,52 +1610,7 @@ export const selectIsDataStale = createSelector(
   }
 );
 
-// Validation selectors
-export const selectIsValidBusinessFunction = createSelector(
-  [selectBusinessFunctions, (state, id) => id],
-  (businessFunctions, id) => {
-    if (!id) return false;
-    const numericId = typeof id === 'string' ? parseInt(id) : id;
-    return businessFunctions.some(bf => 
-      (bf.id || bf.value) === numericId && bf.is_active !== false
-    );
-  }
-);
 
-export const selectIsValidDepartment = createSelector(
-  [selectDepartments, (state, id) => id, (state, id, businessFunctionId) => businessFunctionId],
-  (departments, id, businessFunctionId) => {
-    if (!id) return false;
-    const numericId = typeof id === 'string' ? parseInt(id) : id;
-    const department = departments.find(dept => (dept.id || dept.value) === numericId);
-    
-    if (!department || department.is_active === false) return false;
-    
-    if (businessFunctionId) {
-      const numericBfId = typeof businessFunctionId === 'string' ? parseInt(businessFunctionId) : businessFunctionId;
-      return department.business_function === numericBfId;
-    }
-    
-    return true;
-  }
-);
 
-export const selectIsValidUnit = createSelector(
-  [selectUnits, (state, id) => id, (state, id, departmentId) => departmentId],
-  (units, id, departmentId) => {
-    if (!id) return false;
-    const numericId = typeof id === 'string' ? parseInt(id) : id;
-    const unit = units.find(u => (u.id || u.value) === numericId);
-    
-    if (!unit || unit.is_active === false) return false;
-    
-    if (departmentId) {
-      const numericDeptId = typeof departmentId === 'string' ? parseInt(departmentId) : departmentId;
-      return unit.department === numericDeptId;
-    }
-    
-    return true;
-  }
-);
 
   

@@ -144,30 +144,7 @@ export const goalLimitService = {
   },
 };
 
-// ===================== DEPARTMENT OBJECTIVES =====================
-export const departmentObjectiveService = {
-  list: async (params = {}) => {
-    const queryString = buildQueryParams(params);
-    const response = await api.get(`/performance/performance/department-objectives/?${queryString}`);
-    return response.data;
-  },
-  create: async (data) => {
-    const response = await api.post('/performance/performance/department-objectives/', data);
-    return response.data;
-  },
-  get: async (id) => {
-    const response = await api.get(`/performance/performance/department-objectives/${id}/`);
-    return response.data;
-  },
-  update: async (id, data) => {
-    const response = await api.put(`/performance/performance/department-objectives/${id}/`, data);
-    return response.data;
-  },
-  delete: async (id) => {
-    await api.delete(`/performance/performance/department-objectives/${id}/`);
-    return true;
-  },
-};
+
 
 // ===================== EVALUATION SCALES =====================
 export const evaluationScaleService = {
@@ -245,29 +222,7 @@ export const objectiveStatusService = {
   },
 };
 
-// ===================== NOTIFICATION TEMPLATES =====================
-export const notificationTemplateService = {
-  list: async () => {
-    const response = await api.get('/performance/performance/notification-templates/');
-    return response.data;
-  },
-  create: async (data) => {
-    const response = await api.post('/performance/performance/notification-templates/', data);
-    return response.data;
-  },
-  get: async (id) => {
-    const response = await api.get(`/performance/performance/notification-templates/${id}/`);
-    return response.data;
-  },
-  update: async (id, data) => {
-    const response = await api.put(`/performance/performance/notification-templates/${id}/`, data);
-    return response.data;
-  },
-  delete: async (id) => {
-    await api.delete(`/performance/performance/notification-templates/${id}/`);
-    return true;
-  },
-};
+
 
 // ===================== EMPLOYEE PERFORMANCES =====================
 export const performanceService = {
@@ -503,22 +458,9 @@ cancelObjective: async (id, objectiveId, reason) => {
     return response.data;
   },
   
-  approveFinalManager: async (id) => {
-    const response = await api.post(
-      `/performance/performance/performances/${id}/approve_final_manager/`,
-      {}
-    );
-    return response.data;
-  },
 
-  // Utility Operations
-  recalculateScores: async (id) => {
-    const response = await api.post(
-      `/performance/performance/performances/${id}/recalculate_scores/`,
-      {}
-    );
-    return response.data;
-  },
+
+
   
   exportExcel: async (id) => {
     const response = await api.get(
@@ -596,11 +538,9 @@ const performanceApi = {
   years: performanceYearService,
   weightConfigs: weightConfigService,
   goalLimits: goalLimitService,
-  departmentObjectives: departmentObjectiveService,
   evaluationScales: evaluationScaleService,
   evaluationTargets: evaluationTargetService,
   objectiveStatuses: objectiveStatusService,
-  notificationTemplates: notificationTemplateService,
   performances: performanceService,
   departments: departmentsService,
   positionGroups: positionGroupsService,

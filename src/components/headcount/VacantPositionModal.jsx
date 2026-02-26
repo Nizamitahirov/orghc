@@ -105,14 +105,7 @@ const VacantPositionModal = ({
             
           }
 
-          console.log('Extracted IDs:', {
-            businessFunctionId,
-            departmentId,
-            unitId,
-            jobFunctionId,
-            positionGroupId,
-            reportingToId
-          });
+    
 
           // Load cascading data sequentially
           let loadedDepartments = [];
@@ -167,7 +160,7 @@ const VacantPositionModal = ({
               notes: initialData.notes || ''
             };
 
-            console.log('Setting form data:', newFormData);
+        
             setFormData(newFormData);
           }
 

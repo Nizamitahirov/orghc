@@ -5,17 +5,18 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import performanceApi from "@/services/performanceService";
 import competencyApi from "@/services/competencyApi";
+import pmSurveyApi from "@/services/pmSurveyService"; 
 
 // Component Imports
 import PerformanceHeader from "@/components/performance/PerformanceHeader";
 import PerformanceDashboard from "@/components/performance/PerformanceDashboard";
 import EmployeePerformanceDetail from "@/components/performance/EmployeePerformanceDetail";
+import PMSurveyComponent from "@/components/performance/PMSurveyComponent";
+import PMSurveyList from "@/components/performance/PMSurveyList";
 
 // Common Components
 import { LoadingSpinner, ErrorDisplay } from "@/components/common/LoadingSpinner";
 import { useToast } from "@/components/common/Toast";
-
-// Icons
 import { Loader, Users } from 'lucide-react';
 
 export default function PerformanceManagementPage() {
@@ -24,11 +25,11 @@ export default function PerformanceManagementPage() {
   const { showSuccess, showError, showWarning, showInfo } = useToast();
   
   // UI State
-  const [activeView, setActiveView] = useState('dashboard');
+  const [activeView, setActiveView] = useState('dashboard'); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // ✅ NEW: Simplified User Access (Job Description style)
+  // User Access
   const [userAccess, setUserAccess] = useState({
     can_view_all: false,
     is_manager: false,
@@ -53,11 +54,15 @@ export default function PerformanceManagementPage() {
   const [selectedPerformanceId, setSelectedPerformanceId] = useState(null);
   const [performanceData, setPerformanceData] = useState({});
 
-  // Settings & References
+  const [surveyData, setSurveyData] = useState(null);
+  const [surveyQuestionsData, setSurveyQuestionsData] = useState([]); 
+  const [teamSurveys, setTeamSurveys] = useState(null);
+
+
+
   const [settings, setSettings] = useState({
     weightConfigs: [],
     goalLimits: { min: 3, max: 7 },
-    departmentObjectives: [],
     evaluationScale: [],
     evaluationTargets: { objective_score_target: 21 },
     statusTypes: []
@@ -83,7 +88,6 @@ export default function PerformanceManagementPage() {
     setLoading(true);
     setError(null);
     try {
-      // ✅ Load user access first
       await loadUserAccess();
       
       await Promise.all([
@@ -102,12 +106,9 @@ export default function PerformanceManagementPage() {
     }
   };
 
-  // ✅ NEW: Load user access info (like Job Description)
   const loadUserAccess = async () => {
     try {
       const accessInfo = await performanceApi.performances.getMyAccessInfo();
-      
-   
       
       setUserAccess({
         can_view_all: accessInfo.can_view_all || false,
@@ -139,73 +140,70 @@ export default function PerformanceManagementPage() {
     }
   };
 
-  // app/efficiency/page.jsx
+  const loadSettings = async () => {
+    try {
+      const [weightsRes, limitsRes,  scalesRes, targetsRes, statusesRes] = 
+        await Promise.all([
+          performanceApi.weightConfigs.list(),
+          performanceApi.goalLimits.getActiveConfig(),
+         
+          performanceApi.evaluationScales.list(),
+          performanceApi.evaluationTargets.getActiveConfig(),
+          performanceApi.objectiveStatuses.list()
+        ]);
+      
+      const sortedScales = (scalesRes.results || scalesRes).sort(
+        (a, b) => a.range_min - b.range_min
+      );
+      
+      setSettings({
+        weightConfigs: weightsRes.results || weightsRes,
+        goalLimits: {
+          min: limitsRes.min_goals,
+          max: limitsRes.max_goals
+        },
+     
+        evaluationScale: sortedScales,
+        evaluationTargets: {
+          objective_score_target: targetsRes.objective_score_target
+        },
+        statusTypes: statusesRes.results || statusesRes
+      });
+      
+    } catch (error) {
+      console.error('❌ Error loading settings:', error);
+      throw error;
+    }
+  };
 
-const loadSettings = async () => {
-  try {
-    const [weightsRes, limitsRes, deptObjRes, scalesRes, targetsRes, statusesRes] = 
-      await Promise.all([
-        performanceApi.weightConfigs.list(),
-        performanceApi.goalLimits.getActiveConfig(),
-        performanceApi.departmentObjectives.list({}),
-        performanceApi.evaluationScales.list(),
-        performanceApi.evaluationTargets.getActiveConfig(),
-        performanceApi.objectiveStatuses.list()
-      ]);
-    
-    // ✅ Sort evaluation scales by range_min for consistent lookup
-    const sortedScales = (scalesRes.results || scalesRes).sort(
-      (a, b) => a.range_min - b.range_min
-    );
-    
-    setSettings({
-      weightConfigs: weightsRes.results || weightsRes,
-      goalLimits: {
-        min: limitsRes.min_goals,
-        max: limitsRes.max_goals
-      },
-      departmentObjectives: deptObjRes.results || deptObjRes,
-      evaluationScale: sortedScales,  // ✅ Use sorted scales
-      evaluationTargets: {
-        objective_score_target: targetsRes.objective_score_target
-      },
-      statusTypes: statusesRes.results || statusesRes
-    });
-    
-  } catch (error) {
-    console.error('❌ Error loading settings:', error);
-    throw error;
-  }
-};
-const handleInitializeEmployee = async (employee) => {
-  if (!activeYear) {
-    showError('No active performance year');
-    return;
-  }
+  const handleInitializeEmployee = async (employee) => {
+    if (!activeYear) {
+      showError('No active performance year');
+      return;
+    }
 
-  try {
-    setLoading(true);
-    
-    const result = await performanceApi.performances.initialize({
-      employee: employee.id,
-      performance_year: activeYear.id
-    });
-    
-    showSuccess(`✅ Performance initialized for ${employee.name || employee.employee_name}`);
-    
-    // Reload employees to reflect new performance
-    await loadEmployees();
-    
-  } catch (error) {
-    console.error('❌ Error initializing employee:', error);
-    const errorMsg = error.response?.data?.error || 
-                     error.response?.data?.message || 
-                     'Failed to initialize performance';
-    showError(errorMsg);
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+      
+      const result = await performanceApi.performances.initialize({
+        employee: employee.id,
+        performance_year: activeYear.id
+      });
+      
+      showSuccess(`✅ Performance initialized for ${employee.name || employee.employee_name}`);
+      
+      await loadEmployees();
+      
+    } catch (error) {
+      console.error('❌ Error initializing employee:', error);
+      const errorMsg = error.response?.data?.error || 
+                       error.response?.data?.message || 
+                       'Failed to initialize performance';
+      showError(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadBehavioralCompetencies = async () => {
     try {
@@ -308,65 +306,243 @@ const handleInitializeEmployee = async (employee) => {
     }
   };
 
-  // ✅ UPDATE: loadEmployees function in page.jsx
+
+// ── Replace loadEmployees in page.jsx ─────────────────────────────────────
 
 const loadEmployees = async () => {
   try {
-    if (!userAccess.employee_id) {
-      console.error('❌ No employee_id in userAccess!');
-      setEmployees([]);
-      return;
-    }
-    
-    // ✅ NEW: Use team_members_with_status API
-    const teamResponse = await performanceApi.performances.getTeamMembersWithStatus(selectedYear);
-    
+    if (!userAccess.employee_id) { setEmployees([]); return; }
 
-    
-    // Extract team members with performance data
-    const employeesWithPerformance = teamResponse.team_members.map(member => {
-    
-      const emp = member.employee;
+    const teamResponse = await performanceApi.performances.getTeamMembersWithStatus(selectedYear);
+
+    const mapped = teamResponse.team_members.map(member => {
+      const emp  = member.employee;
       const perf = member.performance;
-      
+
       return {
-        id: emp.id,
-        employee_id: emp.employee_id,
-        name: emp.full_name,
+        // Identity
+        id:           emp.id,
+        employee_id:  emp.employee_id,
+        name:         emp.full_name,
         employee_name: emp.full_name,
-        company: emp.company_name,
-        employee_company: emp.company_name,
-        position: emp.position_group,
-        employee_position_group: emp.position_group,
-        department: emp.department,
-        employee_department: emp.department,
-        line_manager: emp.line_manager_name,
+
+        // ✅ Org hierarchy — all three separate
+        employee_business_function: emp.business_function_name,   // e.g. "Almet MMC"
+        employee_unit:              emp.unit_name,                 // e.g. "Finance Unit"
+        employee_position_group:    emp.position_group,
+
+        // Legacy aliases (used elsewhere in app)
+        company:          emp.business_function_name,
+        employee_company: emp.business_function_name,
+        position:         emp.position_group,
+
+        line_manager:    emp.line_manager_name,
         line_manager_hc: emp.line_manager_hc,
-        
-        // Performance data
+
+        // Performance status
         has_performance: member.has_performance,
-        can_initialize: member.can_initialize,
-        performanceId: perf?.id || null,
-        objectives_percentage: perf?.objectives_percentage || 0,
-        competencies_percentage: perf?.competencies_percentage || 0,
-        overall_weighted_percentage: perf?.overall_weighted_percentage || 0,
-        final_rating: perf?.final_rating || null,
+        can_initialize:  member.can_initialize,
+        performanceId:   perf?.id || null,
+
+        // ✅ Score fields
+        objectives_percentage:        parseFloat(perf?.objectives_percentage    || 0),
+        competencies_percentage:      parseFloat(perf?.competencies_percentage  || 0),
+        overall_weighted_percentage:  parseFloat(perf?.overall_weighted_percentage || 0),
+        final_rating:                 perf?.final_rating              || null,
+        competencies_letter_grade:    perf?.competencies_letter_grade || null,
+
+        // Workflow flags
         objectives_employee_approved: perf?.objectives_employee_approved || false,
-        objectives_manager_approved: perf?.objectives_manager_approved || false,
-        mid_year_completed: perf?.mid_year_completed || false,
-        end_year_completed: perf?.end_year_completed || false,
-        approval_status: perf?.approval_status || 'NOT_STARTED'
+        objectives_manager_approved:  perf?.objectives_manager_approved  || false,
+        mid_year_completed:           perf?.mid_year_completed           || false,
+        end_year_completed:           perf?.end_year_completed           || false,
+        approval_status:              perf?.approval_status              || 'NOT_STARTED',
       };
     });
-    
-   
-    setEmployees(employeesWithPerformance);
-    
+
+    setEmployees(mapped);
   } catch (error) {
     console.error('❌ Error loading team members:', error);
     showError('Error loading team members');
   }
 };
+const loadSurveyQuestions = async () => {
+  if (surveyQuestionsData.length > 0) return surveyQuestionsData; // cache
+  try {
+    const data = await pmSurveyApi.questions.getBySection();
+    setSurveyQuestionsData(data);
+    return data;
+  } catch (err) {
+    console.error('❌ Error loading survey questions:', err);
+    return [];
+  }
+};
+
+  const handleLoadMySurvey = async () => {
+  setLoading(true);
+  try {
+    await loadSurveyQuestions();
+
+    let survey = null;
+    try {
+      survey = await pmSurveyApi.responses.getMySurvey(selectedYear);
+    } catch (err) {
+      if (err.response?.status !== 404) {
+        showError('Error loading survey');
+        return;
+      }
+    }
+
+    if (!survey) {
+      if (!activeYear?.id || !userAccess.employee_id) {
+        showError('Missing employee or year info');
+        return;
+      }
+
+      try {
+        const initRes = await pmSurveyApi.responses.initialize({
+          employee: userAccess.employee_id,
+          performance_year: activeYear.id
+        });
+        survey = initRes.data ?? initRes;
+        showSuccess('Survey initialized!');
+      } catch (initErr) {
+        const d = initErr.response?.data;
+
+        if (d?.survey_id) {
+          survey = await pmSurveyApi.responses.get(d.survey_id);
+        } else {
+          const msg = d?.error || d?.message || d?.non_field_errors?.[0] || 'Cannot initialize survey';
+          showError(msg);
+          return;
+        }
+      }
+    }
+
+    setSurveyData(survey);
+    setActiveView('pm-survey');
+  } catch (error) {
+    console.error('❌ handleLoadMySurvey:', error);
+    showError('Error loading survey');
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+
+const handleTakePMSurvey = async (employeeId) => {
+  setLoading(true);
+  try {
+    await loadSurveyQuestions();
+
+    if (employeeId === userAccess.employee_id) {
+      await handleLoadMySurvey();
+      return;
+    }
+
+    let survey = null;
+
+    try {
+      const list = await pmSurveyApi.responses.list({ year: selectedYear });
+      const surveys = list.results ?? list;
+      survey = surveys.find(s => s.employee === employeeId) ?? null;
+    } catch (err) {
+      console.error('❌ Error fetching surveys list:', err);
+    }
+
+    if (!survey) {
+      try {
+        const initRes = await pmSurveyApi.responses.initialize({
+          employee: employeeId,
+          performance_year: activeYear.id
+        });
+        survey = initRes.data ?? initRes;
+        showSuccess('Survey initialized!');
+      } catch (initErr) {
+        const d = initErr.response?.data;
+        if (d?.survey_id) {
+          survey = await pmSurveyApi.responses.get(d.survey_id);
+        } else {
+          showError(d?.error || d?.message || 'Cannot initialize survey');
+          return;
+        }
+      }
+    } else {
+      survey = await pmSurveyApi.responses.get(survey.id);
+    }
+
+    setSurveyData(survey);
+    setActiveView('pm-survey');
+  } catch (error) {
+    console.error('❌ handleTakePMSurvey:', error);
+    showError('Error loading survey');
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const handleSaveSurveyAnswers = async (answers) => {
+    if (!surveyData?.id) return;
+    try {
+      setLoading(true);
+      const res = await pmSurveyApi.responses.saveAnswers(surveyData.id, answers);
+      
+      const updated = await pmSurveyApi.responses.get(surveyData.id);
+      setSurveyData(updated);
+    } catch (error) {
+      console.error('❌ Error saving answers:', error);
+      showError(error.response?.data?.error || 'Error saving answers');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitSurvey = async () => {
+    if (!surveyData?.id) return;
+    try {
+      setLoading(true);
+      await pmSurveyApi.responses.submit(surveyData.id);
+      showSuccess('Survey submitted successfully! Thank you for your feedback.');
+      const updated = await pmSurveyApi.responses.get(surveyData.id);
+      setSurveyData(updated);
+    } catch (error) {
+      console.error('❌ Error submitting survey:', error);
+      showError(error.response?.data?.message || error.response?.data?.error || 'Error submitting survey');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLoadTeamSurveys = async () => {
+    try {
+      setLoading(true);
+      const response = await pmSurveyApi.responses.getTeamSurveys(selectedYear);
+      setTeamSurveys(response);
+      setActiveView('pm-survey-list');
+    } catch (error) {
+      console.error('❌ Error loading team surveys:', error);
+      showError(error.response?.data?.error || 'Error loading team surveys');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewSurvey = async (survey) => {
+    try {
+      setLoading(true);
+      await loadSurveyQuestions(); 
+      const response = await pmSurveyApi.responses.get(survey.id);
+      setSurveyData(response);
+      setActiveView('pm-survey');
+    } catch (error) {
+      console.error('❌ Error loading survey:', error);
+      showError('Error loading survey');
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const loadPerformanceData = async (employeeId, year) => {
     const key = `${employeeId}_${year}`;
@@ -523,18 +699,9 @@ const loadEmployees = async () => {
     }
   };
 
-  // ✅ SIMPLIFIED: canViewEmployee (backend handles filtering)
   const canViewEmployee = (employeeId) => {
-    // If employee is in the list, we can view them (backend already filtered)
     return employees.some(e => e.id === employeeId);
   };
-
-  const getCurrentPeriod = () => {
-    if (!activeYear) return 'CLOSED';
-    return activeYear.current_period || 'CLOSED';
-  };
-
-  // app/efficiency/page.jsx
 
 const getLetterGradeFromScale = (percentage) => {
   if (!settings.evaluationScale || settings.evaluationScale.length === 0) {
@@ -554,8 +721,7 @@ const getLetterGradeFromScale = (percentage) => {
     return matchingScale.name;
   }
   
-  // ✅ Fallback for edge cases
-  // If below all ranges, return lowest grade
+
   if (numPercentage < settings.evaluationScale[0].range_min) {
     return settings.evaluationScale[0].name;
   }
@@ -623,6 +789,25 @@ const getLetterGradeFromScale = (percentage) => {
 
   
   return newData;
+};
+
+// ==================== COMPLETE END-YEAR HANDLER ====================
+const handleCompleteEndYear = async (performanceId) => {
+  setLoading(true);
+  try {
+    await performanceApi.performances.completeEndYear(performanceId, '');
+    showSuccess('✅ End-year review completed successfully! Performance cycle is now finalized.');
+    await loadPerformanceData(selectedEmployee.id, selectedYear);
+    await loadEmployees(); // Refresh employee list
+  } catch (error) {
+    console.error('❌ Error completing end-year:', error);
+    const errorMsg = error.response?.data?.error || 
+                     error.response?.data?.detail || 
+                     'Error completing end-year review';
+    showError(errorMsg);
+  } finally {
+    setLoading(false);
+  }
 };
 
   // ==================== OBJECTIVE HANDLERS ====================
@@ -759,11 +944,9 @@ const handleUpdateObjective = (index, field, value) => {
   
 
   
-  // ✅ CRITICAL FIX: Create completely new array with new objects
   const newObjectives = data.objectives.map((obj, idx) => {
     if (idx !== index) {
-      // ✅ For unchanged objectives, return NEW object with same values
-      // This prevents reference issues
+     
       return { ...obj };
     }
     
@@ -833,7 +1016,7 @@ const handleUpdateObjective = (index, field, value) => {
       title: '',
       description: '',
       weight: 0,
-      linked_department_objective: null,
+ 
       status: defaultStatus,
       end_year_rating: null,
       calculated_score: 0,
@@ -1204,9 +1387,12 @@ const handleUpdateObjective = (index, field, value) => {
     setActiveView('detail');
   };
 
-  const handleBackToDashboard = () => {
+     const handleBackToDashboard = () => {
     setSelectedEmployee(null);
     setSelectedPerformanceId(null);
+    setSurveyData(null);
+    setTeamSurveys(null);
+  
     setActiveView('dashboard');
   };
 
@@ -1253,7 +1439,6 @@ const handleUpdateObjective = (index, field, value) => {
   const currentKey = selectedEmployee ? `${selectedEmployee.id}_${selectedYear}` : null;
   const currentPerformanceData = currentKey ? performanceData[currentKey] : null;
 
-  // ✅ Convert userAccess to old permissions format for compatibility
   const compatiblePermissions = {
     is_admin: userAccess.is_admin,
     can_view_all: userAccess.can_view_all,
@@ -1270,91 +1455,131 @@ const handleUpdateObjective = (index, field, value) => {
     <DashboardLayout>
       <div className="min-h-screen p-6 mx-auto">
         <PerformanceHeader
-          selectedYear={selectedYear}
-          setSelectedYear={setSelectedYear}
-          performanceYears={performanceYears}
-          currentPeriod={getCurrentPeriod()}
-          loading={loading}
-          onRefresh={loadDashboardData}
-          onSettings={() => router.push('/efficiency/settings')}
-          darkMode={darkMode}
-          permissions={compatiblePermissions}
-        />
-
-        {activeView === 'dashboard' ? (
-          
-<PerformanceDashboard
-  dashboardStats={dashboardStats}
-  employees={employees}
-  settings={settings}
   selectedYear={selectedYear}
-  permissions={compatiblePermissions}
-  onSelectEmployee={handleSelectEmployee}
-  canViewEmployee={canViewEmployee}
-  onLoadEmployeePerformance={handleLoadEmployeePerformance}
-  // ✅ NEW PROPS:
-  onInitializeEmployee={handleInitializeEmployee}
-
-  performanceYearId={activeYear?.id}
-  canInitialize={userAccess.is_admin || userAccess.is_manager}
+  setSelectedYear={setSelectedYear}
+  performanceYears={performanceYears}
+  loading={loading}
+  currentPeriod={activeYear?.current_period || 'CLOSED'}
+  onRefresh={loadDashboardData}
+  onSettings={() => router.push('/efficiency/settings')}
+  onViewMySurvey={handleLoadMySurvey}
+  onViewTeamSurveys={(userAccess.is_manager || userAccess.is_admin) ? handleLoadTeamSurveys : null}
   darkMode={darkMode}
-/> 
-        ) : (
-          selectedEmployee && currentPerformanceData ? (
-            <EmployeePerformanceDetail
-              employee={selectedEmployee}
-              performanceData={currentPerformanceData}
-              settings={settings}
-              currentPeriod={getCurrentPeriod()}
-              activeYear={activeYear}
-              permissions={compatiblePermissions}
-              loading={loading}
-              darkMode={darkMode}
-              onBack={handleBackToDashboard}
-              onExport={handleExportExcel}
-               onAddObjectiveComment={handleAddObjectiveComment}
-  onDeleteObjectiveComment={handleDeleteObjectiveComment}
-              onUpdateObjective={handleUpdateObjective}
-              onAddObjective={handleAddObjective}
-              onDeleteObjective={handleDeleteObjective}
-              onSaveObjectivesDraft={handleSaveObjectivesDraft}
-              onSubmitObjectives={handleSubmitObjectives}
-              onCancelObjective={handleCancelObjective}
-              
-              onUpdateCompetency={handleUpdateCompetency}
-              onSaveCompetenciesDraft={handleSaveCompetenciesDraft}
-              onSubmitCompetencies={handleSubmitCompetencies}
-              onSaveEndYearObjectivesDraft={handleSaveEndYearObjectivesDraft}
-  onSubmitEndYearObjectives={handleSubmitEndYearObjectives}
-              onSubmitMidYearEmployee={handleSubmitMidYearEmployee}
-              onSubmitMidYearManager={handleSubmitMidYearManager}
-              
-              onSubmitEndYearEmployee={handleSubmitEndYearEmployee}
-              onSubmitEndYearManager={handleSubmitEndYearManager}
-              
-              onUpdateDevelopmentNeed={handleUpdateDevelopmentNeed}
-              onAddDevelopmentNeed={handleAddDevelopmentNeed}
-              onDeleteDevelopmentNeed={handleDeleteDevelopmentNeed}
-              onSaveDevelopmentNeedsDraft={handleSaveDevelopmentNeedsDraft}
-            />
-          ) : (
-            <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl border shadow-sm p-16 text-center`}>
-              <Users className="w-20 h-20 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-              <h3 className="text-lg font-semibold mb-2 text-gray-600 dark:text-gray-400">
-                No Employee Selected
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-                Select a team member from the dashboard to view their performance
-              </p>
-              <button
-                onClick={handleBackToDashboard}
-                className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-medium transition-all shadow-sm"
-              >
-                Back to Dashboard
-              </button>
-            </div>
-          )
-        )}
+  permissions={compatiblePermissions}
+/>
+
+
+
+{activeView === 'dashboard' && (
+  <PerformanceDashboard
+    dashboardStats={dashboardStats}
+    employees={employees}
+    settings={settings}
+    selectedYear={selectedYear}
+    permissions={compatiblePermissions}
+    onSelectEmployee={handleSelectEmployee}
+    canViewEmployee={canViewEmployee}
+    onLoadEmployeePerformance={handleLoadEmployeePerformance}
+    onInitializeEmployee={handleInitializeEmployee}
+    performanceYearId={activeYear?.id}
+    canInitialize={userAccess.is_admin || userAccess.is_manager}
+    darkMode={darkMode}
+     surveyStatus={surveyData?.status ?? null}   // ← add this
+    onViewMySurvey={handleLoadMySurvey}
+    currentPeriod={activeYear?.current_period || 'CLOSED'} 
+  />
+)}
+
+
+
+{activeView === 'detail' && selectedEmployee && currentPerformanceData && (
+  <EmployeePerformanceDetail
+    employee={selectedEmployee}
+    performanceData={currentPerformanceData}
+    settings={settings}
+    currentPeriod={activeYear?.current_period || 'CLOSED'}
+    activeYear={activeYear}
+    onCompleteEndYear={handleCompleteEndYear}
+    permissions={compatiblePermissions}
+    loading={loading}
+    darkMode={darkMode}
+    onBack={handleBackToDashboard}
+    onExport={handleExportExcel}
+    onAddObjectiveComment={handleAddObjectiveComment}
+    onDeleteObjectiveComment={handleDeleteObjectiveComment}
+    onUpdateObjective={handleUpdateObjective}
+    onAddObjective={handleAddObjective}
+    onDeleteObjective={handleDeleteObjective}
+    onSaveObjectivesDraft={handleSaveObjectivesDraft}
+    onSubmitObjectives={handleSubmitObjectives}
+    onCancelObjective={handleCancelObjective}
+    onUpdateCompetency={handleUpdateCompetency}
+    onSaveCompetenciesDraft={handleSaveCompetenciesDraft}
+    onSubmitCompetencies={handleSubmitCompetencies}
+    onSaveEndYearObjectivesDraft={handleSaveEndYearObjectivesDraft}
+    onSubmitEndYearObjectives={handleSubmitEndYearObjectives}
+    onSubmitMidYearEmployee={handleSubmitMidYearEmployee}
+    onSubmitMidYearManager={handleSubmitMidYearManager}
+    onSubmitEndYearEmployee={handleSubmitEndYearEmployee}
+    onSubmitEndYearManager={handleSubmitEndYearManager}
+    onUpdateDevelopmentNeed={handleUpdateDevelopmentNeed}
+    onAddDevelopmentNeed={handleAddDevelopmentNeed}
+    onDeleteDevelopmentNeed={handleDeleteDevelopmentNeed}
+    onSaveDevelopmentNeedsDraft={handleSaveDevelopmentNeedsDraft}
+    onTakePMSurvey={handleTakePMSurvey}  
+  />
+)}
+
+
+{activeView === 'pm-survey' && surveyData && (
+  <PMSurveyComponent
+    surveyData={surveyData}
+    questionsData={surveyQuestionsData}   
+    onSaveAnswers={handleSaveSurveyAnswers}
+    onSubmit={handleSubmitSurvey}
+    onBack={() => {
+      setSurveyData(null);
+      // Əgər team survey list-dən gəlibsə ora qayıt
+      if (teamSurveys) {
+        setActiveView('pm-survey-list');
+      } else {
+        setActiveView('dashboard');
+      }
+    }}
+    loading={loading}
+    darkMode={darkMode}
+  />
+)}
+
+{activeView === 'pm-survey-list' && teamSurveys && (
+  <PMSurveyList
+    surveys={teamSurveys.surveys || []}
+    statistics={teamSurveys.statistics}
+    onViewSurvey={handleViewSurvey}
+   
+    onBack={handleBackToDashboard}      
+    darkMode={darkMode}
+  />
+)}
+
+
+{activeView === 'detail' && !selectedEmployee && (
+  <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl border shadow-sm p-16 text-center`}>
+    <Users className="w-20 h-20 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+    <h3 className="text-lg font-semibold mb-2 text-gray-600 dark:text-gray-400">
+      No Employee Selected
+    </h3>
+    <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+      Select a team member from the dashboard to view their performance
+    </p>
+    <button
+      onClick={handleBackToDashboard}
+      className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-medium transition-all shadow-sm"
+    >
+      Back to Dashboard
+    </button>
+  </div>
+)}
 
         {loading && activeYear && (
           <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">

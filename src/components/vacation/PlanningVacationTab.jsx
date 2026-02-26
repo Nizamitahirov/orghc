@@ -1,11 +1,10 @@
-// components/vacation/PlanningVacationTab.jsx - FIXED
+// components/vacation/PlanningVacationTab.jsx - ✅ COMPLETE FINAL VERSION
 
 import { useState, useEffect } from 'react';
 import { 
   Calendar, 
   ChevronLeft, 
   ChevronRight, 
-
   Trash2,
   Save,
   AlertCircle,
@@ -26,6 +25,7 @@ export default function PlanningVacationTab({
   showSuccess,
   showError
 }) {
+  // ✅ ALL STATES
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [requester, setRequester] = useState('for_me');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -34,10 +34,24 @@ export default function PlanningVacationTab({
   const [selectedRanges, setSelectedRanges] = useState([]);
   const [loading, setLoading] = useState(false);
   const [totalDaysPlanned, setTotalDaysPlanned] = useState(0);
-  
-  // ✅ Existing scheduled periods
   const [existingSchedules, setExistingSchedules] = useState([]);
   const [pendingScheduledDays, setPendingScheduledDays] = useState(0);
+  const [rangeDays, setRangeDays] = useState({});
+
+  // ✅ HELPER: Get business function code
+  const getBusinessFunctionCode = () => {
+    if (requester === 'for_me' && employeeSearchResults && employeeSearchResults.length > 0) {
+      const userEmail = VacationService.getCurrentUserEmail();
+      const currentEmployee = employeeSearchResults.find(emp => 
+        emp.email?.toLowerCase() === userEmail.toLowerCase()
+      );
+      return currentEmployee?.business_function_name?.toUpperCase().includes('UK') ? 'UK' : 'AZ';
+    } else if (requester === 'for_my_employee' && selectedEmployee) {
+      const employee = employeeSearchResults.find(emp => emp.id === selectedEmployee);
+      return employee?.business_function_name?.toUpperCase().includes('UK') ? 'UK' : 'AZ';
+    }
+    return null;
+  };
 
   // ✅ AUTO-SELECT PAID VACATION
   useEffect(() => {
@@ -120,26 +134,16 @@ export default function PlanningVacationTab({
     }
   };
 
-  // ✅ Calculate total days
+  // ✅ CALCULATE WORKING DAYS FOR EACH RANGE
   useEffect(() => {
-    const calculateTotalDays = async () => {
-      let total = 0;
-      
-      let businessFunctionCode = null;
-      if (requester === 'for_me' && employeeSearchResults && employeeSearchResults.length > 0) {
-        const userEmail = VacationService.getCurrentUserEmail();
-        const currentEmployee = employeeSearchResults.find(emp => 
-          emp.email?.toLowerCase() === userEmail.toLowerCase()
-        );
-        if (currentEmployee && currentEmployee.business_function_name) {
-          businessFunctionCode = currentEmployee.business_function_name.toUpperCase().includes('UK') ? 'UK' : 'AZ';
-        }
-      } else if (requester === 'for_my_employee' && selectedEmployee) {
-        const employee = employeeSearchResults.find(emp => emp.id === selectedEmployee);
-        if (employee && employee.business_function_name) {
-          businessFunctionCode = employee.business_function_name.toUpperCase().includes('UK') ? 'UK' : 'AZ';
-        }
+    const calculateRangeDays = async () => {
+      if (selectedRanges.length === 0) {
+        setRangeDays({});
+        return;
       }
+      
+      const daysMap = {};
+      const businessFunctionCode = getBusinessFunctionCode();
       
       for (const range of selectedRanges) {
         try {
@@ -148,20 +152,62 @@ export default function PlanningVacationTab({
             end_date: range.end,
             business_function_code: businessFunctionCode
           });
-          total += data.working_days;
+          daysMap[range.id] = data.working_days;
         } catch (error) {
           console.error('Error calculating days:', error);
+          daysMap[range.id] = 0;
         }
       }
-      setTotalDaysPlanned(total);
+      
+      setRangeDays(daysMap);
     };
 
-    if (selectedRanges.length > 0) {
-      calculateTotalDays();
-    } else {
-      setTotalDaysPlanned(0);
+    calculateRangeDays();
+  }, [selectedRanges, requester, selectedEmployee]);
+
+  // ✅ UPDATE TOTAL DAYS
+  useEffect(() => {
+    const total = Object.values(rangeDays).reduce((sum, days) => sum + days, 0);
+    setTotalDaysPlanned(total);
+  }, [rangeDays]);
+
+  // ✅ MERGE CONSECUTIVE RANGES
+  const mergeConsecutiveRanges = (ranges) => {
+    if (ranges.length === 0) return [];
+    
+    // Sort by start date
+    const sorted = [...ranges].sort((a, b) => 
+      new Date(a.start) - new Date(b.start)
+    );
+    
+    const merged = [sorted[0]];
+    
+    for (let i = 1; i < sorted.length; i++) {
+      const current = sorted[i];
+      const previous = merged[merged.length - 1];
+      
+      // Check if consecutive (or overlapping)
+      const prevEnd = new Date(previous.end);
+      const currStart = new Date(current.start);
+      
+      // Calculate difference in days
+      const diffDays = Math.ceil((currStart - prevEnd) / (1000 * 60 * 60 * 24));
+      
+      // ✅ Merge if consecutive or 1 day apart (allows for weekends)
+      if (diffDays <= 1) {
+        // Extend previous range
+        previous.end = current.end;
+        
+        // Keep the same ID (use earliest)
+        previous.id = Math.min(previous.id, current.id);
+      } else {
+        // Add as new range
+        merged.push(current);
+      }
     }
-  }, [selectedRanges, requester, selectedEmployee, employeeSearchResults]);
+    
+    return merged;
+  };
 
   const previousMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
@@ -210,7 +256,11 @@ export default function PlanningVacationTab({
       end: end,
       vacation_type_id: vacationType
     };
-    setSelectedRanges([...selectedRanges, newRange]);
+    
+    // ✅ Merge consecutive ranges
+    const updatedRanges = mergeConsecutiveRanges([...selectedRanges, newRange]);
+    
+    setSelectedRanges(updatedRanges);
     showSuccess(`✅ Added ${start} to ${end}`);
   };
 
@@ -301,20 +351,6 @@ export default function PlanningVacationTab({
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
-
-  const getBusinessFunctionCode = () => {
-    if (requester === 'for_me' && employeeSearchResults && employeeSearchResults.length > 0) {
-      const userEmail = VacationService.getCurrentUserEmail();
-      const currentEmployee = employeeSearchResults.find(emp => 
-        emp.email?.toLowerCase() === userEmail.toLowerCase()
-      );
-      return currentEmployee?.business_function_name?.toUpperCase().includes('UK') ? 'UK' : 'AZ';
-    } else if (requester === 'for_my_employee' && selectedEmployee) {
-      const employee = employeeSearchResults.find(emp => emp.id === selectedEmployee);
-      return employee?.business_function_name?.toUpperCase().includes('UK') ? 'UK' : 'AZ';
-    }
-    return null;
-  };
 
   // ✅ Combine selected + existing for calendar display
   const allRangesForCalendar = [...selectedRanges, ...existingSchedules];
@@ -485,39 +521,49 @@ export default function PlanningVacationTab({
             <div className="flex items-center gap-2 text-xs">
               <Clock className="w-4 h-4 text-almet-sapphire" />
               <span className="font-semibold text-almet-cloud-burst dark:text-white">
-                Total: {totalDaysPlanned} days
+                Total: {totalDaysPlanned.toFixed(1)} working days
               </span>
             </div>
           </div>
 
           <div className="p-5">
             <div className="space-y-2">
-              {selectedRanges.map((range, index) => (
-                <div 
-                  key={range.id}
-                  className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50 rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full text-xs font-bold">
-                      {index + 1}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-almet-cloud-burst dark:text-white">
-                        {range.start} → {range.end}
-                      </p>
-                      <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                        Paid Vacation
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleRemoveRange(range.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+              {selectedRanges.map((range, index) => {
+                const days = rangeDays[range.id] || 0;
+                
+                return (
+                  <div 
+                    key={range.id}
+                    className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50 rounded-lg"
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full text-xs font-bold">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium text-almet-cloud-burst dark:text-white">
+                            {range.start} → {range.end}
+                          </p>
+                          {/* ✅ WORKING DAYS BADGE */}
+                          <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-bold rounded">
+                            {days.toFixed(1)} {days === 1 ? 'day' : 'days'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-0.5">
+                          Paid Vacation
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveRange(range.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -533,7 +579,7 @@ export default function PlanningVacationTab({
                 Insufficient Balance
               </h3>
               <p className="text-xs text-red-800 dark:text-red-300 mt-1">
-                Planning {totalDaysPlanned} days but only {availableBalance.toFixed(1)} days available.
+                Planning {totalDaysPlanned.toFixed(1)} days but only {availableBalance.toFixed(1)} days available.
                 (Remaining: {balances.remaining_balance} - Scheduled: {balances.scheduled_days} - Pending: {pendingScheduledDays.toFixed(1)})
               </p>
             </div>

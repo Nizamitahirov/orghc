@@ -1,19 +1,17 @@
-// src/components/headcount/FormSteps/FormStep3AdditionalInfo.jsx - REDESIGNED
+// src/components/headcount/FormSteps/FormStep3AdditionalInfo.jsx - IMPROVED UI/UX
 import { useState, useEffect, useCallback } from "react";
 import { 
   Users, Tag, Search, X, Eye, EyeOff, Loader, AlertCircle, Check,
-  Camera, Upload, Image as ImageIcon, Trash2, Calendar, Award,
-  Building, Mail, Phone
+  Camera, Upload, Image as ImageIcon, Trash2
 } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 import FormField from "../FormComponents/FormField";
 
 /**
- * TƏKMİLLƏŞDİRİLMİŞ ADDITIONAL INFORMATION STEP
- * - Kompakt və sadə dizayn
- * - Kiçik elementlər və font
- * - Yumşaq rənglər
- * - User-friendly interface
+ * IMPROVED ADDITIONAL INFORMATION STEP
+ * ✓ Clean layout
+ * ✓ Professional design
+ * ✓ Optimal spacing
  */
 const FormStep3AdditionalInfo = ({
   formData,
@@ -35,12 +33,11 @@ const FormStep3AdditionalInfo = ({
   const [imagePreview, setImagePreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  // TƏKMİLLƏŞDİRİLMİŞ THEME CLASSES
-  const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
-  const textSecondary = darkMode ? "text-gray-300" : "text-almet-waterloo";
-  const textMuted = darkMode ? "text-gray-400" : "text-almet-comet";
+  const textPrimary = darkMode ? "text-gray-100" : "text-gray-900";
+  const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
+  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
-  const borderColor = darkMode ? "border-gray-600" : "border-gray-200";
+  const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
 
   useEffect(() => {
     if (formData.profile_image && typeof formData.profile_image === 'string') {
@@ -157,26 +154,26 @@ const FormStep3AdditionalInfo = ({
   };
 
   return (
-    <div className="space-y-4">
-      {/* HEADER - kompakt */}
-      <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-        <h2 className={`text-sm font-semibold ${textPrimary}`}>
+    <div className="space-y-3">
+      {/* HEADER */}
+      <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
+        <h2 className={`text-base font-semibold ${textPrimary}`}>
           Additional Information
         </h2>
-        <div className="text-[10px] px-2 py-0.5 bg-almet-sapphire/10 text-almet-sapphire rounded font-medium">
+        <div className="text-[10px] px-2 py-0.5 bg-almet-sapphire/10 text-almet-sapphire rounded-full font-medium">
           Step 3/4 (Optional)
         </div>
       </div>
 
-      {/* CURRENT TAG NOTICE - kompakt */}
+      {/* CURRENT TAG NOTICE */}
       {isEditMode && formData.current_tag && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2.5">
+        <div className={`${bgCard} border border-blue-200 dark:border-blue-800 rounded-lg p-2.5`}>
           <div className="flex items-start gap-2">
             <Tag className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
             <div>
-              <h4 className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-1">
+              <p className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-1">
                 Current Tag
-              </h4>
+              </p>
               <span
                 className="inline-flex items-center px-2 py-0.5 rounded text-[10px] text-white font-medium"
                 style={{ backgroundColor: formData.current_tag.color || '#6B7280' }}
@@ -188,7 +185,7 @@ const FormStep3AdditionalInfo = ({
         </div>
       )}
 
-      {/* PROFILE IMAGE - kompakt */}
+      {/* PROFILE IMAGE */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
@@ -198,13 +195,13 @@ const FormStep3AdditionalInfo = ({
           <span className={`text-[10px] ${textMuted}`}>Optional</span>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* IMAGE PREVIEW - kiçik */}
+        <div className="flex items-center gap-2.5">
+          {/* IMAGE PREVIEW */}
           <div className="relative flex-shrink-0">
-            <div className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${
+            <div className={`w-14 h-14 rounded-lg overflow-hidden border-2 transition-all ${
               imagePreview 
                 ? 'border-almet-sapphire/30 shadow-sm' 
-                : `border-dashed ${borderColor} bg-gray-50 dark:bg-gray-800`
+                : `border-dashed ${borderColor} bg-gray-50 dark:bg-gray-900`
             }`}>
               {imagePreview ? (
                 <div className="relative w-full h-full group">
@@ -214,19 +211,19 @@ const FormStep3AdditionalInfo = ({
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
-                    <Camera size={14} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Camera size={12} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </div>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center">
-                  <ImageIcon size={16} className={`${textMuted} mb-1`} />
+                  <ImageIcon size={14} className={`${textMuted} mb-0.5`} />
                   <p className={`text-[9px] ${textMuted}`}>No Image</p>
                 </div>
               )}
               
               {uploadingImage && (
                 <div className="absolute inset-0 bg-almet-sapphire/90 flex items-center justify-center">
-                  <Loader size={14} className="text-white animate-spin" />
+                  <Loader size={12} className="text-white animate-spin" />
                 </div>
               )}
             </div>
@@ -235,7 +232,7 @@ const FormStep3AdditionalInfo = ({
               <button
                 type="button"
                 onClick={handleRemoveImage}
-                className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-sm"
+                className="absolute -top-1 -right-1 p-0.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-sm"
                 title="Remove"
               >
                 <X size={10} />
@@ -243,7 +240,7 @@ const FormStep3AdditionalInfo = ({
             )}
           </div>
 
-          {/* UPLOAD CONTROLS - kompakt */}
+          {/* UPLOAD CONTROLS */}
           <div className="flex-1">
             <input
               type="file"
@@ -254,16 +251,16 @@ const FormStep3AdditionalInfo = ({
               disabled={uploadingImage}
             />
             
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <label
                 htmlFor="profile-image-upload"
-                className={`inline-flex items-center px-3 py-1.5 rounded-lg transition-all text-xs font-medium cursor-pointer ${
+                className={`inline-flex items-center px-3 py-1.5 rounded-md transition-all text-xs font-medium cursor-pointer ${
                   uploadingImage 
                     ? 'opacity-50 cursor-not-allowed bg-gray-300 text-gray-500' 
                     : 'bg-almet-sapphire hover:bg-almet-astral text-white shadow-sm hover:shadow'
                 }`}
               >
-                <Upload size={12} className="mr-1" />
+                <Upload size={11} className="mr-1" />
                 {uploadingImage ? 'Uploading...' : imagePreview ? 'Change' : 'Upload'}
               </label>
               
@@ -273,8 +270,8 @@ const FormStep3AdditionalInfo = ({
 
               {imagePreview && formData.profile_image && !uploadingImage && (
                 <div className="flex items-center gap-1">
-                  <Check size={10} className="text-green-600 dark:text-green-400" />
-                  <span className="text-[10px] text-green-700 dark:text-green-400 font-medium">
+                  <Check size={9} className="text-green-600 dark:text-green-400" />
+                  <span className="text-[10px] text-green-700 dark:text-green-400 font-medium truncate">
                     {formData.profile_image instanceof File 
                       ? formData.profile_image.name.substring(0, 20) + '...'
                       : 'Uploaded'
@@ -287,7 +284,7 @@ const FormStep3AdditionalInfo = ({
         </div>
       </div>
 
-      {/* LINE MANAGER - kompakt */}
+      {/* LINE MANAGER */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
@@ -305,39 +302,39 @@ const FormStep3AdditionalInfo = ({
           )}
         </div>
 
-        {/* SEARCH INPUT - kompakt */}
+        {/* SEARCH INPUT */}
         <div className="relative">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400" size={13} />
             <input
               type="text"
               placeholder="Search by name, ID, department..."
               value={lineManagerSearch || ""}
               onChange={handleLineManagerSearchChange}
-              className={`w-full pl-9 pr-9 py-2 rounded-lg border ${borderColor} transition-all text-sm ${
-                darkMode ? 'bg-gray-700 text-white' : 'bg-white text-almet-cloud-burst'
-              } focus:ring-2 focus:ring-almet-sapphire/50 focus:border-almet-sapphire outline-none`}
+              className={`w-full pl-8 pr-8 py-1.5 rounded-md border ${borderColor} transition-all text-sm ${
+                darkMode ? 'bg-gray-700 text-white' : 'bg-white text-gray-900'
+              } focus:ring-2 focus:ring-almet-sapphire/30 focus:border-almet-sapphire outline-none hover:border-gray-400 dark:hover:border-gray-500`}
             />
             {loadingLineManagers && (
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <Loader size={14} className="animate-spin text-gray-400" />
+              <div className="absolute right-2.5 top-1/2 transform -translate-y-1/2">
+                <Loader size={13} className="animate-spin text-gray-400" />
               </div>
             )}
           </div>
 
-          {/* DROPDOWN - kompakt */}
+          {/* DROPDOWN */}
           {showLineManagerDropdown && Array.isArray(lineManagerOptions) && lineManagerOptions.length > 0 && (
-            <div className={`absolute z-30 w-full mt-1 ${bgCard} border ${borderColor} rounded-lg shadow-lg max-h-48 overflow-y-auto`}>
+            <div className={`absolute z-30 w-full mt-1 ${bgCard} border ${borderColor} rounded-md shadow-lg max-h-44 overflow-y-auto`}>
               {lineManagerOptions.map((manager) => (
                 <button
                   key={manager.id}
                   type="button"
                   onClick={() => handleLineManagerSelect(manager)}
-                  className={`w-full p-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b ${borderColor} last:border-b-0 transition-colors`}
+                  className={`w-full p-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 border-b ${borderColor} last:border-b-0 transition-colors`}
                 >
                   <div className="flex items-start gap-2">
-                    <div className="w-8 h-8 bg-almet-sapphire/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Users size={14} className="text-almet-sapphire" />
+                    <div className="w-7 h-7 bg-almet-sapphire/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Users size={12} className="text-almet-sapphire" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-0.5">
@@ -361,7 +358,7 @@ const FormStep3AdditionalInfo = ({
           )}
 
           {showLineManagerDropdown && lineManagerSearch && Array.isArray(lineManagerOptions) && lineManagerOptions.length === 0 && !loadingLineManagers && (
-            <div className={`absolute z-30 w-full mt-1 ${bgCard} border ${borderColor} rounded-lg p-2.5 text-center`}>
+            <div className={`absolute z-30 w-full mt-1 ${bgCard} border ${borderColor} rounded-md p-2 text-center`}>
               <p className={`text-xs ${textMuted}`}>
                 No results found
               </p>
@@ -369,13 +366,13 @@ const FormStep3AdditionalInfo = ({
           )}
         </div>
 
-        {/* SELECTED MANAGER - kompakt */}
+        {/* SELECTED MANAGER */}
         {selectedLineManager && (
-          <div className="p-2.5 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
+          <div className={`${bgCard} border border-green-200 dark:border-green-800 rounded-lg p-2`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                  <Users size={14} className="text-green-600 dark:text-green-400" />
+                <div className="w-7 h-7 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                  <Users size={12} className="text-green-600 dark:text-green-400" />
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5 mb-0.5">
@@ -398,96 +395,43 @@ const FormStep3AdditionalInfo = ({
                 onClick={clearLineManager}
                 className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-red-500 hover:text-red-600 transition-colors"
               >
-                <X size={14} />
+                <X size={12} />
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* EMPLOYEE TAG - kompakt */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-1.5">
-          <Tag className="text-almet-san-juan" size={14} />
-          <h4 className={`text-xs font-medium ${textPrimary}`}>Employee Tag</h4>
-        </div>
-
-        <FormField
-          label=""
-          name="tag_id"
-          value={formData.tag_id || ""}
-          onChange={handleTagSelectionChange}
-          type="select"
-          options={getFormattedTagOptions()}
-          placeholder="Select a tag..."
-          showColors={true}
-          searchable={true}
-          clearable={true}
-          validationError={validationErrors.tag_id}
-          helpText="Choose one tag"
-        />
-        
-        {formData.tag_id && (
-          <div className="mt-1.5">
-            <div className={`text-[10px] ${textMuted} mb-1`}>
-              Selected tag
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {(() => {
-                const selectedTag = getFormattedTagOptions().find(tag => tag.value === formData.tag_id);
-                return selectedTag ? (
-                  <span
-                    className="inline-flex items-center px-2 py-0.5 rounded text-[10px] text-white font-medium"
-                    style={{ backgroundColor: selectedTag.color || '#6B7280' }}
-                  >
-                    {selectedTag.label}
-                  </span>
-                ) : null;
-              })()}
-            </div>
-          </div>
-        )}
-
-        {(!getFormattedTagOptions() || getFormattedTagOptions().length === 0) && (
-          <div className={`text-center py-3 bg-gray-50 dark:bg-gray-800 rounded-lg border ${borderColor}`}>
-            <Tag size={20} className={`mx-auto mb-1.5 ${textMuted} opacity-50`} />
-            <p className={`text-xs ${textMuted}`}>
-              No tags available
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* ORG CHART VISIBILITY - kompakt */}
+      {/* ORG CHART VISIBILITY */}
       <div className="space-y-2">
         <div className="flex items-center gap-1.5">
           <Eye className="text-indigo-500" size={14} />
           <h4 className={`text-xs font-medium ${textPrimary}`}>Org Chart Visibility</h4>
         </div>
 
-        <div className={`p-2.5 rounded-lg border ${borderColor} bg-gray-50 dark:bg-gray-800/50`}>
-          <div className="flex items-center justify-between">
+        <div className={`${bgCard} border ${borderColor} rounded-lg p-2.5`}>
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => handleInputChange({
                   target: { name: 'is_visible_in_org_chart', value: !formData.is_visible_in_org_chart }
                 })}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-almet-sapphire/50 focus:ring-offset-2 ${
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30 focus:ring-offset-1 ${
                   formData.is_visible_in_org_chart ? 'bg-almet-sapphire' : 'bg-gray-300 dark:bg-gray-600'
                 }`}
               >
                 <span
-                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
                     formData.is_visible_in_org_chart ? 'translate-x-5' : 'translate-x-1'
                   }`}
                 />
               </button>
               <div className="flex items-center gap-1.5">
                 {formData.is_visible_in_org_chart ? (
-                  <Eye className="text-green-500" size={14} />
+                  <Eye className="text-green-500" size={13} />
                 ) : (
-                  <EyeOff className="text-gray-400" size={14} />
+                  <EyeOff className="text-gray-400" size={13} />
                 )}
                 <span className={`text-xs ${textSecondary}`}>
                   {formData.is_visible_in_org_chart ? 'Visible' : 'Hidden'}
@@ -496,16 +440,13 @@ const FormStep3AdditionalInfo = ({
             </div>
           </div>
           
-          <div className={`mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-[10px] ${textMuted}`}>
-            <p>
-              <strong>Note:</strong> Only affects org chart display. 
-              Reporting and access unchanged.
-            </p>
+          <div className={`p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-[10px] ${textMuted}`}>
+            <strong>Note:</strong> Only affects org chart display. Reporting and access unchanged.
           </div>
         </div>
       </div>
 
-      {/* ADDITIONAL NOTES - kompakt */}
+      {/* ADDITIONAL NOTES */}
       <div className="space-y-2">
         <div className="flex items-center gap-1.5">
           <AlertCircle className="text-orange-500" size={14} />

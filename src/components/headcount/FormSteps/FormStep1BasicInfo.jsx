@@ -1,4 +1,4 @@
-// src/components/headcount/FormSteps/FormStep1BasicInfo.jsx - COMPLETE REDESIGNED VERSION
+// src/components/headcount/FormSteps/FormStep1BasicInfo.jsx - IMPROVED UI/UX
 import { useState, useEffect } from "react";
 import { User, Mail, Phone, Calendar, MapPin, AlertCircle, CheckCircle, Loader } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
@@ -6,9 +6,10 @@ import FormField from "../FormComponents/FormField";
 import { apiService } from "../../../services/api";
 
 /**
- * BASIC INFORMATION STEP - TƏKMİLLƏŞDİRİLMİŞ
- * Kompakt, oxunaqlı, user-friendly dizayn
- * Kiçik font ölçüləri və yumşaq rənglər
+ * IMPROVED BASIC INFORMATION STEP
+ * ✓ Daha oxunaqlı layout
+ * ✓ Optimal spacing
+ * ✓ Professional görünüş
  */
 const FormStep1BasicInfo = ({ 
   formData, 
@@ -22,9 +23,9 @@ const FormStep1BasicInfo = ({
   const [validationTimer, setValidationTimer] = useState(null);
 
   // THEME CLASSES
-  const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
-  const textSecondary = darkMode ? "text-gray-300" : "text-almet-waterloo";
-  const textMuted = darkMode ? "text-gray-400" : "text-almet-comet";
+  const textPrimary = darkMode ? "text-gray-100" : "text-gray-900";
+  const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
+  const bgCard = darkMode ? "bg-gray-800" : "bg-white";
 
   // Real-time email validation
   useEffect(() => {
@@ -125,42 +126,42 @@ const FormStep1BasicInfo = ({
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* HEADER */}
-      <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-        <h2 className={`text-sm font-semibold ${textPrimary}`}>
+      <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
+        <h2 className={`text-base font-semibold ${textPrimary}`}>
           Basic Information
         </h2>
-        <div className="text-[10px] px-2 py-0.5 bg-almet-sapphire/10 text-almet-sapphire rounded font-medium">
+        <div className="text-[10px] px-2 py-0.5 bg-almet-sapphire/10 text-almet-sapphire rounded-full font-medium">
           Step 1 of 4
         </div>
       </div>
 
-     
-
-      {/* EMPLOYEE ID AUTO-ASSIGNMENT NOTICE */}
+      {/* AUTO-ASSIGNMENT NOTICE */}
       {!isEditMode && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-2.5">
+        <div className={`${bgCard} border border-green-200 dark:border-green-800 rounded-lg p-2.5`}>
           <div className="flex items-start gap-2">
             <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
             <div>
-              <h4 className="text-xs font-medium text-green-800 dark:text-green-300 mb-0.5">
+              <p className="text-xs font-medium text-green-800 dark:text-green-300 mb-0.5">
                 Employee ID Auto-Assignment
-              </h4>
-              <p className="text-[10px] text-green-700 dark:text-green-400">
-                Employee ID will be automatically assigned by the system after creation
+              </p>
+              <p className="text-[11px] text-green-700 dark:text-green-400">
+                Employee ID will be automatically assigned after creation
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* ESSENTIAL INFORMATION SECTION */}
-      <div className="space-y-3">
-        <h3 className={`text-xs font-semibold ${textSecondary} flex items-center gap-1`}>
-          <Mail size={14} />
-          Essential Information
-        </h3>
+      {/* ESSENTIAL INFORMATION */}
+      <div className="space-y-2.5">
+        <div className="flex items-center gap-1.5">
+          <Mail size={14} className="text-almet-sapphire" />
+          <h3 className={`text-xs font-semibold ${textSecondary}`}>
+            Essential Information
+          </h3>
+        </div>
         
         <div className="relative">
           <FormField
@@ -171,27 +172,29 @@ const FormStep1BasicInfo = ({
             type="email"
             required={true}
             placeholder="john.doe@company.com"
-            icon={<Mail size={14} className={textMuted} />}
+            icon={<Mail size={14} />}
             validationError={
               validationErrors.email || 
               (emailStatus.available === false ? "Email already exists" : null)
             }
             helpText={getEmailHelpText()}
           />
-          <div className="absolute top-7 right-3 flex items-center">
+          <div className="absolute top-6 right-2.5 flex items-center">
             {getEmailValidationIcon()}
           </div>
         </div>
       </div>
 
-      {/* PERSONAL INFORMATION SECTION */}
-      <div className="space-y-3">
-        <h3 className={`text-xs font-semibold ${textSecondary} flex items-center gap-1`}>
-          <User size={14} />
-          Personal Information
-        </h3>
+      {/* PERSONAL INFORMATION */}
+      <div className="space-y-2.5">
+        <div className="flex items-center gap-1.5">
+          <User size={14} className="text-almet-steel-blue" />
+          <h3 className={`text-xs font-semibold ${textSecondary}`}>
+            Personal Information
+          </h3>
+        </div>
         
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5">
           <FormField
             label="First Name"
             name="first_name"
@@ -199,7 +202,7 @@ const FormStep1BasicInfo = ({
             onChange={handleInputChange}
             required={true}
             placeholder="John"
-            icon={<User size={14} className={textMuted} />}
+            icon={<User size={14} />}
             validationError={validationErrors.first_name}
             helpText="Given name"
           />
@@ -211,7 +214,7 @@ const FormStep1BasicInfo = ({
             onChange={handleInputChange}
             required={true}
             placeholder="Doe"
-            icon={<User size={14} className={textMuted} />}
+            icon={<User size={14} />}
             validationError={validationErrors.last_name}
             helpText="Family name"
           />
@@ -223,12 +226,12 @@ const FormStep1BasicInfo = ({
           value={formData.father_name || ""}
           onChange={handleInputChange}
           placeholder="Father's full name"
-          icon={<User size={14} className={textMuted} />}
+          icon={<User size={14} />}
           validationError={validationErrors.father_name}
           helpText="Optional field"
         />
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2.5">
           <FormField
             label="Phone"
             name="phone"
@@ -236,7 +239,7 @@ const FormStep1BasicInfo = ({
             onChange={handleInputChange}
             type="tel"
             placeholder="+XX XX XXX XX XX"
-            icon={<Phone size={14} className={textMuted} />}
+            icon={<Phone size={14} />}
             validationError={validationErrors.phone}
             helpText="Contact number"
           />
@@ -247,7 +250,7 @@ const FormStep1BasicInfo = ({
             value={formData.date_of_birth || ""}
             onChange={handleInputChange}
             type="date"
-            icon={<Calendar size={14} className={textMuted} />}
+            icon={<Calendar size={14} />}
             validationError={validationErrors.date_of_birth}
             helpText="For age calculation"
           />
@@ -259,7 +262,7 @@ const FormStep1BasicInfo = ({
             onChange={handleInputChange}
             type="select"
             options={genderOptions}
-            icon={<User size={14} className={textMuted} />}
+            icon={<User size={14} />}
             validationError={validationErrors.gender}
             helpText="Optional"
             placeholder="Select"
@@ -273,7 +276,7 @@ const FormStep1BasicInfo = ({
           onChange={handleInputChange}
           type="textarea"
           placeholder="Complete address with city..."
-          icon={<MapPin size={14} className={textMuted} />}
+          icon={<MapPin size={14} />}
           validationError={validationErrors.address}
           helpText="Full residential address"
           rows={2}
@@ -285,24 +288,25 @@ const FormStep1BasicInfo = ({
           value={formData.emergency_contact || ""}
           onChange={handleInputChange}
           placeholder="Name: Relationship: Phone"
-          icon={<Phone size={14} className={textMuted} />}
+          icon={<Phone size={14} />}
           validationError={validationErrors.emergency_contact}
           helpText="Emergency contact information"
         />
       </div>
 
-   
       {/* VALIDATION SUMMARY */}
       {Object.keys(validationErrors).length > 0 && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2.5">
-          <h4 className={`text-xs font-medium text-red-800 dark:text-red-300 mb-1.5 flex items-center gap-1`}>
-            <AlertCircle size={14} />
-            Please Fix These Issues:
-          </h4>
-          <ul className="text-[10px] text-red-700 dark:text-red-400 space-y-0.5">
+        <div className={`${bgCard} border border-red-200 dark:border-red-800 rounded-lg p-2.5`}>
+          <div className="flex items-start gap-2 mb-1.5">
+            <AlertCircle size={14} className="text-red-500 mt-0.5 flex-shrink-0" />
+            <h4 className="text-xs font-medium text-red-800 dark:text-red-300">
+              Please Fix These Issues:
+            </h4>
+          </div>
+          <ul className="text-[11px] text-red-700 dark:text-red-400 space-y-0.5 ml-5">
             {Object.entries(validationErrors).map(([field, error]) => (
               <li key={field} className="flex items-start gap-1.5">
-                <span className="w-1 h-1 bg-red-500 rounded-full mt-1 flex-shrink-0"></span>
+                <span className="w-1 h-1 bg-red-500 rounded-full mt-1.5 flex-shrink-0"></span>
                 <span>
                   <strong className="font-medium">
                     {field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:

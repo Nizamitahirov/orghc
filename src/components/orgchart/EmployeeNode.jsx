@@ -166,14 +166,7 @@ const EmployeeNode = React.memo(({ data, id }) => {
                 
                 {/* IMPROVED: Cleaner badges with better spacing */}
                 <div className="flex flex-wrap items-center gap-1.5 px-3 pb-2">
-                    {employee.employee_details?.grading_display && (
-                        <span 
-                            className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold text-white"
-                            style={{ backgroundColor: isVacant ? '#dc2626' : colors.badge }}
-                        >
-                            {employee.employee_details.grading_display}
-                        </span>
-                    )}
+          
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${
                         isVacant 
                             ? 'bg-red-100 dark:bg-red-800/30 text-red-700 dark:text-red-300' 

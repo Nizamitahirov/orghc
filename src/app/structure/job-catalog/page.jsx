@@ -214,7 +214,6 @@ export default function JobCatalogPage() {
   // ==================== CRUD OPERATIONS ====================
   
   const openCrudModal = (type, mode = 'create', item = null) => {
-    console.log('openCrudModal called:', { type, mode, item }); // DEBUG
     
     setCrudModalType(type);
     setCrudModalMode(mode);
@@ -236,7 +235,6 @@ export default function JobCatalogPage() {
                      item.business_function ||
                      item.value; // Bu əlavə et
         
-        console.log('Department edit - bfId:', bfId, 'item:', item); // DEBUG
         
         if (bfId) {
           formDataInit.business_function = bfId;
@@ -251,7 +249,6 @@ export default function JobCatalogPage() {
                        item.department ||
                        item.value; // Bu əlavə et
         
-        console.log('Unit edit - deptId:', deptId, 'item:', item); // DEBUG
         
         if (deptId) {
           formDataInit.department = deptId;
@@ -262,7 +259,6 @@ export default function JobCatalogPage() {
         formDataInit.hierarchy_level = item.hierarchy_level;
       }
       
-      console.log('formDataInit:', formDataInit); // DEBUG
       setFormData(formDataInit);
     } else {
       const cleanFormData = { name: '', is_active: true };
@@ -325,8 +321,7 @@ export default function JobCatalogPage() {
       delete submitData.pk;
       delete submitData.uuid;
       
-      // 🐛 DEBUG: Log what we're sending
-      console.log('Submitting data:', submitData);
+  
       
       let response;
       const itemId = selectedItem?.value || selectedItem?.id;

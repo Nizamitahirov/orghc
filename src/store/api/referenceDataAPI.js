@@ -1,4 +1,4 @@
-// src/store/api/referenceDataAPI.js - Job Titles əlavə edilib
+
 import { apiService } from '../../services/api';
 
 export const referenceDataAPI = {
@@ -296,10 +296,6 @@ deleteJobTitle: (id) => apiService.deleteJobTitle(id),
   deleteContractConfig: (id) => apiService.deleteContractConfig(id),
 
 
-  // ========================================
-  // HELPER FUNCTIONS
-  // ========================================
-  
   // Get all reference data at once for forms
   getAllReferenceData: async () => {
     try {
@@ -335,30 +331,6 @@ deleteJobTitle: (id) => apiService.deleteJobTitle(id),
     }
   },
 
-  // Get hierarchical data
-  getHierarchicalData: async (businessFunctionId, departmentId) => {
-    try {
-      const promises = [referenceDataAPI.getBusinessFunctionDropdown()];
-      
-      if (businessFunctionId) {
-        promises.push(referenceDataAPI.getDepartmentDropdown(businessFunctionId));
-        
-        if (departmentId) {
-          promises.push(referenceDataAPI.getUnitDropdown(departmentId));
-        }
-      }
-
-      const results = await Promise.all(promises);
-      
-      return {
-        businessFunctions: results[0].data,
-        departments: results[1]?.data.results || [],
-        units: results[2]?.data || []
-      };
-    } catch (error) {
-      throw new Error('Failed to fetch hierarchical data: ' + error.message);
-    }
-  },
 
   // Validate hierarchical relationships
   validateHierarchy: async (businessFunctionId, departmentId, unitId) => {
@@ -388,172 +360,7 @@ deleteJobTitle: (id) => apiService.deleteJobTitle(id),
     }
   },
 
-  // Get entity counts for statistics
-  getEntityCounts: async () => {
-    try {
-      const [
-        businessFunctions,
-        departments,
-        units,
-        jobFunctions,
-        jobTitles,
-        positionGroups,
-        employeeStatuses,
-        employeeTags,
-        contractConfigs
-      ] = await Promise.all([
-        referenceDataAPI.getBusinessFunctions(),
-        referenceDataAPI.getDepartments(),
-        referenceDataAPI.getUnits(),
-        referenceDataAPI.getJobFunctions(),
-        referenceDataAPI.getJobTitles(),
-        referenceDataAPI.getPositionGroups(),
-        referenceDataAPI.getEmployeeStatuses(),
-        referenceDataAPI.getEmployeeTags(),
-        referenceDataAPI.getContractConfigs()
-      ]);
 
-      return {
-        businessFunctions: businessFunctions.data.count || businessFunctions.data.length || 0,
-        departments: departments.data.count || departments.data.length || 0,
-        units: units.data.count || units.data.length || 0,
-        jobFunctions: jobFunctions.data.count || jobFunctions.data.length || 0,
-        jobTitles: jobTitles.data.count || jobTitles.data.length || 0,
-        positionGroups: positionGroups.data.count || positionGroups.data.length || 0,
-        employeeStatuses: employeeStatuses.data.count || employeeStatuses.data.length || 0,
-        employeeTags: employeeTags.data.count || employeeTags.data.length || 0,
-        contractConfigs: contractConfigs.data.count || contractConfigs.data.length || 0
-      };
-    } catch (error) {
-      throw new Error('Failed to fetch entity counts: ' + error.message);
-    }
-  },
-
-  // Search across all reference data
-  searchReferenceData: async (searchTerm, types = []) => {
-    try {
-      const searchPromises = [];
-      const searchTypes = types.length > 0 ? types : [
-        'businessFunctions', 'departments', 'units', 'jobFunctions', 'jobTitles',
-        'positionGroups', 'employeeStatuses', 'employeeTags', 'contractConfigs'
-      ];
-
-      if (searchTypes.includes('businessFunctions')) {
-        searchPromises.push(
-          referenceDataAPI.getBusinessFunctions({ search: searchTerm })
-            .then(res => ({ type: 'businessFunctions', data: res.data.results || res.data }))
-        );
-      }
-
-      if (searchTypes.includes('departments')) {
-        searchPromises.push(
-          referenceDataAPI.getDepartments({ search: searchTerm })
-            .then(res => ({ type: 'departments', data: res.data.results || res.data }))
-        );
-      }
-
-      if (searchTypes.includes('units')) {
-        searchPromises.push(
-          referenceDataAPI.getUnits({ search: searchTerm })
-            .then(res => ({ type: 'units', data: res.data.results || res.data }))
-        );
-      }
-
-      if (searchTypes.includes('jobFunctions')) {
-        searchPromises.push(
-          referenceDataAPI.getJobFunctions({ search: searchTerm })
-            .then(res => ({ type: 'jobFunctions', data: res.data.results || res.data }))
-        );
-      }
-
-      if (searchTypes.includes('jobTitles')) {
-        searchPromises.push(
-          referenceDataAPI.getJobTitles({ search: searchTerm })
-            .then(res => ({ type: 'jobTitles', data: res.data.results || res.data }))
-        );
-      }
-
-      if (searchTypes.includes('positionGroups')) {
-        searchPromises.push(
-          referenceDataAPI.getPositionGroups({ search: searchTerm })
-            .then(res => ({ type: 'positionGroups', data: res.data.results || res.data }))
-        );
-      }
-
-      if (searchTypes.includes('employeeStatuses')) {
-        searchPromises.push(
-          referenceDataAPI.getEmployeeStatuses({ search: searchTerm })
-            .then(res => ({ type: 'employeeStatuses', data: res.data.results || res.data }))
-        );
-      }
-
-      if (searchTypes.includes('employeeTags')) {
-        searchPromises.push(
-          referenceDataAPI.getEmployeeTags({ search: searchTerm })
-            .then(res => ({ type: 'employeeTags', data: res.data.results || res.data }))
-        );
-      }
-
-      if (searchTypes.includes('contractConfigs')) {
-        searchPromises.push(
-          referenceDataAPI.getContractConfigs({ search: searchTerm })
-            .then(res => ({ type: 'contractConfigs', data: res.data.results || res.data }))
-        );
-      }
-
-      const results = await Promise.all(searchPromises);
-      
-      return results.reduce((acc, result) => {
-        acc[result.type] = result.data;
-        return acc;
-      }, {});
-    } catch (error) {
-      throw new Error('Failed to search reference data: ' + error.message);
-    }
-  },
-
-  // Get filtered data by active status
-  getActiveOnly: async (entityType) => {
-    try {
-      let response;
-      
-      switch (entityType) {
-        case 'businessFunctions':
-          response = await referenceDataAPI.getBusinessFunctions({ is_active: true });
-          break;
-        case 'departments':
-          response = await referenceDataAPI.getDepartments({ is_active: true });
-          break;
-        case 'units':
-          response = await referenceDataAPI.getUnits({ is_active: true });
-          break;
-        case 'jobFunctions':
-          response = await referenceDataAPI.getJobFunctions({ is_active: true });
-          break;
-        case 'jobTitles':
-          response = await referenceDataAPI.getJobTitles({ is_active: true });
-          break;
-        case 'positionGroups':
-          response = await referenceDataAPI.getPositionGroups({ is_active: true });
-          break;
-        case 'employeeStatuses':
-          response = await referenceDataAPI.getEmployeeStatuses({ is_active: true });
-          break;
-        case 'employeeTags':
-          response = await referenceDataAPI.getEmployeeTags({ is_active: true });
-          break;
-        case 'contractConfigs':
-          response = await referenceDataAPI.getContractConfigs({ is_active: true });
-          break;
-        default:
-          throw new Error(`Unknown entity type: ${entityType}`);
-      }
-      
-      return response.data.results || response.data;
-    } catch (error) {
-      throw new Error(`Failed to fetch active ${entityType}: ` + error.message);
-    }
-  }
 };
 
 export default referenceDataAPI;

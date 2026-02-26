@@ -18,7 +18,7 @@ const TextQuestion = ({ question, value, onChange, disabled }) => {
         value={value}
         onChange={onChange}
         disabled={disabled}
-        className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:outline-none"
+        className="w-full px-2 py-1.5 text-xs border  border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:outline-none"
         placeholder="Your answer..."
       />
     </div>
@@ -37,7 +37,7 @@ const TextAreaQuestion = ({ question, value, onChange, disabled }) => {
         onChange={onChange}
         disabled={disabled}
         rows={3}
-        className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:outline-none resize-none"
+        className="w-full px-2 py-1.5 text-xs border  border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:outline-none resize-none"
         placeholder="Your answer..."
       />
     </div>
@@ -474,7 +474,7 @@ export default function CreateExitInterviewModal({ onClose, onSuccess }) {
                     value={formData.last_working_day}
                     onChange={(e) => setFormData({...formData, last_working_day: e.target.value})}
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full pl-8 pr-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire"
+                    className="w-full pl-8 pr-2 py-1.5 text-xs border focus:outline-none  border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire"
                   />
                 </div>
               </div>

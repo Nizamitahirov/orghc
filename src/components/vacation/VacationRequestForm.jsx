@@ -222,7 +222,7 @@ export default function VacationRequestForm({
                     value={formData[field]} 
                     onChange={(e) => setFormData(prev => ({...prev, [field]: e.target.value}))} 
                     disabled={requester === 'for_me'} 
-                    className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
+                    className="w-full px-3 py-2.5 text-sm border outline-0 focus:outline-none focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
                   />
                 </div>
               ))}
@@ -240,7 +240,7 @@ export default function VacationRequestForm({
                   value={formData[field]} 
                   onChange={(e) => setFormData(prev => ({...prev, [field]: e.target.value}))} 
                   disabled={requester === 'for_me'} 
-                  className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
+                  className="w-full px-3 py-2.5 text-sm border outline-0 focus:outline-none focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
                 />
               </div>
             ))}
@@ -252,7 +252,7 @@ export default function VacationRequestForm({
                 onChange={(e) => setFormData(prev => ({...prev, comment: e.target.value}))} 
                 rows={3} 
                 placeholder="Add any additional notes..."
-                className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white resize-none" 
+                className="w-full px-3 py-2.5 text-sm border focus:outline-none focus:ring-1 focus:ring-almet-sapphire outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white resize-none" 
               />
             </div>
           </div>
@@ -264,7 +264,6 @@ export default function VacationRequestForm({
               <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Leave Information</h3>
             </div>
 
-            {/* ✅ Vacation Type with UK badge */}
             <div>
               <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
                 Leave Type
@@ -287,9 +286,6 @@ export default function VacationRequestForm({
               )}
             </div>
 
-
-
-{/* ✅ Half Day Section - Manual time input WITHOUT picker */}
 {selectedType?.requires_time_selection && (
   <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 space-y-4">
     <div className="flex items-center gap-2">
@@ -302,7 +298,7 @@ export default function VacationRequestForm({
  
 
     <div className="grid grid-cols-2 gap-3">
-      {/* ✅ START TIME - Manual Text Input */}
+     
       <div>
         <label className="block text-xs font-medium text-orange-900 dark:text-orange-200 mb-1.5">
           Start Time *
@@ -312,16 +308,13 @@ export default function VacationRequestForm({
           value={formData.half_day_start_time}
           onChange={(e) => {
             let value = e.target.value;
-            
-            // ✅ Auto-format: Add colon after 2 digits
+
             if (value.length === 2 && !value.includes(':')) {
               value = value + ':';
             }
-            
-            // ✅ Only allow numbers and colon
+
             value = value.replace(/[^0-9:]/g, '');
-            
-            // ✅ Limit to HH:MM format (5 chars max)
+
             if (value.length > 5) {
               value = value.substring(0, 5);
             }
@@ -329,14 +322,14 @@ export default function VacationRequestForm({
             setFormData(prev => ({
               ...prev,
               half_day_start_time: value,
-              end_date: prev.start_date // Auto-set end_date same as start_date
+              end_date: prev.start_date 
             }));
           }}
          
           placeholder="09:00"
           maxLength={5}
           required
-          className={`w-full px-3 py-2.5 text-sm border rounded-lg dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-orange-500 ${
+          className={`w-full px-3 py-2.5 text-sm border focus:outline-none  rounded-lg dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-orange-500 ${
             formErrors.half_day_start_time 
               ? 'border-red-500 dark:border-red-500' 
               : 'border-orange-300 dark:border-orange-700'
@@ -349,7 +342,7 @@ export default function VacationRequestForm({
         )}
       </div>
 
-      {/* ✅ END TIME - Manual Text Input */}
+
       <div>
         <label className="block text-xs font-medium text-orange-900 dark:text-orange-200 mb-1.5">
           End Time *
@@ -359,16 +352,13 @@ export default function VacationRequestForm({
           value={formData.half_day_end_time}
           onChange={(e) => {
             let value = e.target.value;
-            
-            // ✅ Auto-format: Add colon after 2 digits
+
             if (value.length === 2 && !value.includes(':')) {
               value = value + ':';
             }
-            
-            // ✅ Only allow numbers and colon
+
             value = value.replace(/[^0-9:]/g, '');
-            
-            // ✅ Limit to HH:MM format
+
             if (value.length > 5) {
               value = value.substring(0, 5);
             }
@@ -376,14 +366,14 @@ export default function VacationRequestForm({
             setFormData(prev => ({
               ...prev,
               half_day_end_time: value,
-              end_date: prev.start_date // Auto-set end_date same as start_date
+              end_date: prev.start_date 
             }));
           }}
        
           placeholder="13:00"
           maxLength={5}
           required
-          className={`w-full px-3 py-2.5 text-sm border rounded-lg dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-orange-500 ${
+          className={`w-full px-3 py-2.5 text-sm border focus:outline-none  rounded-lg dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-orange-500 ${
             formErrors.half_day_end_time 
               ? 'border-red-500 dark:border-red-500' 
               : 'border-orange-300 dark:border-orange-700'
@@ -441,7 +431,7 @@ export default function VacationRequestForm({
                 value={formData.start_date} 
                 onChange={handleStartDateChange}
                 min={new Date().toISOString().split('T')[0]}
-                className={`w-full px-3 py-2.5 text-sm border outline-0 rounded-lg dark:bg-gray-700 dark:text-white ${
+                className={`w-full px-3 py-2.5 text-sm border outline-0 focus:outline-none focus:ring-1 focus:ring-almet-sapphire rounded-lg dark:bg-gray-700 dark:text-white ${
                   formErrors.start_date ? 'border-red-500' : 'border-almet-bali-hai/40 dark:border-almet-comet'
                 }`}
                 required 
@@ -451,7 +441,7 @@ export default function VacationRequestForm({
               )}
             </div>
 
-            {/* ✅ End Date - Disabled for half day */}
+           
             <div>
               <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
                 End Date
@@ -467,7 +457,7 @@ export default function VacationRequestForm({
                 onChange={handleEndDateChange}
                 min={formData.start_date || new Date().toISOString().split('T')[0]}
                 disabled={selectedType?.requires_time_selection}
-                className={`w-full px-3 py-2.5 text-sm outline-0 border rounded-lg dark:bg-gray-700 dark:text-white ${
+                className={`w-full px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-almet-sapphire outline-0 border rounded-lg dark:bg-gray-700 dark:text-white ${
                   selectedType?.requires_time_selection ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed' : ''
                 } ${formErrors.end_date ? 'border-red-500' : 'border-almet-bali-hai/40 dark:border-almet-comet'}`}
                 required 
@@ -484,7 +474,7 @@ export default function VacationRequestForm({
                   type="date" 
                   value={formData.dateOfReturn} 
                   disabled 
-                  className="w-full px-3 py-2.5 outline-0 text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg bg-almet-mystic/30 dark:bg-gray-600 dark:text-white" 
+                  className="w-full px-3 py-2.5 outline-0 text-sm border focus:outline-none focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded-lg bg-almet-mystic/30 dark:bg-gray-600 dark:text-white" 
                 />
               </div>
               
@@ -501,7 +491,7 @@ export default function VacationRequestForm({
                     value={formData.numberOfDays} 
                     disabled 
                     step="0.5"
-                    className="w-full px-3 py-2.5 text-sm outline-0 border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg bg-almet-mystic/30 dark:bg-gray-600 dark:text-white font-semibold" 
+                    className="w-full px-3 py-2.5 text-sm outline-0 border focus:outline-none focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded-lg bg-almet-mystic/30 dark:bg-gray-600 dark:text-white font-semibold" 
                   />
                   <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-almet-waterloo" />
                 </div>
@@ -592,7 +582,7 @@ export default function VacationRequestForm({
                     onChange={(e) => setFormData(prev => ({...prev, line_manager: e.target.value}))} 
                     disabled={requester === 'for_me'} 
                     placeholder="Line Manager Name" 
-                    className="w-full px-3 py-2.5 outline-0 text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
+                    className="w-full px-3 py-2.5 outline-0 focus:outline-none focus:ring-1 focus:ring-almet-sapphire text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
                   />
                 </div>
 

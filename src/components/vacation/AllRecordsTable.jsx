@@ -99,7 +99,7 @@ export default function AllRecordsTable({
                   value={filters.employee_name}
                   onChange={(e) => handleFilterChange({...filters, employee_name: e.target.value})}
                   placeholder="Search name"
-                  className="w-full pl-9 pr-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                  className="w-full pl-9 pr-3 py-2 text-xs border focus:outline-none focus:ring-1 focus:ring-almet-sapphire outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                 />
               </div>
             </div>
@@ -146,7 +146,7 @@ export default function AllRecordsTable({
                 type="date" 
                 value={filters.start_date}
                 onChange={(e) => handleFilterChange({...filters, start_date: e.target.value})}
-                className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 text-xs border outline-0 focus:outline-none focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
               />
             </div>
 
@@ -158,7 +158,7 @@ export default function AllRecordsTable({
                 type="date" 
                 value={filters.end_date}
                 onChange={(e) => handleFilterChange({...filters, end_date: e.target.value})}
-                className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 text-xs border outline-0 focus:outline-none focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
               />
             </div>
 
@@ -171,7 +171,7 @@ export default function AllRecordsTable({
                 value={filters.year}
                 onChange={(e) => handleFilterChange({...filters, year: e.target.value})}
                 placeholder="2025"
-                className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 text-xs border outline-0 focus:outline-none focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
               />
             </div>
           </div>

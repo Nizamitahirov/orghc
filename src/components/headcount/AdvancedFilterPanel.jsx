@@ -1,6 +1,6 @@
 // src/components/headcount/AdvancedFilterPanel.jsx - UPDATED with common components
 import { useState, useEffect, useMemo, useCallback  } from "react";
-import { X, Search, AlertCircle, Filter, Check, ChevronDown, RefreshCw } from "lucide-react";
+import { X, Search, AlertCircle,  RefreshCw } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import SearchableDropdown from "../common/SearchableDropdown"; // Import common component
 import MultiSelect from "../common/MultiSelect"; // Import common component
@@ -94,12 +94,11 @@ const AdvancedFilterPanel = ({
     // Numeric fields
     years_of_service_min: initialFilters.years_of_service_min || "",
     years_of_service_max: initialFilters.years_of_service_max || "",
-    contract_expiring_days: initialFilters.contract_expiring_days || "",
-    
+
     // Boolean fields
     is_active: initialFilters.is_active || "",
     is_visible_in_org_chart: initialFilters.is_visible_in_org_chart || "",
-    status_needs_update: initialFilters.status_needs_update || ""
+ 
   });
 
   // ========================================
@@ -515,10 +514,10 @@ const AdvancedFilterPanel = ({
       contract_end_date_to: "",
       years_of_service_min: "",
       years_of_service_max: "",
-      contract_expiring_days: "",
+   
       is_active: "",
       is_visible_in_org_chart: "",
-      status_needs_update: ""
+   
     };
     
     setFilters(clearedFilters);
@@ -824,22 +823,6 @@ const AdvancedFilterPanel = ({
               </div>
 
               
-
-              {/* Contract Expiring Days */}
-              <div>
-                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-                  Contract Expiring Within (Days)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="365"
-                  placeholder="e.g., 30"
-                  value={filters.contract_expiring_days}
-                  onChange={(e) => handleInputChange('contract_expiring_days', e.target.value)}
-                  className={`w-full p-2 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-xs focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-                />
-              </div>
             </div>
           </div>
 

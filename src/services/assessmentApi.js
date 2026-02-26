@@ -58,7 +58,7 @@ api.interceptors.response.use(
   }
 );
 
-// Build query parameters helper
+
 const buildQueryParams = (params) => {
   const searchParams = new URLSearchParams();
   
@@ -74,7 +74,7 @@ const buildQueryParams = (params) => {
           searchParams.append(key, JSON.stringify(value));
         }
       } else {
-        searchParams.append(key, value);
+        searchParams.append(key, value); // ✅ This handles company ID
       }
     }
   });

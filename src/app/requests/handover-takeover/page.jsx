@@ -766,7 +766,7 @@ const HandoversDashboard = () => {
                         setSearchTerm(e.target.value);
                         setCurrentPage(1);
                       }}
-                      className="pl-9 pr-3 py-2 outline-0 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent w-full lg:w-56 bg-white dark:bg-gray-800 text-sm text-almet-cloud-burst dark:text-white placeholder:text-almet-bali-hai"
+                      className="pl-9 pr-3 py-2 outline-0 focus:outline-none  border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent w-full lg:w-56 bg-white dark:bg-gray-800 text-sm text-almet-cloud-burst dark:text-white placeholder:text-almet-bali-hai"
                     />
                   </div>
 

@@ -2,9 +2,16 @@
 import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { orgChartAPI } from '../../services/orgChartAPI';
 
-// FIXED: Clean employee data utility to prevent circular references in Redux
 const cleanEmployeeForRedux = (employee) => {
     if (!employee) return null;
+    
+    // ✅ Check if this is a vacancy
+    const isVacancy = Boolean(
+        employee.employee_details?.is_vacancy ||
+        employee.is_vacancy ||
+        employee.record_type === 'vacancy' ||
+        (employee.name && employee.name.includes('[VACANT]'))
+    );
     
     // Create a clean copy with only serializable data
     const cleanEmployee = {
@@ -13,9 +20,13 @@ const cleanEmployeeForRedux = (employee) => {
         name: employee.name,
         title: employee.title,
         department: employee.department,
+        department_name: employee.department_name || employee.department, // ✅ For vacancies
         unit: employee.unit,
+        unit_name: employee.unit_name || employee.unit, // ✅ For vacancies
         business_function: employee.business_function,
+        business_function_name: employee.business_function_name || employee.business_function, // ✅ For vacancies
         position_group: employee.position_group,
+        position_group_name: employee.position_group_name || employee.position_group, // ✅ For vacancies
         direct_reports: employee.direct_reports || 0,
         line_manager_id: employee.line_manager_id,
         manager_id: employee.manager_id,
@@ -34,9 +45,20 @@ const cleanEmployeeForRedux = (employee) => {
         colleagues_in_business_function: employee.colleagues_in_business_function,
         total_subordinates: employee.total_subordinates,
         
+        // ✅ CRITICAL: Preserve vacancy indicators
+        is_vacancy: isVacancy,
+        record_type: employee.record_type || (isVacancy ? 'vacancy' : 'employee'),
+        vacant: employee.vacant || isVacancy,
+        
         // Clean nested objects
         employee_details: employee.employee_details ? {
-            grading_display: employee.employee_details.grading_display,
+            internal_id: employee.employee_details.internal_id,
+            employee_id: employee.employee_details.employee_id,
+          
+            is_vacancy: employee.employee_details.is_vacancy || isVacancy, // ✅ CRITICAL
+            original_employee_pk: employee.employee_details.original_employee_pk,
+            is_visible_in_org_chart: employee.employee_details.is_visible_in_org_chart,
+            include_in_headcount: employee.employee_details.include_in_headcount,
             tags: Array.isArray(employee.employee_details.tags) 
                 ? employee.employee_details.tags.map(tag => ({
                     name: tag.name,
@@ -47,10 +69,12 @@ const cleanEmployeeForRedux = (employee) => {
         
         // Manager info as simple reference (no circular refs)
         manager_info: employee.manager_info ? {
+            id: employee.manager_info.id,
             employee_id: employee.manager_info.employee_id,
             name: employee.manager_info.name,
             title: employee.manager_info.title,
-            department: employee.manager_info.department
+            department: employee.manager_info.department,
+            avatar: employee.manager_info.avatar
         } : null,
         
         // Direct reports as simple array of IDs (no circular refs)
@@ -62,15 +86,10 @@ const cleanEmployeeForRedux = (employee) => {
     return cleanEmployee;
 };
 
-// FIXED: Clean array of employees
 const cleanEmployeeArray = (employees) => {
     if (!Array.isArray(employees)) return [];
     return employees.map(cleanEmployeeForRedux).filter(Boolean);
 };
-
-// ========================================
-// ASYNC THUNKS (updated with data cleaning)
-// ========================================
 
 export const fetchOrgChart = createAsyncThunk(
   'orgChart/fetchOrgChart',

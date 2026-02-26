@@ -478,7 +478,24 @@ createTripRequestWithFiles: async (formData) => {
       throw error;
     }
   },
-
+updateTripRequest: async (id, data) => {
+    try {
+      const response = await businessTripApi.put(`/business-trips/requests/${id}/update/`, data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  
+  // ✅ NEW: Delete request
+  deleteTripRequest: async (id) => {
+    try {
+      const response = await businessTripApi.delete(`/business-trips/requests/${id}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
   getCurrentUserEmail: () => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem("user_email");
@@ -490,53 +507,58 @@ createTripRequestWithFiles: async (formData) => {
 // Helper functions
 export const BusinessTripHelpers = {
   // Format trip request with files
-formatTripRequestWithFiles: (data, files) => {
-  const formData = new FormData();
-  
-  formData.append('requester_type', data.requester_type);
-  
-  if (data.employee_id) {
-    formData.append('employee_id', data.employee_id);
-  }
-  
-  formData.append('travel_type_id', data.travel_type_id);
-  formData.append('transport_type_id', data.transport_type_id);
-  formData.append('purpose_id', data.purpose_id);
-  formData.append('start_date', data.start_date);
-  formData.append('end_date', data.end_date);
-  
-  if (data.comment) {
-    formData.append('comment', data.comment);
-  }
-  
-  formData.append('schedules', JSON.stringify(data.schedules || []));
-  
-  if (data.hotels && data.hotels.length > 0) {
-    formData.append('hotels', JSON.stringify(data.hotels));
-  }
-  
-  if (data.finance_approver_id) {
-    formData.append('finance_approver_id', data.finance_approver_id);
-  }
-  
-  if (data.hr_representative_id) {
-    formData.append('hr_representative_id', data.hr_representative_id);
-  }
-  
-  if (data.employee_manual) {
-    Object.keys(data.employee_manual).forEach(key => {
-      formData.append(`employee_manual[${key}]`, data.employee_manual[key]);
-    });
-  }
-  
-  if (files && files.length > 0) {
-    files.forEach(file => {
-      formData.append('files', file);
-    });
-  }
-  
-  return formData;
-},
+ formatTripRequestWithFiles: (data, files) => {
+    const formData = new FormData();
+    
+    formData.append('requester_type', data.requester_type);
+    
+    if (data.employee_id) {
+      formData.append('employee_id', data.employee_id);
+    }
+    
+    formData.append('travel_type_id', data.travel_type_id);
+    formData.append('transport_type_id', data.transport_type_id);
+    formData.append('purpose_id', data.purpose_id);
+    formData.append('start_date', data.start_date);
+    formData.append('end_date', data.end_date);
+    
+    if (data.comment) {
+      formData.append('comment', data.comment);
+    }
+    
+    // ✅ NEW: Add initial_finance_amount
+    if (data.initial_finance_amount) {
+      formData.append('initial_finance_amount', data.initial_finance_amount);
+    }
+    
+    formData.append('schedules', JSON.stringify(data.schedules || []));
+    
+    if (data.hotels && data.hotels.length > 0) {
+      formData.append('hotels', JSON.stringify(data.hotels));
+    }
+    
+    if (data.finance_approver_id) {
+      formData.append('finance_approver_id', data.finance_approver_id);
+    }
+    
+    if (data.hr_representative_id) {
+      formData.append('hr_representative_id', data.hr_representative_id);
+    }
+    
+    if (data.employee_manual) {
+      Object.keys(data.employee_manual).forEach(key => {
+        formData.append(`employee_manual[${key}]`, data.employee_manual[key]);
+      });
+    }
+    
+    if (files && files.length > 0) {
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+    }
+    
+    return formData;
+  },
 
 // Validate file
 validateFile: (file) => {
@@ -636,6 +658,36 @@ getFileIcon: (fileType) => {
   // Check if user can approve
   canApprove: (userPermissions) => {
     return BusinessTripHelpers.hasPermission(userPermissions, 'business_trips.request.approve');
+  },
+
+   canEditRequest: (request, userPermissions, currentUserId) => {
+    // Admin can edit everything
+    if (userPermissions?.is_admin) return true;
+    
+    // Check if user is the requester
+    const isRequester = request.requester_id === currentUserId;
+    if (!isRequester) return false;
+    
+    // Only DRAFT, SUBMITTED, PENDING_LINE_MANAGER can be edited
+    const editableStatuses = ['DRAFT', 'SUBMITTED', 'PENDING_LINE_MANAGER'];
+    return editableStatuses.includes(request.status);
+  },
+  
+  // ✅ UPDATED: Can delete request with proper checks
+  canDeleteRequest: (request, userPermissions, currentUserId) => {
+    // Admin can delete everything (except APPROVED)
+    if (userPermissions?.is_admin) {
+      const deletableStatuses = ['DRAFT', 'SUBMITTED', 'PENDING_LINE_MANAGER', 'PENDING_FINANCE', 'PENDING_HR'];
+      return deletableStatuses.includes(request.status);
+    }
+    
+    // Check if user is the requester
+    const isRequester = request.requester_id === currentUserId;
+    if (!isRequester) return false;
+    
+    // Only DRAFT, SUBMITTED, PENDING_LINE_MANAGER can be deleted by regular users
+    const deletableStatuses = ['DRAFT', 'SUBMITTED', 'PENDING_LINE_MANAGER'];
+    return deletableStatuses.includes(request.status);
   },
 
   // Check if user can cancel trip

@@ -261,11 +261,7 @@ export default function StructureTableView({ context }) {
       return 0;
     });
 
-    console.log('🎯 Structure built:', {
-      total: structure.length,
-      unique: uniqueSet.size,
-      visibleColumns: Object.keys(visibleColumns).filter(k => visibleColumns[k])
-    });
+
 
     return structure;
   }, [businessFunctions, departments, units, jobFunctions, jobTitles, positionGroups, selectedCompany, searchTerm, mappings, visibleColumns]);

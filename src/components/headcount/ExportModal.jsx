@@ -55,7 +55,7 @@ const ExportModal = ({
     ],
     contract_info: [
       'contract_duration', 'contract_duration_display', 'contract_start_date', 'contract_end_date', 
-      'contract_extensions', 'last_extension_date', 'start_date', 'end_date'
+      'start_date', 'end_date'
     ],
     management_info: [
       'line_manager_name', 'line_manager_hc_number', 'direct_reports_count'
@@ -68,7 +68,7 @@ const ExportModal = ({
     ],
     status: [
       'status_name', 'status_color', 'is_visible_in_org_chart', 
-      'status_needs_update', 'current_status_display'
+      'current_status_display'
     ],
     dates: [
       'start_date', 'end_date', 'date_of_birth', 'years_of_service',
@@ -271,10 +271,10 @@ const ExportModal = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className={`${bgCard} rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center">
-            <Download className="mr-3 text-almet-sapphire" size={24} />
-            <h2 className={`text-xl font-bold ${textPrimary}`}>Export Employee Data</h2>
+            <Download className="mr-3 text-almet-sapphire" size={20} />
+            <h2 className={`text-base font-bold ${textPrimary}`}>Export Employee Data</h2>
           </div>
           <button
             onClick={onClose}
@@ -287,7 +287,7 @@ const ExportModal = ({
         <div className="p-6 space-y-6">
           {/* Export Type Selection */}
           <div className="space-y-3">
-            <h3 className={`text-sm font-semibold ${textPrimary}`}>What to Export</h3>
+            <h3 className={`text-xs font-semibold ${textPrimary}`}>What to Export</h3>
             <div className="space-y-2">
               {/* Selected Employees */}
               <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
@@ -464,15 +464,7 @@ const ExportModal = ({
             </div>
           </div>
 
-          {/* Selected Fields Preview */}
-          <div className="space-y-2">
-            <h4 className={`text-xs font-medium ${textSecondary}`}>
-              Selected Fields ({getSelectedFields().length} total fields)
-            </h4>
-            <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-700 p-2 rounded max-h-20 overflow-y-auto">
-              {getSelectedFields().length > 0 ? getSelectedFields().join(', ') : 'No fields selected'}
-            </div>
-          </div>
+  
 
           {/* Error Display */}
           {exportError && (
@@ -491,17 +483,17 @@ const ExportModal = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
+            className="px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleExport}
             disabled={!canExport || !isValidSelection()}
-            className="px-6 py-2 bg-almet-sapphire hover:bg-almet-astral text-white text-sm font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            className="px-6 py-2 bg-almet-sapphire hover:bg-almet-astral text-white text-xs font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           >
             {isExporting ? (
               <>

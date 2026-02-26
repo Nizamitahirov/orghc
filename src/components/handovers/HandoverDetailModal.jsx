@@ -1019,7 +1019,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                                           <select
                                             value={taskStatus}
                                             onChange={(e) => setTaskStatus(e.target.value)}
-                                            className="w-full px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                            className="w-full px-3 py-2 text-sm border focus:outline-none  border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                                           >
                                             {taskStatusOptions.map(option => (
                                               <option key={option.value} value={option.value}>
@@ -1035,7 +1035,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                                           <textarea
                                             value={taskComment}
                                             onChange={(e) => setTaskComment(e.target.value)}
-                                            className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                            className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                                             rows="2"
                                             placeholder="Add a comment..."
                                           />
@@ -1264,7 +1264,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                   <textarea
                     value={actionComment}
                     onChange={(e) => setActionComment(e.target.value)}
-                    className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white"
+                    className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white"
                     rows="4"
                     placeholder={
                       actionType === 'reject' ? 'Enter rejection reason...' :

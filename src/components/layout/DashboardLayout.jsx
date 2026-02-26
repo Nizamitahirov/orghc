@@ -3,82 +3,87 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../common/Sidebar";
 import Header from "../common/Header";
-import ProtectedRoute from "../auth/ProtectedRoute"; // Qorunan Route komponentini əlavə edin
+import ProtectedRoute from "../auth/ProtectedRoute";
 
 const DashboardLayout = ({ children }) => {
-  // Use state to track sidebar visibility and collapse state
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  
+  // Pin state - localStorage-dan oxu
+  const [isPinned, setIsPinned] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('sidebarPinned') === 'true';
+    }
+    return false;
+  });
 
-  // Toggle sidebar function for mobile view
+  // Hover state - yalnız pin-siz rejim üçün
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Sidebar faktiki olaraq genişdirmi?
+  const isSidebarExpanded = isPinned || isHovered;
+
   const toggleSidebar = () => {
     if (isMobile) {
       setSidebarOpen(!isSidebarOpen);
-    } else {
-      // On desktop, toggle between collapsed and expanded state
-      setSidebarCollapsed(!isSidebarCollapsed);
     }
   };
 
-  // Handle responsive behavior
+  const togglePin = () => {
+    const newPinned = !isPinned;
+    setIsPinned(newPinned);
+    localStorage.setItem('sidebarPinned', String(newPinned));
+    if (newPinned) setIsHovered(false); // pin edəndə hover sıfırla
+  };
+
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      
-      // Auto-hide sidebar on mobile
       if (mobile) {
         setSidebarOpen(false);
       } else {
         setSidebarOpen(true);
       }
     };
-    
-    // Set initial state
     handleResize();
-    
-    // Add event listener
     window.addEventListener('resize', handleResize);
-    
-    // Cleanup
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   return (
-    <ProtectedRoute> {/* Qorunan Route ilə əhatə edin */}
+    <ProtectedRoute>
       <div className="flex h-screen overflow-hidden">
-        {/* Sidebar - with both mobile and desktop behavior */}
-        <aside 
+        {/* Sidebar */}
+        <aside
           className={`
-            ${isMobile ? 'fixed' : 'relative'} z-20 
-            transition-all duration-300 ease-in-out 
-            h-full 
+            ${isMobile ? 'fixed' : 'relative'} z-20
+            transition-all duration-300 ease-in-out
+            h-full
             ${isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''}
-            ${!isMobile && isSidebarCollapsed ? 'w-16' : 'w-52'}
+            ${!isMobile && isSidebarExpanded ? 'w-52' : 'w-16'}
           `}
+          onMouseEnter={() => !isPinned && setIsHovered(true)}
+          onMouseLeave={() => !isPinned && setIsHovered(false)}
         >
-          <Sidebar collapsed={!isMobile && isSidebarCollapsed} />
+          <Sidebar
+            collapsed={!isMobile && !isSidebarExpanded}
+            isPinned={isPinned}
+            togglePin={togglePin}
+          />
         </aside>
 
-        {/* Overlay for mobile when sidebar is open */}
+        {/* Mobile overlay */}
         {isMobile && isSidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-10" 
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-10"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* Main content */}
         <div className="flex-1 flex flex-col overflow-hidden bg-almet-mystic dark:bg-gray-900">
-          {/* Pass toggleSidebar function to Header */}
-          <Header 
-            toggleSidebar={toggleSidebar} 
-            isMobile={isMobile}
-            isSidebarCollapsed={isSidebarCollapsed} 
-          />
-          
-          {/* Main content area */}
+          <Header toggleSidebar={toggleSidebar} />
           <main className="flex-1 overflow-y-auto p-4">
             {children}
           </main>

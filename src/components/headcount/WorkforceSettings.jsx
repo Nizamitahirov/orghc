@@ -23,7 +23,6 @@ import {
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import ConfirmationModal from '../common/ConfirmationModal';
-import SearchableDropdown from '../common/SearchableDropdown';
 import { useToast } from '../common/Toast';
 import { referenceDataAPI } from '@/store/api/referenceDataAPI';
 

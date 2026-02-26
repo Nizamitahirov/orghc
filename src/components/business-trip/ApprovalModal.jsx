@@ -36,7 +36,7 @@ export const ApprovalModal = ({
           {selectedRequest?.status === 'PENDING_FINANCE' && (
             <div>
               <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                Trip Amount (AZN) *
+                Trip Amount (AZN) 
               </label>
               <input
                 type="number"
@@ -44,7 +44,7 @@ export const ApprovalModal = ({
                 value={approvalAmount}
                 onChange={(e) => setApprovalAmount(e.target.value)}
                 placeholder="Enter amount"
-                className="w-full px-3 py-2.5 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-green-500/20 focus:border-green-500 dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-almet-sapphire border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg  focus:border-green-500 dark:bg-gray-700 dark:text-white"
               />
             </div>
           )}
@@ -58,7 +58,7 @@ export const ApprovalModal = ({
               onChange={(e) => setApprovalNote(e.target.value)}
               placeholder="Add any notes"
               rows={3}
-              className="w-full px-3 py-2.5 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-green-500/20 focus:border-green-500 dark:bg-gray-700 dark:text-white resize-none"
+              className="w-full px-3 py-2.5 text-xs border focus:outline-none focus:ring-1 focus:ring-almet-sapphire outline-0 border-almet-mystic dark:border-almet-comet rounded-lg  focus:border-green-500 dark:bg-gray-700 dark:text-white resize-none"
             />
           </div>
         </div>

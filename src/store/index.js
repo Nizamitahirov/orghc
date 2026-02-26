@@ -7,10 +7,9 @@ import orgChartReducer from './slices/orgChartSlice'; // Add this import
 export const store = configureStore({
   reducer: {
     employees: employeeReducer,
-
     referenceData: referenceDataReducer,
     grading: gradingReducer,
-   orgChart: orgChartReducer, // Add this line
+    orgChart: orgChartReducer, // Add this line
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -359,12 +359,6 @@ export const getEmployeeColors = (employee, darkMode = false) => {
                  employee.job_function || 
                  '';
       break;
-    case 'GRADE':
-      colorKey = employee.grading_level || 
-                 employee.grade || 
-                 employee.grading_display ||
-                 '';
-      break;
     default:
       colorKey = '';
   }
@@ -563,10 +557,7 @@ export const getColorModes = () => {
     availableModes.push({ value: 'JOB_FUNCTION', label: 'Job Function', description: 'Color by job function' });
   }
   
-  // Add Grade mode if position groups have grading levels
-  if (REFERENCE_DATA?.positionGroups?.some(pg => pg.grading_levels && pg.grading_levels.length > 0)) {
-    availableModes.push({ value: 'GRADE', label: 'Grade Level', description: 'Color by employee grade' });
-  }
+
   
   return availableModes;
 };

@@ -120,7 +120,7 @@ const TimeOffPage = () => {
         const res = await timeOffService.getPendingApprovals();
         setPendingApprovals(res.data.requests || []);
       } else if (activeTab === 'calendar') {
-        const res = await timeOffService.getMyRequests();
+        const res = await timeOffService.getAllRequests();
         setMyRequests(res.data.requests || []);
       } else if (activeTab === 'team-balances' && (accessInfo?.is_manager || accessInfo?.can_view_all)) {
         const res = await timeOffService.getTeamBalances();
@@ -1070,58 +1070,7 @@ const handleUpdateBalance = async (e) => {
 
              {activeTab === 'team-balances' && (accessInfo?.is_manager || accessInfo?.can_view_all) && (
             <div className="space-y-6">
-              {/* Statistics Cards - remains same */}
-              {balanceStats && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide">Total Employees</p>
-                        <p className="text-xl font-semibold text-gray-900 dark:text-white mt-2">
-                          {balanceStats.employee_count}
-                        </p>
-                      </div>
-                      <Users className="w-8 h-8 text-almet-sapphire" />
-                    </div>
-                  </div>
-
-                  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide">Total Balance</p>
-                        <p className="text-xl font-semibold text-gray-900 dark:text-white mt-2">
-                          {balanceStats.total_balance_hours}h
-                        </p>
-                      </div>
-                      <TrendingUp className="w-8 h-8 text-green-500" />
-                    </div>
-                  </div>
-
-                  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide">Total Used</p>
-                        <p className="text-xl font-semibold text-gray-900 dark:text-white mt-2">
-                          {balanceStats.total_used_hours}h
-                        </p>
-                      </div>
-                      <TrendingDown className="w-8 h-8 text-red-500" />
-                    </div>
-                  </div>
-
-                  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide">Average Balance</p>
-                        <p className="text-xl font-semibold text-gray-900 dark:text-white mt-2">
-                          {balanceStats.average_balance_hours}h
-                        </p>
-                      </div>
-                      <Clock className="w-8 h-8 text-almet-sapphire" />
-                    </div>
-                  </div>
-                </div>
-              )}
+        
  {accessInfo?.is_admin && (
               <div className="flex items-center gap-3">
                 <button

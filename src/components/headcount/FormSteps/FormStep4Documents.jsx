@@ -1,15 +1,14 @@
-// src/components/headcount/FormSteps/FormStep4Documents.jsx - REDESIGNED
+// src/components/headcount/FormSteps/FormStep4Documents.jsx - IMPROVED UI/UX
 import { useState } from "react";
 import { Check, X, Upload, File, AlertCircle, Info, FileText, Award, IdCard, Heart } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 import FormField from "../FormComponents/FormField";
 
 /**
- * TƏKMİLLƏŞDİRİLMİŞ DOCUMENTS STEP
- * - Kompakt və sadə upload area
- * - Kiçik font və elementlər
- * - Yumşaq rənglər
- * - User-friendly interface
+ * IMPROVED DOCUMENTS STEP
+ * ✓ Clean upload area
+ * ✓ Professional design
+ * ✓ Optimal spacing
  */
 const FormStep4Documents = ({ 
   formData, 
@@ -25,12 +24,11 @@ const FormStep4Documents = ({
   const [selectedDocumentType, setSelectedDocumentType] = useState("OTHER");
   const [documentName, setDocumentName] = useState("");
 
-  // TƏKMİLLƏŞDİRİLMİŞ THEME CLASSES
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
-  const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
-  const textSecondary = darkMode ? "text-gray-300" : "text-almet-waterloo";
-  const textMuted = darkMode ? "text-gray-400" : "text-almet-comet";
-  const borderColor = darkMode ? "border-gray-600" : "border-gray-200";
+  const textPrimary = darkMode ? "text-gray-100" : "text-gray-900";
+  const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
+  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
+  const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
 
   const defaultDocumentTypes = [
     { value: "CONTRACT", label: "Contract" },
@@ -135,24 +133,24 @@ const FormStep4Documents = ({
   };
 
   const getFileIcon = (type, documentType) => {
-    const iconProps = { className: "h-4 w-4" };
+    const iconProps = { className: "h-3.5 w-3.5" };
     
     switch (documentType) {
       case 'CONTRACT':
-        return <FileText {...iconProps} className="h-4 w-4 text-almet-sapphire" />;
+        return <FileText {...iconProps} className="h-3.5 w-3.5 text-almet-sapphire" />;
       case 'ID':
-        return <IdCard {...iconProps} className="h-4 w-4 text-purple-500" />;
+        return <IdCard {...iconProps} className="h-3.5 w-3.5 text-purple-500" />;
       case 'CERTIFICATE':
-        return <Award {...iconProps} className="h-4 w-4 text-yellow-500" />;
+        return <Award {...iconProps} className="h-3.5 w-3.5 text-yellow-500" />;
       case 'CV':
-        return <FileText {...iconProps} className="h-4 w-4 text-green-500" />;
+        return <FileText {...iconProps} className="h-3.5 w-3.5 text-green-500" />;
       case 'MEDICAL':
-        return <Heart {...iconProps} className="h-4 w-4 text-red-500" />;
+        return <Heart {...iconProps} className="h-3.5 w-3.5 text-red-500" />;
       default:
-        if (type.includes('pdf')) return <FileText {...iconProps} className="h-4 w-4 text-red-500" />;
-        if (type.includes('word') || type.includes('document')) return <FileText {...iconProps} className="h-4 w-4 text-blue-500" />;
-        if (type.includes('image')) return <File {...iconProps} className="h-4 w-4 text-green-500" />;
-        return <File {...iconProps} className="h-4 w-4 text-gray-500" />;
+        if (type.includes('pdf')) return <FileText {...iconProps} className="h-3.5 w-3.5 text-red-500" />;
+        if (type.includes('word') || type.includes('document')) return <FileText {...iconProps} className="h-3.5 w-3.5 text-blue-500" />;
+        if (type.includes('image')) return <File {...iconProps} className="h-3.5 w-3.5 text-green-500" />;
+        return <File {...iconProps} className="h-3.5 w-3.5 text-gray-500" />;
     }
   };
 
@@ -171,26 +169,28 @@ const FormStep4Documents = ({
   };
 
   return (
-    <div className="space-y-4">
-      {/* HEADER - kompakt */}
-      <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-        <h2 className={`text-sm font-semibold ${textPrimary}`}>
+    <div className="space-y-3">
+      {/* HEADER */}
+      <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
+        <h2 className={`text-base font-semibold ${textPrimary}`}>
           Documents & Files
         </h2>
-        <div className="text-[10px] px-2 py-0.5 bg-almet-sapphire/10 text-almet-sapphire rounded font-medium">
+        <div className="text-[10px] px-2 py-0.5 bg-almet-sapphire/10 text-almet-sapphire rounded-full font-medium">
           Step 4/4 (Optional)
         </div>
       </div>
 
-      {/* UPLOAD SECTION - kompakt */}
-      <div className={`${bgCard} rounded-lg p-3 border ${borderColor}`}>
-        <h3 className={`text-xs font-semibold ${textPrimary} mb-2 flex items-center gap-1`}>
+      {/* UPLOAD SECTION */}
+      <div className={`${bgCard} border ${borderColor} rounded-lg p-2.5`}>
+        <div className="flex items-center gap-1.5 mb-2">
           <File className="text-almet-sapphire" size={14} />
-          Upload Documents
-        </h3>
+          <h3 className={`text-xs font-semibold ${textPrimary}`}>
+            Upload Documents
+          </h3>
+        </div>
 
-        {/* TYPE & NAME SELECTION - kompakt */}
-        <div className="grid grid-cols-2 gap-2 mb-3">
+        {/* TYPE & NAME SELECTION */}
+        <div className="grid grid-cols-2 gap-2 mb-2.5">
           <FormField
             label="Document Type"
             name="document_type"
@@ -212,9 +212,9 @@ const FormStep4Documents = ({
           />
         </div>
 
-        {/* UPLOAD AREA - kompakt */}
+        {/* UPLOAD AREA */}
         <div
-          className={`border-2 border-dashed rounded-lg p-4 text-center transition-all ${
+          className={`border-2 border-dashed rounded-lg p-3.5 text-center transition-all ${
             dragActive
               ? "border-almet-sapphire bg-almet-sapphire/5 dark:bg-blue-900/20"
               : `${borderColor} hover:border-almet-sapphire hover:bg-gray-50 dark:hover:bg-gray-700/30`
@@ -224,7 +224,7 @@ const FormStep4Documents = ({
           onDragOver={handleDrag}
           onDrop={handleDrop}
         >
-          <Upload className={`mx-auto h-8 w-8 ${textMuted} mb-2`} />
+          <Upload className={`mx-auto h-7 w-7 ${textMuted} mb-1.5`} />
           <p className={`text-xs font-medium ${textPrimary} mb-0.5`}>
             Drop files or click to browse
           </p>
@@ -243,20 +243,20 @@ const FormStep4Documents = ({
           <label
             htmlFor=""
             onClick={() => fileInputRef?.current?.click()}
-            className={`px-4 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all inline-flex items-center ${
+            className={`px-3 py-1.5 rounded-md text-xs font-medium cursor-pointer transition-all inline-flex items-center ${
               darkMode 
                 ? 'bg-gray-700 hover:bg-gray-600 text-gray-200' 
                 : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
             }`}
           >
-            <Upload size={12} className="mr-1" />
+            <Upload size={11} className="mr-1" />
             Choose Files
           </label>
         </div>
 
-        {/* UPLOAD ERROR - kompakt */}
+        {/* UPLOAD ERROR */}
         {uploadError && (
-          <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className={`mt-2 ${bgCard} border border-red-200 dark:border-red-800 rounded-lg p-2`}>
             <div className="flex items-start gap-1.5">
               <AlertCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-red-600 dark:text-red-400">{uploadError}</p>
@@ -264,9 +264,9 @@ const FormStep4Documents = ({
           </div>
         )}
 
-        {/* VALIDATION ERROR - kompakt */}
+        {/* VALIDATION ERROR */}
         {validationErrors.documents && (
-          <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className={`mt-2 ${bgCard} border border-red-200 dark:border-red-800 rounded-lg p-2`}>
             <div className="flex items-start gap-1.5">
               <AlertCircle className="h-3.5 w-3.5 text-red-500 mt-0.5 flex-shrink-0" />
               <p className="text-xs text-red-600 dark:text-red-400">{validationErrors.documents}</p>
@@ -275,18 +275,18 @@ const FormStep4Documents = ({
         )}
       </div>
 
-      {/* UPLOADED DOCUMENTS LIST - kompakt */}
+      {/* UPLOADED DOCUMENTS LIST */}
       {formData.documents && formData.documents.length > 0 && (
-        <div className={`${bgCard} rounded-lg p-3 border ${borderColor}`}>
+        <div className={`${bgCard} border ${borderColor} rounded-lg p-2.5`}>
           <h3 className={`text-xs font-semibold ${textPrimary} mb-2`}>
             Uploaded Documents ({formData.documents.length})
           </h3>
           
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {formData.documents.map((doc, index) => (
               <div
                 key={index}
-                className={`flex items-center justify-between p-2 border ${borderColor} rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors`}
+                className={`flex items-center justify-between p-2 border ${borderColor} rounded-md hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors`}
               >
                 <div className="flex items-center flex-1 min-w-0 gap-2">
                   <div className="flex-shrink-0">
@@ -312,7 +312,7 @@ const FormStep4Documents = ({
                   className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-500 hover:text-red-600 transition-colors flex-shrink-0"
                   title="Remove"
                 >
-                  <X size={14} />
+                  <X size={12} />
                 </button>
               </div>
             ))}
@@ -320,8 +320,8 @@ const FormStep4Documents = ({
         </div>
       )}
 
-      {/* INFO MESSAGE - kompakt */}
-      <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+      {/* INFO MESSAGE */}
+      <div className={`${bgCard} border border-blue-200 dark:border-blue-800 rounded-lg p-2.5`}>
         <div className="flex items-start gap-2">
           <Info className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
           <div>

@@ -48,7 +48,7 @@ const HeadcountAccessControl = ({ children }) => {
       
       if (matchedEmployee) {
         const employeeId = matchedEmployee.id || matchedEmployee.employee_id;
-        console.log('✅ Found employee ID by email:', employeeId);
+   
         return employeeId;
       }
       
@@ -69,7 +69,7 @@ const HeadcountAccessControl = ({ children }) => {
     let employeeId = null;
     
     if (userEmail) {
-      console.log('🔍 Searching employee by email:', userEmail);
+   
       employeeId = await findEmployeeIdByEmail(userEmail);
       
       if (employeeId) {
@@ -103,7 +103,7 @@ const HeadcountAccessControl = ({ children }) => {
           // Use getMyProfile without search parameters - it should return current user's profile
           const profileResponse = await employeeService.getMyProfile();
           
-          console.log('Profile response:', profileResponse);
+   
           
           // Based on your data structure, the response should have 'employee' object directly
           if (profileResponse.employee) {

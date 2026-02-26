@@ -1,22 +1,13 @@
 // src/store/api/employeeAPI.js - COMPLETE FIXED VERSION: Proper array handling for all filters
 import { apiService } from '../../services/api';
 
-export const employeeAPI = {
-  // ========================================
-  // EMPLOYEE CRUD OPERATIONS - COMPLETELY FIXED ARRAY HANDLING
-  // ========================================
-  
+export const employeeAPI = { 
   getAll: (params = {}) => {
-    // Backend field names ilə map edilir və advanced filtering dəstəyi
+   
     const backendParams = {};
-    
 
-    
-    // Pagination
     if (params.page) backendParams.page = params.page;
     if (params.page_size) backendParams.page_size = params.page_size;
-    
-    // Search - Enhanced with multiple search types
     if (params.search) backendParams.search = params.search;
     if (params.employee_search) backendParams.employee_search = params.employee_search;
     if (params.line_manager_search) backendParams.line_manager_search = params.line_manager_search;
@@ -25,7 +16,7 @@ export const employeeAPI = {
     // Multiple Sorting - Enhanced support
     if (params.ordering) {
       if (Array.isArray(params.ordering)) {
-        // Convert array of sort objects to backend format
+   
         backendParams.ordering = params.ordering.map(sort => {
           if (typeof sort === 'object' && sort.field && sort.direction) {
             return sort.direction === 'desc' ? `-${sort.field}` : sort.field;
@@ -40,18 +31,14 @@ export const employeeAPI = {
       backendParams.ordering = apiService.buildSortingParams(params.sort);
     }
     
-    // ========================================
-    // COMPLETELY FIXED: Multi-select Filters - Proper array handling
-    // ========================================
+
     
     // Helper function to process filter values
     const processFilterValue = (value, filterName) => {
-     
-      
       if (!value) return null;
       
       if (Array.isArray(value)) {
-        // Filter out empty/null/undefined values and convert to strings
+    
         const cleanValues = value
           .filter(val => val !== null && val !== undefined && val !== '')
           .map(val => String(val).trim())
@@ -60,7 +47,7 @@ export const employeeAPI = {
    
         return cleanValues.length > 0 ? cleanValues : null;
       } else if (typeof value === 'string') {
-        // Handle comma-separated string values
+       
         if (value.includes(',')) {
           const splitValues = value.split(',')
             .map(val => val.trim())
@@ -81,7 +68,6 @@ export const employeeAPI = {
     if (params.business_function) {
       const processedValues = processFilterValue(params.business_function, 'business_function');
       if (processedValues) {
-        // Send as comma-separated string for backend
         backendParams.business_function = processedValues.join(',');
       }
     }
@@ -204,14 +190,8 @@ export const employeeAPI = {
     if (params.is_deleted !== undefined && params.is_deleted !== null && params.is_deleted !== '') {
       backendParams.is_deleted = params.is_deleted === true || params.is_deleted === 'true';
     }
-    
-    // Special Filters - Enhanced
-    if (params.status_needs_update !== undefined && params.status_needs_update !== null && params.status_needs_update !== '') {
-      backendParams.status_needs_update = params.status_needs_update === true || params.status_needs_update === 'true';
-    }
-    if (params.contract_expiring_days) {
-      backendParams.contract_expiring_days = parseInt(params.contract_expiring_days);
-    }
+
+  
     
     // Legacy parameters support
     if (params.job_title) backendParams.job_title = params.job_title;
@@ -450,24 +430,11 @@ export const employeeAPI = {
     return apiService.updateEmployee(id, formData);
   },
 
-
-  
-  // ========================================
-  // EMPLOYEE SPECIFIC DETAILS
-  // ========================================
   getActivities: (employeeId) => apiService.getEmployeeActivities(employeeId),
   getDirectReports: (employeeId) => apiService.getEmployeeDirectReports(employeeId),
-  getStatusPreview: (employeeId) => apiService.getEmployeeStatusPreview(employeeId),
-  
-  // ========================================
-  // EMPLOYEE STATISTICS
-  // ========================================
+
   getStatistics: () => apiService.getEmployeeStatistics(),
   
-  // ========================================
-  // BULK OPERATIONS - Enhanced
-  // ========================================
-
   bulkUpload: (file) => apiService.bulkUploadEmployees(file),
   
   // ========================================
@@ -501,23 +468,28 @@ export const employeeAPI = {
   assignLineManager: (data) => apiService.assignLineManager(data),
   bulkAssignLineManager: (data) => apiService.bulkAssignLineManager(data),
   
-  // ========================================
-  // CONTRACT MANAGEMENT
-  // ========================================
-  extendContract: (data) => apiService.extendEmployeeContract(data),
-  bulkExtendContracts: (data) => apiService.bulkExtendContracts(data),
 
- 
+
+export: (params = {}) => {
+
+  const filterParams = params._queryParams || {};
   
-  // ========================================
-  // EXPORT AND TEMPLATES
-  // ========================================
-  export: (params = {}) => apiService.exportEmployees(params),
-  downloadTemplate: () => apiService.downloadEmployeeTemplate(),
+  const exportPayload = {
+    export_format: params.format || 'excel',
+    employee_ids: params.employee_ids || [],
+    include_fields: params.include_fields || 'all',
+    ...filterParams 
+  };
   
-  // ========================================
-  // GRADING MANAGEMENT
-  // ========================================
+  // ✅ Call apiService
+  return apiService.exportEmployees(
+    exportPayload.export_format,
+    exportPayload
+  );
+},
+downloadTemplate: () => apiService.downloadEmployeeTemplate(),
+  
+
   getEmployeeGrading: () => apiService.getEmployeeGrading(),
  
   
@@ -574,61 +546,14 @@ export const employeeAPI = {
       ...additionalFilters
     });
   },
-  
-  getNewHires: (daysBack = 30, additionalFilters = {}) => {
-    return employeeAPI.getAll({
-      years_of_service_range: { min: 0, max: daysBack / 365 },
-      ...additionalFilters
-    });
-  },
-  
-  getEmployeesWithContractEnding: (daysAhead = 30, additionalFilters = {}) => {
-    return employeeAPI.getAll({
-      contract_expiring_days: daysAhead,
-      ...additionalFilters
-    });
-  },
-  
-  getEmployeesNeedingAttention: () => {
-    return Promise.all([
-      employeeAPI.getAll({ line_manager: null }),
-      employeeAPI.getAll({ grading_level: [] }),
-      employeeAPI.getAll({ contract_expiring_days: 30 }),
-      employeeAPI.getAll({ status: ['ON_LEAVE'] }),
-      employeeAPI.getAll({ status_needs_update: true })
-    ]).then(([noManager, noGrading, contractEnding, onLeave, statusUpdate]) => ({
-      noLineManager: noManager.data.results || noManager.data,
-      noGrading: noGrading.data.results || noGrading.data,
-      contractEnding: contractEnding.data.results || contractEnding.data,
-      onLeave: onLeave.data.results || onLeave.data,
-      statusUpdate: statusUpdate.data.results || statusUpdate.data
-    }));
-  },
-  
+
   getOrgChartEmployees: (visible = true, additionalFilters = {}) => {
     return employeeAPI.getAll({
       is_visible_in_org_chart: visible,
       ...additionalFilters
     });
   },
-  
-  // ========================================
-  // ENHANCED BATCH OPERATIONS
-  // ========================================
-  batchUpdateStatus: (employeeIds, statusId) => {
-    // Since we don't have bulk status update endpoint, we can do individual updates
-    const updates = employeeIds.map(id => ({
-      id,
-      status: statusId
-    }));
-    
-    return Promise.all(updates.map(update => 
-      employeeAPI.update(update.id, { status: update.status })
-    ));
-  },
-  
 
-  
   batchAssignManager: (employeeIds, managerId) => {
     return employeeAPI.bulkAssignLineManager({
       employee_ids: employeeIds,
@@ -706,10 +631,7 @@ export const employeeAPI = {
       is_active: filters.isActive,
       is_visible_in_org_chart: filters.isOrgChartVisible,
       is_deleted: filters.includeDeleted,
-      
-      // Special filters
-      status_needs_update: filters.needsStatusUpdate,
-      contract_expiring_days: filters.contractExpiringDays,
+
       
       // Sorting
       ordering: filters.sorting,
@@ -884,7 +806,6 @@ export const employeeAPI = {
       positionGroupName: rawData.position_group_name,
       positionGroupLevel: rawData.position_group_level,
       gradingLevel: rawData.grading_level,
-      gradingDisplay: rawData.grading_display,
       lineManager: rawData.line_manager,
       lineManagerName: rawData.line_manager_name,
       lineManagerHcNumber: rawData.line_manager_hc_number,
@@ -893,8 +814,8 @@ export const employeeAPI = {
       contractDuration: rawData.contract_duration,
       contractStartDate: rawData.contract_start_date,
       contractEndDate: rawData.contract_end_date,
-      contractExtensions: rawData.contract_extensions,
-      lastExtensionDate: rawData.last_extension_date,
+
+
       yearsOfService: rawData.years_of_service,
       status: rawData.status_name || rawData.current_status_display,
       statusColor: rawData.status_color,
@@ -902,7 +823,7 @@ export const employeeAPI = {
       tagNames: rawData.tag_names || [],
       isVisibleInOrgChart: rawData.is_visible_in_org_chart,
       directReportsCount: rawData.direct_reports_count || 0,
-      statusNeedsUpdate: rawData.status_needs_update,
+   
       profileImageUrl: rawData.profile_image_url,
       createdAt: rawData.created_at,
       updatedAt: rawData.updated_at,
@@ -919,8 +840,7 @@ export const employeeAPI = {
       isLineManager: (rawData.direct_reports_count || 0) > 0,
       hasGrade: !!rawData.grading_level,
       hasTags: (rawData.tag_names || []).length > 0,
-      contractExpiringSoon: rawData.contract_end_date ? 
-        (new Date(rawData.contract_end_date) - new Date()) <= (30 * 24 * 60 * 60 * 1000) : false
+    
     };
   },
   
@@ -931,197 +851,7 @@ export const employeeAPI = {
     }
     return employeeList.map(emp => employeeAPI.transformEmployeeData(emp));
   },
-  
-  // ========================================
-  // ANALYTICS HELPERS - Enhanced
-  // ========================================
-  getEmployeeAnalytics: async (filters = {}) => {
-    try {
-      const [statistics, employees] = await Promise.all([
-        employeeAPI.getStatistics(),
-        employeeAPI.getAll({ 
-          page_size: 1000, 
-          ...filters 
-        })
-      ]);
-      
-      const employeeData = employees.data.results || employees.data;
-      const transformedEmployees = employeeAPI.transformEmployeeList(employeeData);
-      
-      return {
-        statistics: statistics.data,
-        demographics: {
-          byGender: transformedEmployees.reduce((acc, emp) => {
-            const gender = emp.gender || 'Not Specified';
-            acc[gender] = (acc[gender] || 0) + 1;
-            return acc;
-          }, {}),
-          byDepartment: transformedEmployees.reduce((acc, emp) => {
-            const dept = emp.departmentName || 'Unknown';
-            acc[dept] = (acc[dept] || 0) + 1;
-            return acc;
-          }, {}),
-          byBusinessFunction: transformedEmployees.reduce((acc, emp) => {
-            const bf = emp.businessFunctionName || 'Unknown';
-            acc[bf] = (acc[bf] || 0) + 1;
-            return acc;
-          }, {}),
-          byStatus: transformedEmployees.reduce((acc, emp) => {
-            const status = emp.status || 'Unknown';
-            acc[status] = (acc[status] || 0) + 1;
-            return acc;
-          }, {}),
-          byPositionGroup: transformedEmployees.reduce((acc, emp) => {
-            const pg = emp.positionGroupName || 'Unknown';
-            acc[pg] = (acc[pg] || 0) + 1;
-            return acc;
-          }, {}),
-          byGradingLevel: transformedEmployees.reduce((acc, emp) => {
-            const grade = emp.gradingLevel || 'No Grade';
-            acc[grade] = (acc[grade] || 0) + 1;
-            return acc;
-          }, {})
-        },
-        trends: {
-          newHires: transformedEmployees.filter(emp => emp.isNewHire).length,
-          veteranEmployees: transformedEmployees.filter(emp => emp.yearsOfService >= 5).length,
-          contractEnding: transformedEmployees.filter(emp => emp.contractExpiringSoon).length,
-          onLeave: transformedEmployees.filter(emp => emp.isOnLeave).length,
-          onboarding: transformedEmployees.filter(emp => emp.isOnboarding).length,
-          needsGrading: transformedEmployees.filter(emp => !emp.hasGrade).length,
-          noLineManager: transformedEmployees.filter(emp => !emp.hasLineManager).length,
-          statusUpdatesNeeded: transformedEmployees.filter(emp => emp.statusNeedsUpdate).length
-        },
-        performance: {
-          gradingCompletion: transformedEmployees.length > 0 ? 
-            (transformedEmployees.filter(emp => emp.hasGrade).length / transformedEmployees.length) * 100 : 0,
-          averageServiceYears: transformedEmployees.length > 0 ? 
-            transformedEmployees.reduce((sum, emp) => sum + (emp.yearsOfService || 0), 0) / transformedEmployees.length : 0,
-          managementCoverage: transformedEmployees.length > 0 ? 
-            (transformedEmployees.filter(emp => emp.hasLineManager).length / transformedEmployees.length) * 100 : 0
-        },
-        orgChart: {
-          visibleEmployees: transformedEmployees.filter(emp => emp.isVisibleInOrgChart).length,
-          hiddenEmployees: transformedEmployees.filter(emp => !emp.isVisibleInOrgChart).length,
-          managers: transformedEmployees.filter(emp => emp.isLineManager).length,
-          totalHierarchyLevels: Math.max(...transformedEmployees.map(emp => emp.positionGroupLevel || 0))
-        }
-      };
-    } catch (error) {
-      console.error('Failed to fetch employee analytics:', error);
-      throw new Error('Failed to fetch employee analytics: ' + error.message);
-    }
-  },
-  
-  // Get KPI metrics
-  getKPIMetrics: async (filters = {}) => {
-    try {
-      const analytics = await employeeAPI.getEmployeeAnalytics(filters);
-      
-      return {
-        headcount: {
-          total: analytics.statistics.total_employees,
-          active: analytics.statistics.active_employees,
-          growth: analytics.trends.newHires,
-          retention: 100 - ((analytics.trends.onLeave / analytics.statistics.total_employees) * 100)
-        },
-        engagement: {
-          managementCoverage: analytics.performance.managementCoverage,
-          gradingCompletion: analytics.performance.gradingCompletion,
-          orgChartParticipation: (analytics.orgChart.visibleEmployees / analytics.statistics.total_employees) * 100
-        },
-        risk: {
-          contractRisk: (analytics.trends.contractEnding / analytics.statistics.total_employees) * 100,
-          statusRisk: (analytics.trends.statusUpdatesNeeded / analytics.statistics.total_employees) * 100,
-          onboardingBacklog: analytics.trends.onboarding
-        },
-        performance: {
-          averageTenure: analytics.performance.averageServiceYears,
-          veteranRetention: (analytics.trends.veteranEmployees / analytics.statistics.total_employees) * 100,
-          newHireIntegration: analytics.trends.newHires
-        }
-      };
-    } catch (error) {
-      console.error('Failed to fetch KPI metrics:', error);
-      throw error;
-    }
-  },
-  
-  // ========================================
-  // REPORTING HELPERS - Enhanced
-  // ========================================
-  
-  // Generate comprehensive employee report
-  generateEmployeeReport: async (reportType = 'comprehensive', filters = {}) => {
-    try {
-      const reportConfig = {
-        'headcount': {
-          title: 'Headcount Report',
-          sections: ['demographics', 'trends.newHires', 'trends.veteranEmployees']
-        },
-        'performance': {
-          title: 'Performance Report', 
-          sections: ['performance', 'trends.needsGrading', 'orgChart']
-        },
-        'compliance': {
-          title: 'Compliance Report',
-          sections: ['trends.contractEnding', 'trends.statusUpdatesNeeded', 'performance.managementCoverage']
-        },
-        'comprehensive': {
-          title: 'Comprehensive Employee Report',
-          sections: ['all']
-        }
-      };
-      
-      const config = reportConfig[reportType] || reportConfig['comprehensive'];
-      const analytics = await employeeAPI.getEmployeeAnalytics(filters);
-      const kpis = await employeeAPI.getKPIMetrics(filters);
-      
-      return {
-        title: config.title,
-        generatedAt: new Date().toISOString(),
-        filters: filters,
-        summary: {
-          totalEmployees: analytics.statistics.total_employees,
-          activeEmployees: analytics.statistics.active_employees,
-          reportScope: Object.keys(filters).length > 0 ? 'Filtered' : 'All Employees'
-        },
-        analytics: config.sections.includes('all') ? analytics : 
-          config.sections.reduce((acc, section) => {
-            const [main, sub] = section.split('.');
-            if (sub) {
-              if (!acc[main]) acc[main] = {};
-              acc[main][sub] = analytics[main]?.[sub];
-            } else {
-              acc[section] = analytics[section];
-            }
-            return acc;
-          }, {}),
-        kpis: kpis,
-        recommendations: generateRecommendations(analytics, kpis)
-      };
-    } catch (error) {
-      console.error('Failed to generate employee report:', error);
-      throw error;
-    }
-  },
-  
-  // Export report data
-  exportReport: async (reportData, format = 'excel') => {
-    try {
-      const exportData = {
-        report_data: reportData,
-        format: format,
-        include_charts: true,
-        include_recommendations: true
-      };
-      
-      return await apiService.exportEmployees(exportData);
-    } catch (error) {
-      console.error('Failed to export report:', error);
-      throw error;
-    }
-  },
+
   
   // ========================================
   // ADVANCED FILTERING PRESETS - Enhanced
@@ -1140,31 +870,20 @@ export const employeeAPI = {
     needsGrading: () => ({ grading_level: [] }),
     highPerformers: () => ({ grading_level: ['_UQ', '_UD'] }),
     newHires: () => ({ years_of_service_range: { min: 0, max: 0.25 } }),
-    veterans: () => ({ years_of_service_range: { min: 5, max: null } }),
+
     
     // Management-based presets
     noLineManager: () => ({ line_manager: null }),
     managers: () => ({ direct_reports_count_min: 1 }),
     topLevel: () => ({ position_group_level: 1 }),
     
-    // Contract-based presets
-    contractEndingSoon: () => ({ contract_expiring_days: 30 }),
-    permanentEmployees: () => ({ contract_duration: ['PERMANENT'] }),
-    temporaryEmployees: () => ({ 
-      contract_duration: ['3_MONTHS', '6_MONTHS', '1_YEAR', '2_YEARS'] 
-    }),
+
     
     // Visibility presets
     orgChartVisible: () => ({ is_visible_in_org_chart: true }),
     orgChartHidden: () => ({ is_visible_in_org_chart: false }),
     
-    // Attention needed presets
-    needsAttention: () => ({
-      status_needs_update: true,
-      contract_expiring_days: 60,
-      line_manager: null,
-      grading_level: []
-    })
+   
   },
   
   // Apply preset filter
@@ -1235,66 +954,6 @@ export const employeeAPI = {
   }
 };
 
-// Helper function for generating recommendations
-function generateRecommendations(analytics, kpis) {
-  const recommendations = [];
-  
-  // Grading recommendations
-  if (kpis.engagement.gradingCompletion < 80) {
-    recommendations.push({
-      category: 'Performance Management',
-      priority: 'High',
-      issue: 'Low grading completion rate',
-      recommendation: 'Complete performance grading for all employees to ensure fair compensation and career development.',
-      affectedCount: analytics.trends.needsGrading
-    });
-  }
-  
-  // Line manager recommendations
-  if (kpis.engagement.managementCoverage < 90) {
-    recommendations.push({
-      category: 'Organizational Structure',
-      priority: 'High',
-      issue: 'Employees without line managers',
-      recommendation: 'Assign line managers to all employees to ensure proper supervision and career guidance.',
-      affectedCount: analytics.trends.noLineManager
-    });
-  }
-  
-  // Contract management recommendations
-  if (kpis.risk.contractRisk > 10) {
-    recommendations.push({
-      category: 'Contract Management',
-      priority: 'Medium',
-      issue: 'Contracts expiring soon',
-      recommendation: 'Review and renew contracts that are expiring within the next 30 days.',
-      affectedCount: analytics.trends.contractEnding
-    });
-  }
-  
-  // Status update recommendations
-  if (kpis.risk.statusRisk > 5) {
-    recommendations.push({
-      category: 'Status Management',
-      priority: 'Medium',
-      issue: 'Employee statuses need updates',
-      recommendation: 'Update employee statuses based on their current contract and employment situation.',
-      affectedCount: analytics.trends.statusUpdatesNeeded
-    });
-  }
-  
-  // Onboarding recommendations
-  if (analytics.trends.onboarding > analytics.statistics.total_employees * 0.1) {
-    recommendations.push({
-      category: 'Onboarding',
-      priority: 'Low',
-      issue: 'High number of employees in onboarding',
-      recommendation: 'Review onboarding processes and timelines to ensure smooth transition to active status.',
-      affectedCount: analytics.trends.onboarding
-    });
-  }
-  
-  return recommendations;
-}
+
 
 export { employeeAPI as default };

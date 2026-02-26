@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Download, Star, TrendingUp, Award, Target, FileText, BookOpen, CheckCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Download, Star, TrendingUp, Award, Target, FileText, BookOpen, CheckCircle, Clock, MessageSquare } from 'lucide-react';
 import ObjectivesSection from './ObjectivesSection';
 import CompetenciesSection from './CompetenciesSection';
 import PerformanceReviews from './PerformanceReviews';
 import DevelopmentNeeds from './DevelopmentNeeds';
 import ClarificationComments from './ClarificationComments';
-import { useToast } from '@/components/common/Toast';
 
 export default function EmployeePerformanceDetail({
   employee,
@@ -16,7 +15,7 @@ export default function EmployeePerformanceDetail({
   currentPeriod,
   activeYear,
   permissions,
-   onAddObjectiveComment,
+  onAddObjectiveComment,
   onDeleteObjectiveComment,
   loading,
   darkMode,
@@ -31,21 +30,19 @@ export default function EmployeePerformanceDetail({
   onUpdateCompetency,
   onSaveCompetenciesDraft,
   onSubmitCompetencies,
-
   onSubmitMidYearEmployee,
   onSubmitMidYearManager,
   onUpdateDevelopmentNeed,
   onAddDevelopmentNeed,
   onDeleteDevelopmentNeed,
   onSaveDevelopmentNeedsDraft,
-
-
   onSubmitEndYearEmployee,
   onSubmitEndYearManager,
+  onTakePMSurvey, 
+  onCompleteEndYear
 }) {
-  const { showInfo } = useToast();
+   const isEndYearPeriod = currentPeriod === 'END_YEAR_REVIEW';
   
-  // ✅ Load saved detail tab from localStorage
   const getSavedDetailTab = () => {
     if (typeof window === 'undefined') return 'objectives';
     const saved = localStorage.getItem('performance_detail_tab');
@@ -54,14 +51,12 @@ export default function EmployeePerformanceDetail({
 
   const [activeTab, setActiveTab] = useState(getSavedDetailTab);
 
-  // ✅ Save tab to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('performance_detail_tab', activeTab);
   }, [activeTab]);
 
   const canEdit = permissions.is_admin || 
     (permissions.employee && employee.line_manager === permissions.employee.name);
-
 
   const calculateTotalWeight = (objectives) => {
     return objectives?.reduce((sum, obj) => sum + (parseFloat(obj.weight) || 0), 0) || 0;
@@ -104,6 +99,10 @@ export default function EmployeePerformanceDetail({
 
   const isCompleted = !isNaN(objectivesPercentage) && objectivesPercentage > 0 && 
                       !isNaN(competenciesPercentage) && competenciesPercentage > 0;
+
+
+  const isEndYearCompleted = performanceData.end_year_completed 
+
 
   const tabs = [
     {
@@ -185,7 +184,7 @@ export default function EmployeePerformanceDetail({
   return (
     <div className="space-y-4">
       {/* Employee Header */}
-      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-almet-mystic'} rounded-xl p-4 shadow-sm border`}>
+      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-almet-mystic'} rounded-xl p-3 shadow-sm border`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
@@ -195,7 +194,7 @@ export default function EmployeePerformanceDetail({
               <ArrowLeft className="w-5 h-5 text-almet-waterloo dark:text-almet-bali-hai" />
             </button>
             
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-almet-sapphire to-almet-astral text-white flex items-center justify-center text-base font-bold">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-almet-sapphire to-almet-astral text-white flex items-center justify-center text-base font-bold">
               {employee.name.charAt(0)}
             </div>
             
@@ -214,31 +213,16 @@ export default function EmployeePerformanceDetail({
           </div>
           
           <div className="flex items-center gap-3">
-            <div className={`px-4 py-2 rounded-xl ${darkMode ? 'bg-almet-sapphire/20 border border-almet-sapphire/30' : 'bg-almet-sapphire/10 border border-almet-sapphire/20'}`}>
-              <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-0.5">Overall</div>
+            <div className={`px-4 py-2 flex gap-4 items-center rounded-xl ${darkMode ? 'bg-almet-sapphire/20 border border-almet-sapphire/30' : 'bg-almet-sapphire/10 border border-almet-sapphire/20'}`}>
+              <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-0.5">Overall: </div>
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-almet-sapphire">{formatNumber(overallPercentage, 1)}%</span>
+                <span className="text-lg font-bold text-almet-sapphire">{formatNumber(overallPercentage, 1)}% </span>
                 <span className="text-sm font-semibold text-almet-sapphire">{finalRating}</span>
               </div>
             </div>
 
-            {isCompleted ? (
-              <div className={`px-4 py-2 rounded-xl flex items-center gap-2 ${
-                darkMode 
-                  ? 'bg-emerald-900/30 border border-emerald-800/30' 
-                  : 'bg-emerald-50 border border-emerald-200'
-              }`}>
-                <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                <div>
-                  <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                    Completed
-                  </div>
-                  <div className="text-xs text-emerald-600 dark:text-emerald-500">
-                    Ready for export
-                  </div>
-                </div>
-              </div>
-            ) : (
+            {!isCompleted &&
+        
               <div className={`px-4 py-2 rounded-xl flex items-center gap-2 ${
                 darkMode 
                   ? 'bg-amber-900/20 border border-amber-800/30' 
@@ -254,13 +238,25 @@ export default function EmployeePerformanceDetail({
                   </div>
                 </div>
               </div>
-            )}
+            }
+
+            {/* 
+            {isEndYearCompleted && onTakePMSurvey && (
+              <button
+                onClick={() => onTakePMSurvey(employee.id)}
+                disabled={loading}
+                className="h-10 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50 transition-all shadow-sm"
+              >
+                <MessageSquare className="w-4 h-4" />
+                PM Survey
+              </button>
+            )} */}
             
             {canEdit && isCompleted && (
               <button
                 onClick={onExport}
                 disabled={loading}
-                className="h-10 px-4 bg-almet-sapphire hover:bg-almet-astral text-white rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50 transition-all shadow-sm"
+                className="h-8 px-4 bg-almet-sapphire hover:bg-almet-astral text-white rounded-xl text-xs font-medium flex items-center gap-2 disabled:opacity-50 transition-all shadow-sm"
               >
                 <Download className="w-4 h-4" />
                 Export
@@ -269,7 +265,39 @@ export default function EmployeePerformanceDetail({
           </div>
         </div>
       </div>
+{canEdit && isEndYearPeriod && !performanceData.end_year_completed && (
+        <div className={`${darkMode ? 'bg-emerald-900/20 border-emerald-800/30' : 'bg-emerald-50 border-emerald-200'} rounded-xl border p-3`}>
+          
+            <div className="flex w-auto justify-between">
+              <div>
+<div className='flex  mb-1.5 gap-4'>
+  
+            <CheckCircle className="w-4 h-4 text-emerald-600  " />
+            <h4 className={`text-sm font-bold ${darkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                Ready to Complete
+                 </h4>
+</div>
 
+                 
+              <p className={`text-xs ${darkMode ? 'text-emerald-400' : 'text-emerald-600'} `}>
+                All reviews are submitted. Complete the end-year process to finalize this performance cycle.
+              </p> 
+              </div>
+            <div>
+              <button
+                onClick={() => onCompleteEndYear(performanceData.id)}
+                disabled={loading}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium flex items-center gap-2 disabled:opacity-50 transition-all"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Complete End-Year Review
+              </button>
+            </div>
+              
+            </div>
+        
+        </div>
+      )}
       {/* Mini Performance Metrics */}
       <div className="grid grid-cols-3 gap-3">
         <MetricCard
@@ -318,7 +346,7 @@ export default function EmployeePerformanceDetail({
         </div>
       </div>
 
-      {/* Tab Content */}
+      {/* Tab Content - Keep existing code */}
       <div className="min-h-[600px]">
         {activeTab === 'objectives' && (
           <ObjectivesSection
@@ -329,10 +357,10 @@ export default function EmployeePerformanceDetail({
             canEdit={canEdit}
             loading={loading}
             darkMode={darkMode}
-               onAddObjectiveComment={onAddObjectiveComment}
-        onDeleteObjectiveComment={onDeleteObjectiveComment}
-             onSaveEndYearObjectivesDraft={onSaveEndYearObjectivesDraft}
-        onSubmitEndYearObjectives={onSubmitEndYearObjectives}
+            onAddObjectiveComment={onAddObjectiveComment}
+            onDeleteObjectiveComment={onDeleteObjectiveComment}
+            onSaveEndYearObjectivesDraft={onSaveEndYearObjectivesDraft}
+            onSubmitEndYearObjectives={onSubmitEndYearObjectives}
             totalWeight={totalWeight}
             totalScore={performanceData.total_objectives_score}
             percentage={performanceData.objectives_percentage}
@@ -369,30 +397,27 @@ export default function EmployeePerformanceDetail({
         )}
 
         {activeTab === 'reviews' && (
-  <PerformanceReviews
-    midYearEmployee={performanceData.mid_year_employee_comment}
-    midYearManager={performanceData.mid_year_manager_comment}
-    endYearEmployee={performanceData.end_year_employee_comment}
-    endYearManager={performanceData.end_year_manager_comment}
-    currentPeriod={currentPeriod}
-    performanceData={{
-      ...performanceData,
-      
-      employee_data: {
-        line_manager_hc: employee.line_manager_hc || null,
-        line_manager_name: employee.line_manager || null
-      }
-    }}
-    permissions={permissions}
-  
-    onSubmitMidYearEmployee={onSubmitMidYearEmployee}
-    onSubmitMidYearManager={onSubmitMidYearManager}
-  
-    onSubmitEndYearEmployee={onSubmitEndYearEmployee}
-    onSubmitEndYearManager={onSubmitEndYearManager}
-    darkMode={darkMode}
-  />
-)}
+          <PerformanceReviews
+            midYearEmployee={performanceData.mid_year_employee_comment}
+            midYearManager={performanceData.mid_year_manager_comment}
+            endYearEmployee={performanceData.end_year_employee_comment}
+            endYearManager={performanceData.end_year_manager_comment}
+            currentPeriod={currentPeriod}
+            performanceData={{
+              ...performanceData,
+              employee_data: {
+                line_manager_hc: employee.line_manager_hc || null,
+                line_manager_name: employee.line_manager || null
+              }
+            }}
+            permissions={permissions}
+            onSubmitMidYearEmployee={onSubmitMidYearEmployee}
+            onSubmitMidYearManager={onSubmitMidYearManager}
+            onSubmitEndYearEmployee={onSubmitEndYearEmployee}
+            onSubmitEndYearManager={onSubmitEndYearManager}
+            darkMode={darkMode}
+          />
+        )}
 
         {activeTab === 'development' && (
           <DevelopmentNeeds
@@ -405,7 +430,6 @@ export default function EmployeePerformanceDetail({
             onAdd={onAddDevelopmentNeed}
             onDelete={onDeleteDevelopmentNeed}
             onSaveDraft={onSaveDevelopmentNeedsDraft}
- 
           />
         )}
       </div>
@@ -423,12 +447,11 @@ function MetricCard({ icon: Icon, title, value, subtitle, color, darkMode }) {
   return (
     <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-almet-mystic'} rounded-xl border p-3`}>
       <div className='flex items-center gap-4'>
-<div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center mb-2`}>
-        <Icon className="w-4 h-4 text-white" />
+        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center mb-2`}>
+          <Icon className="w-4 h-4 text-white" />
+        </div>
+        <h3 className="text-xs font-medium text-almet-waterloo dark:text-almet-bali-hai mb-1">{title}</h3>
       </div>
-      <h3 className="text-xs font-medium text-almet-waterloo dark:text-almet-bali-hai mb-1">{title}</h3>
-      </div>
-      
       
       <p className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'} mb-0.5`}>{value}</p>
       <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">{subtitle}</p>

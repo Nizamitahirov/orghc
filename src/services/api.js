@@ -452,7 +452,7 @@ deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
   },
 
   getEmployeeDirectReports: (employeeId) => api.get(`/employees/${employeeId}/direct_reports/`),
-  getEmployeeStatusPreview: (employeeId) => api.get(`/employees/${employeeId}/status_preview/`),
+
   getEmployeeStatistics: () => api.get("/employees/statistics/"),
 
   // ========================================
@@ -487,135 +487,173 @@ deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
   assignLineManager: (data) => api.post("/employees/assign-line-manager/", data),
   bulkAssignLineManager: (data) => api.post("/employees/bulk-assign-line-manager/", data),
 
-  // ========================================
-  // CONTRACT MANAGEMENT
-  // ========================================
-  extendEmployeeContract: (data) => api.post("/employees/extend-contract/", data),
-  bulkExtendContracts: (data) => api.post("/employees/bulk-extend-contracts/", data),
- 
 
 
-  // ========================================
-  // EXPORT & TEMPLATE
-  // ========================================
-  exportEmployees: async (format = 'excel', params = {}) => {
-    try {
-      const payload = {};
-      payload.export_format = format === 'csv' ? 'csv' : 'excel';
+exportEmployees: async (format = 'excel', params = {}) => {
+  try {
+
+    // ✅ Build POST body payload
+    const payload = {
+      export_format: format === 'csv' ? 'csv' : 'excel'
+    };
+    
+    // ✅ Handle employee_ids
+    if (params.employee_ids && Array.isArray(params.employee_ids) && params.employee_ids.length > 0) {
+      const validIds = params.employee_ids
+        .map(id => {
+          if (typeof id === 'string') return parseInt(id, 10);
+          if (typeof id === 'number') return id;
+          return null;
+        })
+        .filter(id => id !== null && id > 0);
       
-      if (params.employee_ids && Array.isArray(params.employee_ids) && params.employee_ids.length > 0) {
-        const validIds = params.employee_ids
-          .map(id => {
-            if (typeof id === 'string') return parseInt(id, 10);
-            if (typeof id === 'number') return id;
-            return null;
-          })
-          .filter(id => id !== null && id > 0);
-        
-        if (validIds.length > 0) {
-          payload.employee_ids = validIds;
+      if (validIds.length > 0) {
+        payload.employee_ids = validIds;
+      }
+    }
+    
+    // ✅ Handle include_fields
+    if (params.include_fields && Array.isArray(params.include_fields) && params.include_fields.length > 0) {
+      const validFields = params.include_fields
+        .filter(field => field && typeof field === 'string' && field.trim())
+        .map(field => field.trim());
+      
+      if (validFields.length > 0) {
+        payload.include_fields = validFields;
+      }
+    }
+    
+    // ✅ CRITICAL FIX: Build query params from _filterParams
+    let queryParams = {};
+    
+    if (params._filterParams && typeof params._filterParams === 'object') {
+      // Copy all filter params except pagination
+      Object.entries(params._filterParams).forEach(([key, value]) => {
+        if (key === 'page' || key === 'page_size' || key === 'use_pagination') {
+          return; // Skip pagination params
         }
-      }
-      
-      if (params.include_fields && Array.isArray(params.include_fields) && params.include_fields.length > 0) {
-        const validFields = params.include_fields
-          .filter(field => field && typeof field === 'string' && field.trim())
-          .map(field => field.trim());
         
-        if (validFields.length > 0) {
-          payload.include_fields = validFields;
-        }
-      }
-      
-      let queryParams = {};
-      if (params._filterParams && typeof params._filterParams === 'object') {
-        queryParams = { ...params._filterParams };
-        delete queryParams.page;
-        delete queryParams.page_size;
-      }
-      
-      const queryString = buildQueryParams(queryParams);
-      const endpoint = `/employees/export_selected/${queryString ? `?${queryString}` : ''}`;
-      
-      const response = await api.post(endpoint, payload, {
-        responseType: 'blob',
-        timeout: 120000,
-        headers: {
-          'Content-Type': 'application/json'
+        if (value !== null && value !== undefined && value !== '') {
+          // Handle arrays - send as comma-separated
+          if (Array.isArray(value)) {
+            const cleanValues = value.filter(v => v !== null && v !== undefined && v !== '');
+            if (cleanValues.length > 0) {
+              queryParams[key] = cleanValues.join(',');
+            }
+          } else {
+            queryParams[key] = value;
+          }
         }
       });
       
-      if (response && response.data && response.data.size > 0) {
-        const blob = new Blob([response.data], { 
-          type: format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-        });
-        
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        
-        let filename = `employees_export_${new Date().toISOString().split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`;
-        
-        const contentDisposition = response.headers?.['content-disposition'];
-        if (contentDisposition) {
-          const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-          if (filenameMatch && filenameMatch[1]) {
-            filename = filenameMatch[1].replace(/['"]/g, '');
-          }
-        }
-        
-        link.setAttribute('download', filename);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(url);
-        
-        return {
-          success: true,
-          filename: filename,
-          format: format,
-          employeeCount: payload.employee_ids?.length || 'filtered/all',
-          fieldsCount: payload.include_fields?.length || 'default'
-        };
-      } else {
-        throw new Error('No data received from server');
-      }
-      
-    } catch (error) {
-      console.error('❌ Export failed:', error);
-      
-      let errorMessage = 'Export failed. Please try again.';
-      
-      if (error.response) {
-        if (error.response.data && typeof error.response.data === 'object') {
-          if (error.response.data.error) {
-            errorMessage = error.response.data.error;
-          } else if (error.response.data.detail) {
-            errorMessage = error.response.data.detail;
-          }
-        }
-        
-        switch (error.response.status) {
-          case 400:
-            if (!errorMessage.includes('Invalid') && !errorMessage.includes('field')) {
-              errorMessage = 'Bad Request: Please check your selection and try again.';
-            }
-            break;
-          case 401:
-            errorMessage = 'Unauthorized: Please log in again.';
-            break;
-          case 403:
-            errorMessage = 'Forbidden: No permission to export.';
-            break;
-          case 500:
-            errorMessage = 'Server Error: Please try again later.';
-            break;
-        }
-      }
-      
-      throw new Error(errorMessage);
+
     }
-  },
+    
+    // ✅ Build query string
+    const queryString = buildQueryParams(queryParams);
+    const endpoint = `/employees/export_selected/${queryString ? `?${queryString}` : ''}`;
+    
+
+    
+    // ✅ Make API call
+    const response = await api.post(endpoint, payload, {
+      responseType: 'blob',
+      timeout: 120000,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    // ✅ Handle file download
+    if (response && response.data && response.data.size > 0) {
+      const blob = new Blob([response.data], { 
+        type: format === 'csv' 
+          ? 'text/csv' 
+          : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Generate filename
+      let filename = `employees_export_${new Date().toISOString().split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`;
+      
+      // Try to get filename from response headers
+      const contentDisposition = response.headers?.['content-disposition'];
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1].replace(/['"]/g, '');
+        }
+      }
+      
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+   
+      
+      return {
+        success: true,
+        filename: filename,
+        format: format,
+        employeeCount: payload.employee_ids?.length || 'filtered/all',
+        fieldsCount: payload.include_fields?.length || 'default',
+        filtersApplied: Object.keys(queryParams).length
+      };
+    } else {
+      throw new Error('No data received from server');
+    }
+    
+  } catch (error) {
+    console.error('❌ Export failed:', error);
+    
+    let errorMessage = 'Export failed. Please try again.';
+    
+    // Handle blob error response
+    if (error.response?.data instanceof Blob) {
+      try {
+        const text = await error.response.data.text();
+        const errorData = JSON.parse(text);
+        errorMessage = errorData.error || errorData.detail || errorMessage;
+      } catch (e) {
+        console.error('Could not parse blob error:', e);
+      }
+    } else if (error.response?.data) {
+      if (typeof error.response.data === 'object') {
+        errorMessage = error.response.data.error || error.response.data.detail || errorMessage;
+      }
+    }
+    
+    // Status code specific messages
+    if (error.response?.status) {
+      switch (error.response.status) {
+        case 400:
+          if (!errorMessage.includes('Invalid') && !errorMessage.includes('field')) {
+            errorMessage = 'Bad Request: Please check your selection and try again.';
+          }
+          break;
+        case 401:
+          errorMessage = 'Unauthorized: Please log in again.';
+          break;
+        case 403:
+          errorMessage = 'Forbidden: You do not have permission to export employees.';
+          break;
+        case 404:
+          errorMessage = 'Export endpoint not found.';
+          break;
+        case 500:
+          errorMessage = 'Server Error: Please try again later.';
+          break;
+      }
+    }
+    
+    throw new Error(errorMessage);
+  }
+},
 
   downloadEmployeeTemplate: async () => {
     try {
@@ -696,8 +734,8 @@ deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
       is_active: searchParams.is_active,
       is_visible_in_org_chart: searchParams.is_visible_in_org_chart,
       is_deleted: searchParams.is_deleted,
-      status_needs_update: searchParams.status_needs_update,
-      contract_expiring_days: searchParams.contract_expiring_days,
+    
+   
       ordering: searchParams.sorting || searchParams.ordering,
       page: searchParams.page,
       page_size: searchParams.page_size
@@ -730,7 +768,6 @@ deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
       'on_leave': { status: ['ON_LEAVE'] },
       'no_line_manager': { line_manager: null },
       'needs_grading': { grading_level: [] },
-      'contract_ending_soon': { contract_expiring_days: 30 },
       'org_chart_visible': { is_visible_in_org_chart: true },
       'org_chart_hidden': { is_visible_in_org_chart: false }
     };
@@ -801,10 +838,7 @@ deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
         employee_ids: employeeIds,
         line_manager_id: managerId
       }),
-      'extend_contracts': (contractData) => apiService.bulkExtendContracts({
-        employee_ids: employeeIds,
-        ...contractData
-      }),
+   
       'show_in_org_chart': () => apiService.bulkToggleOrgChartVisibility(employeeIds, true),
       'hide_from_org_chart': () => apiService.bulkToggleOrgChartVisibility(employeeIds, false),
      
@@ -819,8 +853,6 @@ deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
       return operationFn(data.tagId);
     } else if (operation === 'assign_manager') {
       return operationFn(data.managerId);
-    } else if (operation === 'extend_contracts') {
-      return operationFn(data);
     } else if (operation === 'update_grades') {
       return operationFn(data.updates);
     } else {
