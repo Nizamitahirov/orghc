@@ -5,7 +5,7 @@ import { orgChartAPI } from '../../services/orgChartAPI';
 const cleanEmployeeForRedux = (employee) => {
     if (!employee) return null;
     
-    // ✅ Check if this is a vacancy
+    //  Check if this is a vacancy
     const isVacancy = Boolean(
         employee.employee_details?.is_vacancy ||
         employee.is_vacancy ||
@@ -20,13 +20,13 @@ const cleanEmployeeForRedux = (employee) => {
         name: employee.name,
         title: employee.title,
         department: employee.department,
-        department_name: employee.department_name || employee.department, // ✅ For vacancies
+        department_name: employee.department_name || employee.department, //  For vacancies
         unit: employee.unit,
-        unit_name: employee.unit_name || employee.unit, // ✅ For vacancies
+        unit_name: employee.unit_name || employee.unit, //  For vacancies
         business_function: employee.business_function,
-        business_function_name: employee.business_function_name || employee.business_function, // ✅ For vacancies
+        business_function_name: employee.business_function_name || employee.business_function, //  For vacancies
         position_group: employee.position_group,
-        position_group_name: employee.position_group_name || employee.position_group, // ✅ For vacancies
+        position_group_name: employee.position_group_name || employee.position_group, //  For vacancies
         direct_reports: employee.direct_reports || 0,
         line_manager_id: employee.line_manager_id,
         manager_id: employee.manager_id,
@@ -45,7 +45,7 @@ const cleanEmployeeForRedux = (employee) => {
         colleagues_in_business_function: employee.colleagues_in_business_function,
         total_subordinates: employee.total_subordinates,
         
-        // ✅ CRITICAL: Preserve vacancy indicators
+        //  CRITICAL: Preserve vacancy indicators
         is_vacancy: isVacancy,
         record_type: employee.record_type || (isVacancy ? 'vacancy' : 'employee'),
         vacant: employee.vacant || isVacancy,
@@ -55,7 +55,7 @@ const cleanEmployeeForRedux = (employee) => {
             internal_id: employee.employee_details.internal_id,
             employee_id: employee.employee_details.employee_id,
           
-            is_vacancy: employee.employee_details.is_vacancy || isVacancy, // ✅ CRITICAL
+            is_vacancy: employee.employee_details.is_vacancy || isVacancy, //  CRITICAL
             original_employee_pk: employee.employee_details.original_employee_pk,
             is_visible_in_org_chart: employee.employee_details.is_visible_in_org_chart,
             include_in_headcount: employee.employee_details.include_in_headcount,

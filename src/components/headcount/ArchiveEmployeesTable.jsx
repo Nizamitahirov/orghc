@@ -1001,15 +1001,25 @@ const ArchiveEmployeesTable = () => {
           )}
         </td>
 
-        <td className="px-3 py-3">
-          <p className={`text-xs ${textSecondary}`}>
-            {formatDate(employee.start_date)} - {formatDate(employee.end_date)}
-          </p>
-          {employee.contract_duration && (
-            <p className={`text-xs ${textMuted} mt-0.5`}>
-              Duration: {employee.contract_duration}
+         <td className="px-3 py-3">
+          {/* Employment period */}
+          {/* <p className={`text-xs ${textSecondary}`}>
+            {formatDate(employee.start_date)} → {formatDate(employee.end_date)}
+          </p> */}
+
+          {/* Termination date — backend-dən gəlir */}
+          {employee.termination_date && (
+            <p className="text-xs text-red-500 dark:text-red-400 font-medium mt-0.5 flex items-center gap-1">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
+              Term: {formatDate(employee.termination_date)}
             </p>
           )}
+
+          {/* {employee.contract_duration && (
+            <p className={`text-xs ${textMuted} mt-0.5`}>
+              {employee.contract_duration}
+            </p>
+          )} */}
         </td>
 
         <td className="px-3 py-3">
@@ -1082,12 +1092,14 @@ const ArchiveEmployeesTable = () => {
                 <th className={`px-3 py-3 text-left text-xs font-semibold ${textMuted} uppercase tracking-wider`}>
                   Type
                 </th>
+                
                 <th className={`px-3 py-3 text-left text-xs font-semibold ${textMuted} uppercase tracking-wider`}>
                   Deleted
                 </th>
-                <th className={`px-3 py-3 text-left text-xs font-semibold ${textMuted} uppercase tracking-wider`}>
-                  Period
+               <th className={`px-3 py-3 text-left text-xs font-semibold ${textMuted} uppercase tracking-wider`}>
+                 Termination
                 </th>
+
                 <th className={`px-3 py-3 text-left text-xs font-semibold ${textMuted} uppercase tracking-wider`}>
                   Status
                 </th>

@@ -33,7 +33,7 @@ export default function PoliciesView({
   onViewPolicy,
   confirmModal,
   setConfirmModal,
-  userAccess, // ✅ Add userAccess prop
+  userAccess, //  Add userAccess prop
 }) {
   const { showSuccess, showError, showWarning, showInfo } = useToast();
   
@@ -163,7 +163,7 @@ export default function PoliciesView({
   };
 
   const handleDeletePolicy = (policyId, policyTitle) => {
-    // ✅ Check access
+    //  Check access
     if (!userAccess?.is_admin) {
       showWarning('You do not have permission to delete policies');
       return;
@@ -232,7 +232,7 @@ export default function PoliciesView({
   };
 
   const startEditPolicy = (policy) => {
-    // ✅ Check access
+    //  Check access
     if (!userAccess?.is_admin) {
       showWarning('You do not have permission to edit policies');
       return;
@@ -259,7 +259,7 @@ export default function PoliciesView({
   };
 
   const openAddModal = () => {
-    // ✅ Check access before opening
+    //  Check access before opening
     if (!userAccess?.is_admin) {
       showWarning('You do not have permission to add policies');
       return;
@@ -307,7 +307,7 @@ export default function PoliciesView({
             </div>
           </div>
 
-          {/* ✅ Add Policy Button - only show if admin */}
+          {/*  Add Policy Button - only show if admin */}
           {userAccess?.is_admin && (
             <button
               onClick={openAddModal}
@@ -416,7 +416,7 @@ export default function PoliciesView({
                     >
                       <Download className="w-4 h-4" />
                     </button>
-                    {/* ✅ Edit/Delete buttons - only if admin */}
+                    {/*  Edit/Delete buttons - only if admin */}
                     {userAccess?.is_admin && (
                       <>
                         <button

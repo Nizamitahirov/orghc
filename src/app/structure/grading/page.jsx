@@ -1,577 +1,283 @@
-// src/app/structure/grading/page.jsx - FULL UPDATED VERSION
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { useTheme } from "@/components/common/ThemeProvider";
 import { useToast } from "@/components/common/Toast";
 import useGrading from "@/hooks/useGrading";
 
-// Komponentləri import et
-import GradingHeader from "@/components/grading/GradingHeader";
-import CurrentStructureCard from "@/components/grading/CurrentStructureCard";
-import CreateScenarioCard from "@/components/grading/CreateScenarioCard";
-import DraftScenariosCard from "@/components/grading/DraftScenariosCard";
+import GradingHeader         from "@/components/grading/GradingHeader";
+import CurrentStructureCard  from "@/components/grading/CurrentStructureCard";
+import CreateScenarioCard    from "@/components/grading/CreateScenarioCard";
+import DraftScenariosCard    from "@/components/grading/DraftScenariosCard";
 import ArchivedScenariosCard from "@/components/grading/ArchivedScenariosCard";
-import ScenarioDetailModal from "@/components/grading/ScenarioDetailModal";
-import ComparisonModal from "@/components/grading/ComparisonModal";
+import ScenarioDetailModal   from "@/components/grading/ScenarioDetailModal";
+import ComparisonModal       from "@/components/grading/ComparisonModal";
+import SalaryTab             from "@/components/grading/SalaryTab";
 import { LoadingSpinner, ErrorDisplay } from "@/components/common/LoadingSpinner";
+import { BarChart3, Plus, Calculator, Archive, Settings, DollarSign } from "lucide-react";
 
-// Icons
-import { 
-  BarChart3, 
-  Plus, 
-  Calculator, 
-  Archive,
-  Settings
-} from "lucide-react";
+/* ─── Tab Bar ──────────────────────────────────────────────────────────────── */
+const TabNavigation = ({ activeTab, setActiveTab, tabs }) => (
+  <div className="flex gap-1 p-1 bg-almet-mystic dark:bg-gray-700/50 rounded-xl w-fit">
+    {tabs.map(({ id, name, icon: Icon, count }) => {
+      const active = activeTab === id;
+      return (
+        <button
+          key={id}
+          onClick={() => setActiveTab(id)}
+          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-medium transition-all duration-150 ${
+            active
+              ? "bg-white dark:bg-gray-800 text-almet-sapphire shadow-sm"
+              : "text-almet-waterloo dark:text-gray-400 hover:text-almet-cloud-burst dark:hover:text-white"
+          }`}
+        >
+          <Icon size={13} />
+          {name}
+          {count != null && (
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold leading-none ${
+              active
+                ? "bg-almet-sapphire text-white"
+                : "bg-white/70 dark:bg-gray-600 text-almet-waterloo dark:text-gray-300"
+            }`}>
+              {count}
+            </span>
+          )}
+        </button>
+      );
+    })}
+  </div>
+);
 
-// Tab Navigation Component
-const TabNavigation = ({ activeTab, setActiveTab, tabs }) => {
-  return (
-    <div className="border-b border-almet-mystic dark:border-gray-700 mb-6">
-      <nav className="flex space-x-8" aria-label="Tabs">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`py-4 px-2 border-b-3 font-medium text-sm transition-all duration-300 flex items-center gap-2 ${
-              activeTab === tab.id
-                ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-sapphire bg-gradient-to-t from-almet-mystic/30 dark:from-gray-700/30 to-transparent'
-                : 'border-transparent text-almet-waterloo dark:text-gray-300 hover:text-almet-cloud-burst dark:hover:text-white hover:border-almet-bali-hai dark:hover:border-gray-500'
-            }`}
-          >
-            <tab.icon size={18} />
-            {tab.name}
-            {tab.count !== undefined && tab.count !== null && (
-              <span className={`ml-2 px-2 py-1 text-xs rounded-full font-medium ${
-                activeTab === tab.id 
-                  ? 'bg-almet-sapphire dark:bg-almet-sapphire text-white' 
-                  : 'bg-almet-mystic dark:bg-gray-700 text-almet-waterloo dark:text-gray-300'
-              }`}>
-                {tab.count}
-              </span>
-            )}
-          </button>
-        ))}
-      </nav>
-    </div>
-  );
-};
-
-// Current Structure Tab Content
-const CurrentStructureTab = ({ 
-  currentData, 
-  basePositionName, 
-  currentScenario 
-}) => {
-  return (
-    <div className="space-y-6">
-      <CurrentStructureCard 
-        currentData={currentData}
-        basePositionName={basePositionName}
-      />
-    </div>
-  );
-};
-
-// Create Scenario Tab Content
-const CreateScenarioTab = ({ 
-  scenarioInputs,
-  newScenarioDisplayData,
-  basePositionName,
-  validationSummary,
-  errors,
-  loading,
-  isCalculating,
-  handleBaseValueChange,
-  handleVerticalChange,
-  handleGlobalHorizontalChange,
-  handleSaveDraft,
-  scenarioName,
-  onScenarioNameChange
-}) => {
-  return (
-    <div className="space-y-6">
-      <CreateScenarioCard 
-        scenarioInputs={scenarioInputs}
-        newScenarioDisplayData={newScenarioDisplayData}
-        basePositionName={basePositionName}
-        validationSummary={validationSummary}
-        errors={errors}
-        loading={loading}
-        isCalculating={isCalculating}
-        handleBaseValueChange={handleBaseValueChange}
-        handleVerticalChange={handleVerticalChange}
-        handleGlobalHorizontalChange={handleGlobalHorizontalChange}
-        handleSaveDraft={handleSaveDraft}
-        scenarioName={scenarioName}
-        onScenarioNameChange={onScenarioNameChange}
-      />
-    </div>
-  );
-};
-
-// Draft Scenarios Tab Content
-const DraftScenariosTab = ({
-  draftScenarios,
-  currentData,
-  compareMode,
-  selectedForComparison,
-  loading,
-  handleViewDetails,
-  handleSaveAsCurrent,
-  handleArchiveDraft,
-  toggleCompareMode,
-  toggleScenarioForComparison,
-  handleStartComparison
-}) => {
-  return (
-    <div className="space-y-6">
-      <DraftScenariosCard 
-        draftScenarios={draftScenarios}
-        currentData={currentData}
-        compareMode={compareMode}
-        selectedForComparison={selectedForComparison}
-        loading={loading}
-        handleViewDetails={handleViewDetails}
-        handleSaveAsCurrent={handleSaveAsCurrent}
-        handleArchiveDraft={handleArchiveDraft}
-        toggleCompareMode={toggleCompareMode}
-        toggleScenarioForComparison={toggleScenarioForComparison}
-        handleStartComparison={handleStartComparison}
-      />
-    </div>
-  );
-};
-
-// Archive Tab Content
-const ArchiveTab = ({ archivedScenarios, handleViewDetails }) => {
-  return (
-    <div className="space-y-6">
-      {archivedScenarios.length > 0 ? (
-        <ArchivedScenariosCard 
-          archivedScenarios={archivedScenarios}
-          handleViewDetails={handleViewDetails}
-        />
-      ) : (
-        <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div className="text-gray-400 dark:text-gray-500 mb-4">
-            <Archive size={64} className="mx-auto" />
-          </div>
-          <h3 className="text-xl font-semibold text-almet-waterloo dark:text-gray-300 mb-2">
-            No Archived Scenarios
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Archived scenarios will appear here for historical reference
-          </p>
-        </div>
-      )}
-    </div>
-  );
-};
-
+/* ─── Page ─────────────────────────────────────────────────────────────────── */
 const GradingPage = () => {
-  const { darkMode } = useTheme();
   const { showSuccess, showError, showWarning } = useToast();
-  const [activeTab, setActiveTab] = useState('current');
-  const [lastDraftCount, setLastDraftCount] = useState(0);
+
+  const [activeTab,             setActiveTab]             = useState("current");
   const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
-  const [scenarioName, setScenarioName] = useState('');
-  
-  const prevLoadingRef = useRef({
-    saving: false,
-    applying: false,
-    archiving: false
-  });
-  
+  const [scenarioName,          setScenarioName]          = useState("");
+  const [lastDraftCount,        setLastDraftCount]        = useState(0);
+  const prevLoadingRef = useRef({ saving: false, applying: false, archiving: false });
+
   const {
-    // Core data
-    currentData,
-    currentScenario,
-    positionGroups,
-    scenarioInputs,
-    calculatedOutputs,
-    newScenarioDisplayData,
-    draftScenarios,
-    archivedScenarios,
-    selectedScenario,
-    basePositionName,
-    
-    // Computed state
-    validationSummary,
-    inputSummary,
-    dataAvailability,
-    
-    // UI state
-    isDetailOpen,
-    setIsDetailOpen,
-    compareMode,
-    selectedForComparison,
-    isLoading,
-    isCalculating,
-    errors,
-    hasErrors,
-    isInitialized,
-    
-    // Loading states
-    loading,
-    
-    // Actions
-    handleBaseValueChange,
-    handleVerticalChange,
-    handleGlobalHorizontalChange,
-    handleSaveDraft,
-    handleSaveAsCurrent,
-    handleArchiveDraft,
-    handleViewDetails,
-    toggleCompareMode,
-    toggleScenarioForComparison,
-    getScenarioForComparison,
-    calculateGrades,
-    refreshData,
-    
-    // Comparison helpers
-    getVerticalInputValue,
-    getHorizontalInputValues,
-    comparisonData,
-    handleCompareScenarios
+    currentData, currentStructures, currentScenarios,
+    selectedStructureCurrency, availableStructureCurrencies,
+    currentScenario, currencies,
+    handleStructureCurrencyChange,
+    scenarioInputs, newScenarioDisplayData,
+    draftScenarios, archivedScenarios, selectedScenario, basePositionName,
+    validationSummary, dataAvailability,
+    isDetailOpen, setIsDetailOpen,
+    compareMode, selectedForComparison,
+    isLoading, isCalculating, errors, hasErrors, isInitialized, loading,
+    handleBaseValueChange, handleCurrencyChange, handleVerticalChange,
+    handleGlobalHorizontalChange, handleSaveDraft, handleSaveAsCurrent,
+    handleArchiveDraft, handleViewDetails, toggleCompareMode,
+    toggleScenarioForComparison, getScenarioForComparison,
+    refreshData, getVerticalInputValue, getHorizontalInputValues,
+    comparisonData, handleCompareScenarios,
+    salaryData, salaryLoading, salaryError, salaryUpdating, salaryBulkUpdating,
+    salaryPagination, salaryFilters,
+    fetchSalaryData, handleSalaryUpdate, handleSalaryBulkUpdate,
+    handleSalaryExcelImport, handleSalaryTemplateDownload, updateSalaryFilters,
   } = useGrading();
 
-  // In page.jsx - Update handleStartComparison function
-
-const handleStartComparison = async () => {
-  try {
-
-    
-    if (selectedForComparison.length < 1) {
-      showWarning('Please select at least 1 scenario to compare with current structure');
+  const handleStartComparison = async () => {
+    if (!selectedForComparison.length) {
+      showWarning("Select at least 1 scenario to compare");
       return null;
     }
-    
-    // Always include 'current' in comparison
-    const scenariosToCompare = ['current', ...selectedForComparison];
-    
-
-    
-    // Fetch comparison data
-    const result = await handleCompareScenarios(scenariosToCompare);
-    
-    if (result && result.comparison) {
-    
-      setIsComparisonModalOpen(true);
-      return result;
-    } else {
-      showError('Failed to load comparison data');
-      return null;
-    }
-  } catch (error) {
-    console.error('❌ Comparison error:', error);
-    showError('Error loading comparison data');
+    const result = await handleCompareScenarios(["current", ...selectedForComparison]);
+    if (result?.comparison) { setIsComparisonModalOpen(true); return result; }
+    showError("Failed to load comparison data");
     return null;
-  }
-};
+  };
 
   const handleSaveDraftWithName = async () => {
     const result = await handleSaveDraft(scenarioName);
-    if (result) {
-      setScenarioName(''); // Clear name after successful save
-    }
+    if (result) setScenarioName("");
   };
 
-  // Track draft count changes
   useEffect(() => {
-    if (draftScenarios.length > lastDraftCount && lastDraftCount > 0) {
-  
-    }
+    if (draftScenarios.length > lastDraftCount && lastDraftCount > 0)
+   
     setLastDraftCount(draftScenarios.length);
-  }, [draftScenarios.length, lastDraftCount, showSuccess]);
+  }, [draftScenarios.length]); // eslint-disable-line
 
-  // Track loading state changes
   useEffect(() => {
     const prev = prevLoadingRef.current;
-    
-    if (prev.saving && !loading.saving) {
-      showSuccess("Draft scenario saved successfully!");
-    }
-    
-    if (prev.applying && !loading.applying) {
-      showSuccess("Scenario applied as current structure!");
-    }
-    
-    if (prev.archiving && !loading.archiving) {
-      showSuccess("Scenario archived successfully!");
-    }
-    
-    prevLoadingRef.current = {
-      saving: loading.saving,
-      applying: loading.applying,
-      archiving: loading.archiving
-    };
-  }, [loading.saving, loading.applying, loading.archiving, showSuccess]);
+    if (prev.saving    && !loading.saving)    showSuccess("Draft saved!");
+    if (prev.applying  && !loading.applying)  showSuccess("Scenario applied as current!");
+    if (prev.archiving && !loading.archiving) showSuccess("Scenario archived!");
+    prevLoadingRef.current = { saving: loading.saving, applying: loading.applying, archiving: loading.archiving };
+  }, [loading.saving, loading.applying, loading.archiving]); // eslint-disable-line
 
-  // Show toast for errors
   useEffect(() => {
-    if (hasErrors) {
-      Object.entries(errors).forEach(([key, message]) => {
-        if (message && key !== 'comparing') {
-          showError(message);
-        }
-      });
-    }
-  }, [hasErrors, errors, showError]);
+    if (hasErrors)
+      Object.entries(errors).forEach(([k, msg]) => { if (msg && k !== "comparing") showError(msg); });
+  }, [hasErrors, errors]); // eslint-disable-line
 
-  // Tab configuration
   const tabs = [
-    {
-      id: 'current',
-      name: 'Current Structure',
-      icon: BarChart3,
-      count: currentData?.gradeOrder?.length
-    },
-    {
-      id: 'create',
-      name: 'Create Scenario',
-      icon: Plus
-    },
-    {
-      id: 'drafts',
-      name: 'Draft Scenarios',
-      icon: Calculator,
-      count: draftScenarios.length
-    },
-    {
-      id: 'archive',
-      name: 'Archive',
-      icon: Archive,
-      count: archivedScenarios.length
-    }
+    { id: "current", name: "Current Structure", icon: BarChart3,  count: currentData?.gradeOrder?.length },
+    { id: "create",  name: "Create Scenario",   icon: Plus },
+    { id: "drafts",  name: "Drafts",            icon: Calculator, count: draftScenarios.length },
+    { id: "archive", name: "Archive",           icon: Archive,    count: archivedScenarios.length },
+    { id: "salary",  name: "Salary",            icon: DollarSign, count: salaryData.length || undefined },
   ];
 
-  // Show loading state
-  if (isLoading && !isInitialized) {
-    return (
-      <DashboardLayout>
-        <LoadingSpinner message="Initializing grading system..." />
-      </DashboardLayout>
-    );
-  }
+  if (isLoading && !isInitialized)
+    return <DashboardLayout><LoadingSpinner message="Initializing grading system..." /></DashboardLayout>;
 
-  // Show error if no current data
-  if (!dataAvailability.hasCurrentData && !isLoading) {
+  if (!dataAvailability.hasCurrentData && !isLoading)
     return (
       <DashboardLayout>
-        <div className="min-h-screen bg-gradient-to-br flex items-center justify-center p-6">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-8 max-w-md w-full">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Settings size={32} className="text-yellow-600 dark:text-yellow-400" />
-              </div>
-              <h3 className="text-xl font-semibold text-almet-cloud-burst dark:text-white mb-2">
-                No Grading Structure Found
-              </h3>
-              <p className="text-sm text-almet-waterloo dark:text-gray-300 mb-6">
-                No current grading structure exists in the database. Please set up your initial structure to begin.
-              </p>
-              <button
-                onClick={() => {
-                  refreshData();
-                  showWarning("Please create your initial grading structure");
-                }}
-                className="bg-almet-sapphire dark:bg-almet-sapphire text-white px-6 py-3 rounded-lg hover:bg-almet-astral dark:hover:bg-almet-astral transition-colors font-medium flex items-center gap-2 mx-auto"
-              >
-                <Plus size={18} />
-                Set Up Structure
-              </button>
+        <div className="min-h-screen flex items-center justify-center p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-almet-mystic dark:border-gray-700 p-10 max-w-sm w-full text-center">
+            <div className="w-14 h-14 bg-amber-50 dark:bg-amber-900/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Settings size={28} className="text-amber-500" />
             </div>
+            <h3 className="text-sm font-bold text-almet-cloud-burst dark:text-white mb-1">No Grading Structure</h3>
+            <p className="text-xs text-almet-waterloo dark:text-gray-400 mb-6 leading-relaxed">
+              No grading structure exists yet. Set up your initial structure to get started.
+            </p>
+            <button
+              onClick={() => { refreshData(); showWarning("Please create your initial grading structure"); }}
+              className="bg-almet-sapphire text-white px-5 py-2 rounded-lg text-xs font-medium hover:bg-almet-astral transition-colors inline-flex items-center gap-2"
+            >
+              <Plus size={14} /> Set Up Structure
+            </button>
           </div>
         </div>
       </DashboardLayout>
     );
-  }
 
-  // Show generic error with retry
-  if (errors.currentStructure) {
-    return (
-      <DashboardLayout>
-        <ErrorDisplay 
-          error={errors.currentStructure} 
-          onRetry={refreshData}
-        />
-      </DashboardLayout>
-    );
-  }
+  if (errors.currentStructure)
+    return <DashboardLayout><ErrorDisplay error={errors.currentStructure} onRetry={refreshData} /></DashboardLayout>;
 
-  const renderTabContent = () => {
+  const renderTab = () => {
     switch (activeTab) {
-      case 'current':
+      case "current":
         return (
-          <CurrentStructureTab 
-            currentData={currentData}
+          <CurrentStructureCard
+           currentData={currentData}
             basePositionName={basePositionName}
-            currentScenario={currentScenario}
+           availableStructureCurrencies={availableStructureCurrencies}
+           selectedStructureCurrency={selectedStructureCurrency}
+            onCurrencyChange={handleStructureCurrencyChange}
+          />);
+      case "create":
+        return (
+          <CreateScenarioCard
+            scenarioInputs={scenarioInputs} newScenarioDisplayData={newScenarioDisplayData}
+            basePositionName={basePositionName} validationSummary={validationSummary}
+            errors={errors} loading={loading} isCalculating={isCalculating}
+            handleBaseValueChange={handleBaseValueChange} handleVerticalChange={handleVerticalChange}
+            handleGlobalHorizontalChange={handleGlobalHorizontalChange} handleSaveDraft={handleSaveDraftWithName}
+            handleCurrencyChange={handleCurrencyChange} currencies={currencies}
+            scenarioName={scenarioName} onScenarioNameChange={setScenarioName}
           />
         );
-      case 'create':
+      case "drafts":
         return (
-          <CreateScenarioTab 
-            scenarioInputs={scenarioInputs}
-            newScenarioDisplayData={newScenarioDisplayData}
-            basePositionName={basePositionName}
-            validationSummary={validationSummary}
-            errors={errors}
-            loading={loading}
-            isCalculating={isCalculating}
-            handleBaseValueChange={handleBaseValueChange}
-            handleVerticalChange={handleVerticalChange}
-            handleGlobalHorizontalChange={handleGlobalHorizontalChange}
-            handleSaveDraft={handleSaveDraftWithName}
-            scenarioName={scenarioName}
-            onScenarioNameChange={setScenarioName}
-          />
-        );
-      case 'drafts':
-        return (
-          <DraftScenariosTab 
-            draftScenarios={draftScenarios}
-            currentData={currentData}
-            compareMode={compareMode}
-            selectedForComparison={selectedForComparison}
-            loading={loading}
-            handleViewDetails={handleViewDetails}
-            handleSaveAsCurrent={handleSaveAsCurrent}
-            handleArchiveDraft={handleArchiveDraft}
-            toggleCompareMode={toggleCompareMode}
-            toggleScenarioForComparison={toggleScenarioForComparison}
+          <DraftScenariosCard
+            draftScenarios={draftScenarios} currentData={currentData}
+            compareMode={compareMode} selectedForComparison={selectedForComparison}
+            loading={loading} handleViewDetails={handleViewDetails}
+            handleSaveAsCurrent={handleSaveAsCurrent} handleArchiveDraft={handleArchiveDraft}
+            toggleCompareMode={toggleCompareMode} toggleScenarioForComparison={toggleScenarioForComparison}
             handleStartComparison={handleStartComparison}
           />
         );
-      case 'archive':
+      case "archive":
+        return archivedScenarios.length > 0
+          ? <ArchivedScenariosCard archivedScenarios={archivedScenarios} handleViewDetails={handleViewDetails} />
+          : (
+            <div className="text-center py-16">
+              <div className="w-12 h-12 bg-almet-mystic dark:bg-gray-700 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <Archive size={22} className="text-almet-bali-hai dark:text-gray-400" />
+              </div>
+              <p className="text-sm font-medium text-almet-cloud-burst dark:text-gray-300">No Archived Scenarios</p>
+              <p className="text-xs text-almet-waterloo dark:text-gray-500 mt-1">Archived scenarios will appear here</p>
+            </div>
+          );
+      case "salary":
         return (
-          <ArchiveTab 
-            archivedScenarios={archivedScenarios}
-            handleViewDetails={handleViewDetails}
+          <SalaryTab
+            salaryData={salaryData} salaryLoading={salaryLoading} salaryError={salaryError}
+            salaryUpdating={salaryUpdating} salaryBulkUpdating={salaryBulkUpdating}
+            salaryPagination={salaryPagination} salaryFilters={salaryFilters}
+            currencies={currencies} currentData={currentData}
+            fetchSalaryData={fetchSalaryData} handleSalaryUpdate={handleSalaryUpdate}
+            handleSalaryBulkUpdate={handleSalaryBulkUpdate} handleSalaryExcelImport={handleSalaryExcelImport}
+            handleSalaryTemplateDownload={handleSalaryTemplateDownload} updateSalaryFilters={updateSalaryFilters}
           />
         );
-      default:
-        return null;
+      default: return null;
     }
   };
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gradient-to-br">
-        <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      <div className="min-h-screen bg-almet-mystic/20 dark:bg-gray-900">
+        <div className="max-w-7xl mx-auto p-5 space-y-4">
+
           {/* Header */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-almet-mystic dark:border-gray-700 p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic dark:border-gray-700 px-5 py-4">
             <GradingHeader />
           </div>
 
-          {/* Tab Navigation */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-almet-mystic dark:border-gray-700 p-6">
-            <TabNavigation 
-              activeTab={activeTab} 
-              setActiveTab={setActiveTab} 
-              tabs={tabs} 
-            />
-
-            {/* Tab Content */}
-            <div className="mt-6">
-              {renderTabContent()}
+          {/* Main Card */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic dark:border-gray-700">
+            <div className="px-5 pt-4 pb-3 border-b border-almet-mystic dark:border-gray-700">
+              <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} tabs={tabs} />
             </div>
+            <div className="p-5">{renderTab()}</div>
           </div>
 
-          {/* Detail Modal */}
-          {isDetailOpen && (
-            <ScenarioDetailModal 
-              isOpen={isDetailOpen}
-              onClose={() => setIsDetailOpen(false)}
-              selectedScenario={selectedScenario}
-              compareMode={compareMode}
-              selectedForComparison={selectedForComparison}
-              currentData={currentData}
-              basePositionName={basePositionName}
-              loading={loading}
-              getScenarioForComparison={getScenarioForComparison}
-              getVerticalInputValue={getVerticalInputValue}
-              getHorizontalInputValues={getHorizontalInputValues}
-              handleSaveAsCurrent={handleSaveAsCurrent}
-              handleArchiveDraft={handleArchiveDraft}
-            />
-          )}
-
-          {/* Comparison Modal */}
-          {isComparisonModalOpen && comparisonData && (
-            <ComparisonModal 
-              isOpen={isComparisonModalOpen}
-              onClose={() => setIsComparisonModalOpen(false)}
-              comparisonData={comparisonData}
-              scenarios={[
-                ...(selectedForComparison.includes('current') ? [{ id: 'current', name: 'Current Structure' }] : []),
-                ...draftScenarios.filter(s => selectedForComparison.includes(s.id))
-              ]}
-            />
-          )}
-
-          {/* Loading Overlay */}
-          {(loading.saving || loading.applying || loading.archiving) && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 backdrop-blur-sm">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl border border-almet-mystic dark:border-gray-700 max-w-sm mx-4">
-                <div className="text-center">
-                  <div className="w-16 h-16 border-4 border-almet-mystic dark:border-gray-600 border-t-almet-sapphire dark:border-t-almet-sapphire rounded-full animate-spin mx-auto mb-4"></div>
-                  <h3 className="font-semibold text-almet-cloud-burst dark:text-white text-lg mb-2">
-                    {loading.saving ? 'Saving Scenario' : 
-                     loading.applying ? 'Applying Scenario' : 
-                     loading.archiving ? 'Archiving Scenario' : 'Processing'}
-                  </h3>
-                  <p className="text-sm text-almet-waterloo dark:text-gray-300">
-                    {loading.saving ? 'Creating new draft scenario...' :
-                     loading.applying ? 'Setting as current structure...' :
-                     loading.archiving ? 'Moving to archive...' :
-                     'Please wait while we process your request'}
-                  </p>
-                  <div className="mt-4 flex justify-center">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-almet-sapphire dark:bg-almet-sapphire rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-almet-sapphire dark:bg-almet-sapphire rounded-full animate-bounce animation-delay-200"></div>
-                      <div className="w-2 h-2 bg-almet-sapphire dark:bg-almet-sapphire rounded-full animate-bounce animation-delay-400"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Custom Styles for Animations */}
-      <style jsx>{`
-        @keyframes slide-up {
-          from {
-            transform: translateY(100%);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
-        }
-        
-        .animate-slide-up {
-          animation: slide-up 0.3s ease-out;
-        }
-        
-        .animation-delay-200 {
-          animation-delay: 200ms;
-        }
-        
-        .animation-delay-400 {
-          animation-delay: 400ms;
-        }
-        
-        .border-b-3 {
-          border-bottom-width: 3px;
-        }
-      `}</style>
+      {/* Modals */}
+      {isDetailOpen && (
+        <ScenarioDetailModal
+          isOpen={isDetailOpen} onClose={() => setIsDetailOpen(false)}
+          selectedScenario={selectedScenario} compareMode={compareMode}
+          selectedForComparison={selectedForComparison} currentData={currentData}
+          basePositionName={basePositionName} loading={loading}
+          getScenarioForComparison={getScenarioForComparison}
+          getVerticalInputValue={getVerticalInputValue} getHorizontalInputValues={getHorizontalInputValues}
+          handleSaveAsCurrent={handleSaveAsCurrent} handleArchiveDraft={handleArchiveDraft}
+        />
+      )}
+
+      {isComparisonModalOpen && comparisonData && (
+        <ComparisonModal
+          isOpen={isComparisonModalOpen} onClose={() => setIsComparisonModalOpen(false)}
+          comparisonData={comparisonData}
+          scenarios={[
+            ...Object.entries(currentScenarios).map(([cur, sc]) => ({
+              id: "current",
+              name: `Current Structure (${cur})`,
+              currency: cur,
+              is_current: true,
+            })),
+            ...draftScenarios.filter(s => selectedForComparison.includes(s.id)),
+          ]}
+        />
+      )}
+
+      {/* Global loading overlay */}
+      {(loading.saving || loading.applying || loading.archiving) && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-7 shadow-2xl border border-almet-mystic dark:border-gray-700 w-64 text-center">
+            <div className="w-10 h-10 border-4 border-almet-mystic border-t-almet-sapphire rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-sm font-semibold text-almet-cloud-burst dark:text-white">
+              {loading.saving ? "Saving…" : loading.applying ? "Applying…" : "Archiving…"}
+            </p>
+            <p className="text-xs text-almet-waterloo dark:text-gray-400 mt-1">
+              {loading.saving ? "Creating draft scenario" : loading.applying ? "Setting as current" : "Moving to archive"}
+            </p>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 };

@@ -188,12 +188,12 @@ export const useOrgChart = () => {
 
 
 const filterOptions = useMemo(() => {
-    // ✅ CRITICAL FIX: Use fullTree as primary data source
+    //  CRITICAL FIX: Use fullTree as primary data source
     const dataSource = (fullTree && fullTree.length > 0) ? fullTree : orgChart;
     
 
     
-    // ✅ FIXED: Helper function to extract field value from both employees and vacancies
+    //  FIXED: Helper function to extract field value from both employees and vacancies
     const getFieldValue = (item, field) => {
         if (!item) return null;
         
@@ -211,7 +211,7 @@ const filterOptions = useMemo(() => {
         return null;
     };
     
-    // ✅ FIXED: Build filter options that combine employees and vacancies properly
+    //  FIXED: Build filter options that combine employees and vacancies properly
     const buildFilterOptions = (field) => {
         if (!Array.isArray(dataSource) || dataSource.length === 0) return [];
         
@@ -240,7 +240,7 @@ const filterOptions = useMemo(() => {
     };
 
     const options = {
-        // ✅ Business Functions - Combines employees and vacancies
+        //  Business Functions - Combines employees and vacancies
         businessFunctions: businessFunctionsDropdown && businessFunctionsDropdown.length > 0
             ? businessFunctionsDropdown.map(bf => {
                 // Count both employees and vacancies with this business function
@@ -257,7 +257,7 @@ const filterOptions = useMemo(() => {
             }).filter(opt => opt.count > 0)
             : buildFilterOptions('business_function'),
         
-        // ✅ Departments - Combines employees and vacancies
+        //  Departments - Combines employees and vacancies
         departments: departmentsDropdown && departmentsDropdown.length > 0
             ? departmentsDropdown.map(dept => {
                 const count = dataSource?.filter(item => {
@@ -273,7 +273,7 @@ const filterOptions = useMemo(() => {
             }).filter(opt => opt.count > 0)
             : buildFilterOptions('department'),
         
-        // ✅ Units - Combines employees and vacancies
+        //  Units - Combines employees and vacancies
         units: unitsDropdown && unitsDropdown.length > 0
             ? unitsDropdown.map(unit => {
                 const count = dataSource?.filter(item => {
@@ -289,7 +289,7 @@ const filterOptions = useMemo(() => {
             }).filter(opt => opt.count > 0)
             : buildFilterOptions('unit'),
         
-        // ✅ Position Groups - Combines employees and vacancies
+        //  Position Groups - Combines employees and vacancies
         positionGroups: positionGroupsDropdown && positionGroupsDropdown.length > 0
             ? positionGroupsDropdown.map(pg => {
                 const count = dataSource?.filter(item => {
@@ -305,7 +305,7 @@ const filterOptions = useMemo(() => {
             }).filter(opt => opt.count > 0)
             : buildFilterOptions('position_group'),
         
-        // ✅ Statuses - Both employees and vacancy statuses
+        //  Statuses - Both employees and vacancy statuses
         statuses: employeeStatusesDropdown && employeeStatusesDropdown.length > 0
             ? employeeStatusesDropdown.map(status => {
                 const count = dataSource?.filter(item => {
@@ -353,14 +353,14 @@ const filterOptions = useMemo(() => {
                 .sort((a, b) => b.count - a.count);
         })(),
         
-        // ✅ Managers - Only from employees (vacancies cannot be managers)
+        //  Managers - Only from employees (vacancies cannot be managers)
         managers: Array.isArray(dataSource)
             ? dataSource
                 .filter(item => 
                     item && 
                     item.direct_reports && 
                     item.direct_reports > 0 &&
-                    !item.employee_details?.is_vacancy && // ✅ Exclude vacancies
+                    !item.employee_details?.is_vacancy && //  Exclude vacancies
                     !item.is_vacancy
                 )
                 .map(manager => ({
@@ -377,7 +377,7 @@ const filterOptions = useMemo(() => {
     return options;
 }, [
     orgChart,
-    fullTree, // ✅ Critical dependency
+    fullTree, //  Critical dependency
     businessFunctionsDropdown,
     departmentsDropdown,
     unitsDropdown,

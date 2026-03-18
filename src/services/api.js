@@ -152,8 +152,7 @@ api.interceptors.response.use(
   }
 );
 
-// Enhanced query parameters helper
-// api.js
+
 const buildQueryParams = (params = {}) => {
 
   
@@ -235,7 +234,7 @@ export const apiService = {
 // Companys
 // ========================================
 getBusinessFunctions: (params = {}) => {
-  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const defaultParams = { page_size: 1000, ...params }; //  Add default page_size
   const queryString = buildQueryParams(defaultParams);
   return api.get(`/business-functions/?${queryString}`);
 },
@@ -248,7 +247,7 @@ deleteBusinessFunction: (id) => api.delete(`/business-functions/${id}/`),
 // DEPARTMENTS
 // ========================================
 getDepartments: (params = {}) => {
-  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const defaultParams = { page_size: 1000, ...params }; //  Add default page_size
   const queryString = buildQueryParams(defaultParams);
   return api.get(`/departments/?${queryString}`);
 },
@@ -330,7 +329,7 @@ downloadEmployeeDocument: async (documentUrl, filename) => {
 // UNITS
 // ========================================
 getUnits: (params = {}) => {
-  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const defaultParams = { page_size: 1000, ...params }; //  Add default page_size
   const queryString = buildQueryParams(defaultParams);
   return api.get(`/units/?${queryString}`);
 },
@@ -343,7 +342,7 @@ deleteUnit: (id) => api.delete(`/units/${id}/`),
 // JOB FUNCTIONS
 // ========================================
 getJobFunctions: (params = {}) => {
-  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const defaultParams = { page_size: 1000, ...params }; //  Add default page_size
   const queryString = buildQueryParams(defaultParams);
   return api.get(`/job-functions/?${queryString}`);
 },
@@ -356,7 +355,7 @@ deleteJobFunction: (id) => api.delete(`/job-functions/${id}/`),
 // JOB TITLES (NEW)
 // ========================================
 getJobTitles: (params = {}) => {
-  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const defaultParams = { page_size: 1000, ...params }; //  Add default page_size
   const queryString = buildQueryParams(defaultParams);
   return api.get(`/job-titles/?${queryString}`);
 },
@@ -369,7 +368,7 @@ deleteJobTitle: (id) => api.delete(`/job-titles/${id}/`),
 // POSITION GROUPS
 // ========================================
 getPositionGroups: (params = {}) => {
-  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const defaultParams = { page_size: 1000, ...params }; //  Add default page_size
   const queryString = buildQueryParams(defaultParams);
   return api.get(`/position-groups/?${queryString}`);
 },
@@ -383,7 +382,7 @@ deletePositionGroup: (id) => api.delete(`/position-groups/${id}/`),
 // EMPLOYEE STATUSES
 // ========================================
 getEmployeeStatuses: (params = {}) => {
-  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const defaultParams = { page_size: 1000, ...params }; //  Add default page_size
   const queryString = buildQueryParams(defaultParams);
   return api.get(`/employee-statuses/?${queryString}`);
 },
@@ -396,7 +395,7 @@ deleteEmployeeStatus: (id) => api.delete(`/employee-statuses/${id}/`),
 // EMPLOYEE TAGS
 // ========================================
 getEmployeeTags: (params = {}) => {
-  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const defaultParams = { page_size: 1000, ...params }; //  Add default page_size
   const queryString = buildQueryParams(defaultParams);
   return api.get(`/employee-tags/?${queryString}`);
 },
@@ -409,7 +408,7 @@ deleteEmployeeTag: (id) => api.delete(`/employee-tags/${id}/`),
 // CONTRACT CONFIGS
 // ========================================
 getContractConfigs: (params = {}) => {
-  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const defaultParams = { page_size: 1000, ...params }; //  Add default page_size
   const queryString = buildQueryParams(defaultParams);
   return api.get(`/contract-configs/?${queryString}`);
 },
@@ -492,12 +491,12 @@ deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
 exportEmployees: async (format = 'excel', params = {}) => {
   try {
 
-    // ✅ Build POST body payload
+    //  Build POST body payload
     const payload = {
       export_format: format === 'csv' ? 'csv' : 'excel'
     };
     
-    // ✅ Handle employee_ids
+    //  Handle employee_ids
     if (params.employee_ids && Array.isArray(params.employee_ids) && params.employee_ids.length > 0) {
       const validIds = params.employee_ids
         .map(id => {
@@ -512,7 +511,7 @@ exportEmployees: async (format = 'excel', params = {}) => {
       }
     }
     
-    // ✅ Handle include_fields
+    //  Handle include_fields
     if (params.include_fields && Array.isArray(params.include_fields) && params.include_fields.length > 0) {
       const validFields = params.include_fields
         .filter(field => field && typeof field === 'string' && field.trim())
@@ -523,7 +522,7 @@ exportEmployees: async (format = 'excel', params = {}) => {
       }
     }
     
-    // ✅ CRITICAL FIX: Build query params from _filterParams
+    //  CRITICAL FIX: Build query params from _filterParams
     let queryParams = {};
     
     if (params._filterParams && typeof params._filterParams === 'object') {
@@ -549,13 +548,13 @@ exportEmployees: async (format = 'excel', params = {}) => {
 
     }
     
-    // ✅ Build query string
+    //  Build query string
     const queryString = buildQueryParams(queryParams);
     const endpoint = `/employees/export_selected/${queryString ? `?${queryString}` : ''}`;
     
 
     
-    // ✅ Make API call
+    //  Make API call
     const response = await api.post(endpoint, payload, {
       responseType: 'blob',
       timeout: 120000,
@@ -564,7 +563,7 @@ exportEmployees: async (format = 'excel', params = {}) => {
       }
     });
     
-    // ✅ Handle file download
+    //  Handle file download
     if (response && response.data && response.data.size > 0) {
       const blob = new Blob([response.data], { 
         type: format === 'csv' 
@@ -705,6 +704,19 @@ exportEmployees: async (format = 'excel', params = {}) => {
 
   deleteProfileImage: (employeeId) => api.post("/profile-images/delete/", { employee_id: employeeId }),
 
+// ========================================
+// EMPLOYMENT TYPES
+// ========================================
+getEmploymentTypes: (params = {}) => {
+  const defaultParams = { page_size: 1000, ...params };
+  const queryString = buildQueryParams(defaultParams);
+  return api.get(`/employment-types/?${queryString}`);
+},
+getEmploymentType: (id) => api.get(`/employment-types/${id}/`),
+createEmploymentType: (data) => api.post('/employment-types/', data),
+updateEmploymentType: (id, data) => api.put(`/employment-types/${id}/`, data),
+deleteEmploymentType: (id) => api.delete(`/employment-types/${id}/`),
+
   // ========================================
   // ADVANCED SEARCH & FILTERING
   // ========================================
@@ -810,6 +822,44 @@ exportEmployees: async (format = 'excel', params = {}) => {
       }
     });
   },
+
+// DÜZƏLDİLMİŞ
+signEmployeeDocument: (documentId, { signature_base64, signature_method, signed_at, normalised, signature_position }) => {
+  return api.post('/employees/sign-document/', {
+    document_id:        documentId,
+    signature_base64,
+    signature_method,
+    signed_at,
+    normalised,           // ← əlavə et
+    signature_position,   // ← əlavə et
+  });
+},
+
+downloadSignedDocument: async (documentId, filename, opts = {}) => {
+  const params = new URLSearchParams({ document_id: documentId });
+  if (opts.page       !== undefined) params.set("page",       opts.page);
+  if (opts.pdf_width  !== undefined) params.set("pdf_width",  opts.pdf_width);
+  if (opts.pdf_height !== undefined) params.set("pdf_height", opts.pdf_height);
+
+  const response = await api.get(
+    `/employees/download-signed-document/?${params}`,
+    { responseType: "blob" }
+  );
+
+  const mime = response.headers["content-type"] || "application/octet-stream";
+  const blob = new Blob([response.data], { type: mime });
+  const url  = window.URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement("a"), {
+    href: url, download: filename || "document.pdf"
+  });
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+
+  return { success: true };
+},
+
 
   downloadFile: async (endpoint, filename, params = {}) => {
     try {

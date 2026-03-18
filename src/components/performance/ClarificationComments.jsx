@@ -4,7 +4,7 @@ import { MessageSquare, AlertCircle, ChevronDown, ChevronRight, User, Calendar }
 export default function ClarificationComments({ comments, darkMode }) {
   
   
-  // ✅ Early return with logging
+  //  Early return with logging
   if (!comments || comments.length === 0) {
     console.log('⚠️ ClarificationComments: No comments to display');
     return null;
@@ -56,7 +56,7 @@ export default function ClarificationComments({ comments, darkMode }) {
     }
   };
 
-  // ✅ Parse comment text from content field
+  //  Parse comment text from content field
   const getCommentText = (comment) => {
     // Priority: comment > content (parsed) > content (raw)
     if (comment.comment) {

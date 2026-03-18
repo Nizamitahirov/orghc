@@ -25,9 +25,7 @@ const TokenManager = {
 api.interceptors.request.use(
   (config) => {
     const token = TokenManager.getAccessToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
   (error) => Promise.reject(error)
@@ -39,35 +37,22 @@ api.interceptors.response.use(
   async (error) => {
     if (error.response?.status === 401) {
       TokenManager.removeTokens();
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
+      if (typeof window !== 'undefined') window.location.href = '/login';
     }
     return Promise.reject(error);
   }
 );
 
-// Time Off Service
 const timeOffService = {
-  // Balance endpoints
+  // ==================== BALANCE ====================
   getMyBalance: () => api.get('/timeoff/balances/my_balance/'),
   getAllBalances: (params) => api.get('/timeoff/balances/', { params }),
   getBalanceById: (id) => api.get(`/timeoff/balances/${id}/`),
-  getTeamBalances: () => api.get('/timeoff/balances/team_balances/'), 
-  bulkUploadBalances: (file) => { // ✅ NEW
-    const formData = new FormData();
-    formData.append('file', file);
-    return api.post('/timeoff/balances/bulk_upload_balances/', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-  },
-  downloadBalanceTemplate: () => api.get('/timeoff/balances/download_template/', { // ✅ NEW
-    responseType: 'blob'
-  }),
+  getTeamBalances: () => api.get('/timeoff/balances/team_balances/'),
   updateBalance: (id, data) => api.post(`/timeoff/balances/${id}/update_balance/`, data),
   resetMonthlyBalances: () => api.post('/timeoff/balances/reset_monthly_balances/'),
 
-  // Request endpoints
+  // ==================== REQUESTS ====================
   getMyRequests: (params) => api.get('/timeoff/requests/my_requests/', { params }),
   getAllRequests: (params) => api.get('/timeoff/requests/', { params }),
   getRequestById: (id) => api.get(`/timeoff/requests/${id}/`),
@@ -79,18 +64,18 @@ const timeOffService = {
   cancelRequest: (id) => api.post(`/timeoff/requests/${id}/cancel/`),
   getPendingApprovals: (params) => api.get('/timeoff/requests/pending_approvals/', { params }),
 
-  // Activity endpoints
+  // ==================== ACTIVITIES ====================
   getMyActivities: (params) => api.get('/timeoff/activities/my_activities/', { params }),
   getAllActivities: (params) => api.get('/timeoff/activities/', { params }),
   getActivityById: (id) => api.get(`/timeoff/activities/${id}/`),
   getActivitiesByRequest: (requestId) => api.get('/timeoff/activities/by_request/', { params: { request_id: requestId } }),
 
-  // Dashboard endpoints
+  // ==================== DASHBOARD ====================
   getDashboardOverview: () => api.get('/timeoff/dashboard/overview/'),
   getTeamOverview: () => api.get('/timeoff/dashboard/team_overview/'),
-  getMyAccessInfo: () => api.get('/timeoff/dashboard/my_access_info/'), // ✅ NEW
+  getMyAccessInfo: () => api.get('/timeoff/dashboard/my_access_info/'),
 
-  // Settings endpoints
+  // ==================== SETTINGS ====================
   getCurrentSettings: () => api.get('/timeoff/settings/current/'),
   getAllSettings: (params) => api.get('/timeoff/settings/', { params }),
   getSettingsById: (id) => api.get(`/timeoff/settings/${id}/`),

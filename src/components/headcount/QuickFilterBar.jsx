@@ -121,7 +121,7 @@ const QuickFilterBar = ({
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [departments]);
 
-  // ✅ Company options - USE ID AS VALUE
+  //  Company options - USE ID AS VALUE
   const businessFunctionOptions = useMemo(() => {
     if (!Array.isArray(businessFunctions)) return [];
     
@@ -131,7 +131,7 @@ const QuickFilterBar = ({
       .filter(bf => bf && bf.is_active !== false)
       .map(bf => {
         const option = {
-          value: bf.id || bf.value, // ✅ ID for selection
+          value: bf.id || bf.value, //  ID for selection
           label: bf.name || bf.label,
           name: bf.name || bf.label, // Keep name for backend
           code: bf.code,
@@ -418,7 +418,7 @@ const MultiSelectDropdown = ({
   const handleOptionToggle = (value) => {
    
     
-    // ✅ Check if selected (handle different types)
+    //  Check if selected (handle different types)
     const isCurrentlySelected = safeSelected.some(v => 
       v === value || 
       String(v) === String(value) || 
@@ -462,7 +462,7 @@ const MultiSelectDropdown = ({
     }
   };
 
-  // ✅ FIXED: Check if item is selected
+  //  FIXED: Check if item is selected
   const isItemSelected = (value) => {
     const selected = safeSelected.some(v => 
       v === value || 

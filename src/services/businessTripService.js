@@ -296,24 +296,8 @@ export const BusinessTripService = {
     }
   },
 
-  // === SETTINGS - GENERAL ===
-  getGeneralSettings: async () => {
-    try {
-      const response = await businessTripApi.get('/business-trips/settings/general/get/');
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
 
-  updateGeneralSettings: async (data) => {
-    try {
-      const response = await businessTripApi.put('/business-trips/settings/general/', data);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
+
 
   // === REQUESTS ===
   // === ATTACHMENTS === (REQUESTS section-dan sonra əlavə edin)
@@ -487,7 +471,7 @@ updateTripRequest: async (id, data) => {
     }
   },
   
-  // ✅ NEW: Delete request
+  //  NEW: Delete request
   deleteTripRequest: async (id) => {
     try {
       const response = await businessTripApi.delete(`/business-trips/requests/${id}/delete/`);
@@ -526,7 +510,7 @@ export const BusinessTripHelpers = {
       formData.append('comment', data.comment);
     }
     
-    // ✅ NEW: Add initial_finance_amount
+    //  NEW: Add initial_finance_amount
     if (data.initial_finance_amount) {
       formData.append('initial_finance_amount', data.initial_finance_amount);
     }
@@ -673,7 +657,7 @@ getFileIcon: (fileType) => {
     return editableStatuses.includes(request.status);
   },
   
-  // ✅ UPDATED: Can delete request with proper checks
+  //  UPDATED: Can delete request with proper checks
   canDeleteRequest: (request, userPermissions, currentUserId) => {
     // Admin can delete everything (except APPROVED)
     if (userPermissions?.is_admin) {

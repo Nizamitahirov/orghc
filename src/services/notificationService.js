@@ -87,7 +87,7 @@ const NotificationService = {
   },
 
   /**
-   * ✅ Get full email details by ID
+   *  Get full email details by ID
    * @param {string} messageId - Email message ID
    * @returns {Promise} Email details with full body
    */
@@ -104,7 +104,7 @@ const NotificationService = {
   },
 
   /**
-   * ✅ Delete email
+   *  Delete email
    * @param {string} messageId - Email message ID
    * @returns {Promise} Deletion result
    */

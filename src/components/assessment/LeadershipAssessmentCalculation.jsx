@@ -59,13 +59,13 @@ const LeadershipAssessmentCalculation = () => {
   const [letterGrades, setLetterGrades] = useState([]);
   const [leadershipMainGroups, setLeadershipMainGroups] = useState([]);
   
-  // ✅ Grade Level States - jobTitles SİLİNDİ
+  //  Grade Level States - jobTitles SİLİNDİ
   const [gradeLevels, setGradeLevels] = useState([]);
   const [editGradeLevels, setEditGradeLevels] = useState([]);
   const [selectedGradeLevels, setSelectedGradeLevels] = useState([]);
   const [editSelectedGradeLevels, setEditSelectedGradeLevels] = useState([]);
   
-  // ✅ Form States - job_title SİLİNDİ
+  //  Form States - job_title SİLİNDİ
   const [positionFormData, setPositionFormData] = useState({
     position_group: '',
     grade_levels: [],
@@ -80,7 +80,7 @@ const LeadershipAssessmentCalculation = () => {
   });
   const [userPermissions, setUserPermissions] = useState(null);
 
-// ✅ Fetch permissions on mount
+//  Fetch permissions on mount
 useEffect(() => {
   const fetchPermissions = async () => {
     try {
@@ -93,7 +93,7 @@ useEffect(() => {
   fetchPermissions();
 }, []);
 
-// ✅ Helper function
+//  Helper function
 const isEmployeeOnlyAccess = () => {
   return userPermissions && !userPermissions.is_admin && !userPermissions.is_manager;
 };
@@ -168,7 +168,7 @@ const isEmployeeOnlyAccess = () => {
       })) || [];
       setGradeLevels(levels);
       
-      // ✅ Auto-select all grade levels
+      //  Auto-select all grade levels
       const allLevels = response.grade_levels || [];
       setSelectedGradeLevels(allLevels);
       setPositionFormData(prev => ({ ...prev, grade_levels: allLevels }));
@@ -180,7 +180,7 @@ const isEmployeeOnlyAccess = () => {
     }
   };
 
-  // ✅ Handle MultiSelect - SADƏLƏŞDI
+  //  Handle MultiSelect - SADƏLƏŞDI
   const handleGradeLevelMultiSelectChange = (fieldName, value) => {
     setSelectedGradeLevels(prev => {
       const newSelection = prev.includes(value)
@@ -231,7 +231,7 @@ const isEmployeeOnlyAccess = () => {
     }
   };
 
-  // ✅ Edit MultiSelect - SADƏLƏŞDI
+  //  Edit MultiSelect - SADƏLƏŞDI
   const handleEditGradeLevelMultiSelectChange = (fieldName, value) => {
     setEditSelectedGradeLevels(prev => {
       const newSelection = prev.includes(value)
@@ -331,16 +331,16 @@ const fetchCompanies = async () => {
   }
 };
 
-// ✅ Replace fetchData function
+//  Replace fetchData function
 const fetchData = async () => {
   setIsLoading(true);
   try {
-    // ✅ Build params with proper type conversion
+    //  Build params with proper type conversion
     const employeeParams = {};
     
     
     if (selectedCompany && selectedCompany !== '') {
-      // ✅ Convert to number
+      //  Convert to number
       const companyId = parseInt(selectedCompany, 10);
       
       if (isNaN(companyId)) {
@@ -363,7 +363,7 @@ const fetchData = async () => {
       leadershipMainGroupsRes
     ] = await Promise.all([
       assessmentApi.positionLeadership.getAll(),
-      assessmentApi.employeeLeadership.getAll(employeeParams),  // ✅ Pass params
+      assessmentApi.employeeLeadership.getAll(employeeParams),  //  Pass params
       assessmentApi.employees.getAll(),
       assessmentApi.positionGroups.getAll(),
       assessmentApi.behavioralScales.getAll(),
@@ -435,7 +435,7 @@ const fetchData = async () => {
   }
 };
 
-// ✅ Update useEffect - remove duplicate
+//  Update useEffect - remove duplicate
 useEffect(() => {
   fetchData();
 }, [selectedCompany]);
@@ -485,7 +485,7 @@ const handleUpdatePositionAssessment = async () => {
     return;
   }
 
-  // ✅ DÜZƏLIŞLIK: Grade levels yoxlaması
+  //  DÜZƏLIŞLIK: Grade levels yoxlaması
   const gradeLevelsToSend = editSelectedGradeLevels.length > 0 
     ? editSelectedGradeLevels 
     : editPositionFormData.grade_levels;
@@ -504,7 +504,7 @@ const handleUpdatePositionAssessment = async () => {
 
   setIsSubmitting(true);
   try {
-    // ✅ DÜZƏLIŞLIK: Clean və validate et
+    //  DÜZƏLIŞLIK: Clean və validate et
     const cleanedGradeLevels = gradeLevelsToSend
       .filter(g => g !== null && g !== undefined && g !== '')
       .map(g => String(g).trim());
@@ -517,7 +517,7 @@ const handleUpdatePositionAssessment = async () => {
 
     const updateData = {
       position_group: editPositionFormData.position_group,
-      grade_levels: cleanedGradeLevels, // ✅ Təmizlənmiş data
+      grade_levels: cleanedGradeLevels, //  Təmizlənmiş data
       competency_ratings: editPositionFormData.competency_ratings.map(r => ({
         leadership_item_id: parseInt(r.leadership_item_id),
         required_level: parseInt(r.required_level)
@@ -578,7 +578,7 @@ const handleUpdatePositionAssessment = async () => {
     }
   };
 
-  // ✅ Create Position - job_title YOXDUR
+  //  Create Position - job_title YOXDUR
   const handleCreatePositionAssessment = async () => {
     if (!positionFormData.position_group || positionFormData.grade_levels.length === 0) {
       showError('Please select Hierarchy and at least one grade level');
@@ -817,7 +817,7 @@ const toggleChildGroup = (groupId) => {
 
   return (
     <div className="space-y-4">
-       {/* ✅ Tab Navigation - Hide for employees */}
+       {/*  Tab Navigation - Hide for employees */}
     {!isEmployeeOnlyAccess() && (
       <div className="bg-white rounded-lg p-1 shadow-sm border border-gray-200">
         <div className="flex gap-1">
@@ -892,7 +892,7 @@ const toggleChildGroup = (groupId) => {
           )}
         </div>
         
-        {/* ✅ Hide New Assessment button for employees */}
+        {/*  Hide New Assessment button for employees */}
         {!isEmployeeOnlyAccess() && (
           <ActionButton
             onClick={() => activeTab === 'position' ? setShowCreatePositionModal(true) : setShowCreateEmployeeModal(true)}
@@ -909,7 +909,7 @@ const toggleChildGroup = (groupId) => {
     
      
 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-  {/* ✅ Position Templates Tab - Only for Admin/Manager */}
+  {/*  Position Templates Tab - Only for Admin/Manager */}
   {!isEmployeeOnlyAccess() && activeTab === 'position' && (
     <div className="overflow-x-auto">
       <table className="w-full">
@@ -965,13 +965,13 @@ const toggleChildGroup = (groupId) => {
     </div>
   )}
 
-  {/* ✅ Employee Assessments Tab - For Everyone (with different permissions) */}
+  {/*  Employee Assessments Tab - For Everyone (with different permissions) */}
   {(isEmployeeOnlyAccess() || activeTab === 'employee') && (
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>
-            {/* ✅ Hide Employee column for employee-only users */}
+            {/*  Hide Employee column for employee-only users */}
             {!isEmployeeOnlyAccess() && (
               <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Employee</th>
             )}
@@ -986,7 +986,7 @@ const toggleChildGroup = (groupId) => {
           {filteredEmployeeAssessments.length > 0 ? (
             filteredEmployeeAssessments.map((assessment) => (
               <tr key={assessment.id} className="hover:bg-gray-50 transition-colors">
-                {/* ✅ Show employee name only for admin/manager */}
+                {/*  Show employee name only for admin/manager */}
                 {!isEmployeeOnlyAccess() && (
                   <td className="px-4 py-3">
                     <div className="text-sm font-medium text-gray-900">{assessment.employee_name}</div>
@@ -1001,7 +1001,7 @@ const toggleChildGroup = (groupId) => {
                 <td className="px-4 py-3 text-xs text-gray-500">{new Date(assessment.assessment_date).toLocaleDateString()}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-center gap-1 flex-wrap">
-                    {/* ✅ VIEW button - Available for everyone */}
+                    {/*  VIEW button - Available for everyone */}
                     <ActionButton 
                       onClick={() => { setSelectedAssessment(assessment); setShowViewModal(true); }} 
                       icon={Eye} 
@@ -1010,7 +1010,7 @@ const toggleChildGroup = (groupId) => {
                       size="xs" 
                     />
                     
-                    {/* ✅ DOWNLOAD button - Available for everyone if completed */}
+                    {/*  DOWNLOAD button - Available for everyone if completed */}
                     {assessment.status === 'COMPLETED' && (
                       <ActionButton 
                         onClick={() => handleExport(assessment.id)} 
@@ -1021,7 +1021,7 @@ const toggleChildGroup = (groupId) => {
                       />
                     )}
                     
-                    {/* ✅ Admin/Manager only actions */}
+                    {/*  Admin/Manager only actions */}
                     {!isEmployeeOnlyAccess() && (
                       <>
                         {/* EDIT - Only for drafts */}
@@ -1090,7 +1090,7 @@ const toggleChildGroup = (groupId) => {
   )}
 </div>
 
-      {/* ✅ Create Position Modal - 2 COLUMN GRID */}
+      {/*  Create Position Modal - 2 COLUMN GRID */}
       {showCreatePositionModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40 p-4">
           <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] shadow-xl">
@@ -1222,7 +1222,7 @@ const toggleChildGroup = (groupId) => {
           {mainGroup.child_groups && mainGroup.child_groups.length > 0 ? (
             mainGroup.child_groups.map(childGroup => (
               <div key={childGroup.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                {/* ✅ CHILD GROUP HEADER - Collapsible */}
+                {/*  CHILD GROUP HEADER - Collapsible */}
                 <button
                   onClick={() => toggleChildGroup(childGroup.id)}
                   className="w-full bg-gray-100 px-3 py-2 border-b border-gray-200 flex items-center justify-between hover:bg-gray-200 transition-colors"
@@ -1239,7 +1239,7 @@ const toggleChildGroup = (groupId) => {
                   )}
                 </button>
                 
-                {/* ✅ CHILD GROUP CONTENT - Collapsible */}
+                {/*  CHILD GROUP CONTENT - Collapsible */}
                 {expandedChildGroups[childGroup.id] && (
                   <div className="divide-y divide-gray-100">
                     {childGroup.items && childGroup.items.length > 0 ? (
@@ -1317,7 +1317,7 @@ const toggleChildGroup = (groupId) => {
         </div>
       )}
 
-      {/* ✅ Edit Position Modal - 2 COLUMN GRID */}
+      {/*  Edit Position Modal - 2 COLUMN GRID */}
       {showEditPositionModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40 p-4">
           <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] shadow-xl">
@@ -1337,7 +1337,7 @@ const toggleChildGroup = (groupId) => {
             </div>
             
             <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
-              {/* ✅ 2 COLUMN GRID */}
+              {/*  2 COLUMN GRID */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
@@ -1512,7 +1512,7 @@ const toggleChildGroup = (groupId) => {
           </div>
         </div>
       )}
- {/* Create Employee Assessment Modal - ✅ TABLE FORMAT */}
+ {/* Create Employee Assessment Modal -  TABLE FORMAT */}
       {showCreateEmployeeModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-6xl shadow-xl">
@@ -1614,7 +1614,7 @@ const toggleChildGroup = (groupId) => {
       </div>
     )}
 
-    {/* ✅ TABLE FORMAT with Collapsible Child Groups */}
+    {/*  TABLE FORMAT with Collapsible Child Groups */}
     <div className="border border-gray-200 rounded-lg overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -1674,7 +1674,7 @@ const toggleChildGroup = (groupId) => {
                   {/* Child Groups - Only show if main group is expanded */}
                   {expandedGroups[mainGroupName] && Object.entries(childGroups).map(([childGroupName, competencies]) => (
                     <React.Fragment key={childGroupName}>
-                      {/* ✅ Child Group Header - Collapsible */}
+                      {/*  Child Group Header - Collapsible */}
                       <tr className="bg-gray-100">
                         <td colSpan="5" className="px-3 py-2">
                           <button
@@ -1695,7 +1695,7 @@ const toggleChildGroup = (groupId) => {
                         </td>
                       </tr>
                       
-                      {/* ✅ Competency Items - Only show if child group is expanded */}
+                      {/*  Competency Items - Only show if child group is expanded */}
                       {expandedChildGroups[`${mainGroupName}-${childGroupName}`] && competencies.map(competency => {
                         const employeeRating = employeeFormData.competency_ratings.find(r => r.leadership_item_id === competency.leadership_item);
                         const actualLevel = employeeRating?.actual_level || 0;
@@ -1860,7 +1860,7 @@ const toggleChildGroup = (groupId) => {
           </div>
         )}
 
-        {/* ✅ TABLE with Collapsible Child Groups */}
+        {/*  TABLE with Collapsible Child Groups */}
         <div className="border border-gray-200 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -2068,7 +2068,7 @@ const toggleChildGroup = (groupId) => {
 
       <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
         {activeTab === 'position' ? (
-          // ✅ POSITION TEMPLATE VIEW - SIMPLIFIED
+          //  POSITION TEMPLATE VIEW - SIMPLIFIED
           <div className="space-y-4">
             {/* Position Info - Compact Grid */}
             <div className="grid grid-cols-3 gap-3 p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200">
@@ -2173,7 +2173,7 @@ const toggleChildGroup = (groupId) => {
             )}
           </div>
         ) : (
-          // ✅ EMPLOYEE LEADERSHIP ASSESSMENT VIEW - SIMPLIFIED & COLLAPSIBLE
+          //  EMPLOYEE LEADERSHIP ASSESSMENT VIEW - SIMPLIFIED & COLLAPSIBLE
           <div className="space-y-4">
             {/* Employee Info - Compact */}
             <div className="grid grid-cols-4 gap-3 p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200">

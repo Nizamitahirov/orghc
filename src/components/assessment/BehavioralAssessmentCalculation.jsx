@@ -17,7 +17,7 @@ import { useToast } from '@/components/common/Toast';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 import BehavioralAssessmentCharts from './charts/BehavioralAssessmentCharts';
 
-  // ✅ CORRECT - Use referenceDataAPI
+  //  CORRECT - Use referenceDataAPI
 import referenceDataAPI from '@/store/api/referenceDataAPI';
 
 const BehavioralAssessmentCalculation = () => {
@@ -64,7 +64,7 @@ const BehavioralAssessmentCalculation = () => {
   const [behavioralGroups, setBehavioralGroups] = useState([]);
     const [userPermissions, setUserPermissions] = useState(null);
   
-  // ✅ Fetch permissions on mount
+  //  Fetch permissions on mount
   useEffect(() => {
     const fetchPermissions = async () => {
       try {
@@ -77,7 +77,7 @@ const BehavioralAssessmentCalculation = () => {
     fetchPermissions();
   }, []);
   
-  // ✅ Helper function
+  //  Helper function
   const isEmployeeOnlyAccess = () => {
     return userPermissions && !userPermissions.is_admin && !userPermissions.is_manager;
   };
@@ -174,7 +174,7 @@ const BehavioralAssessmentCalculation = () => {
       }));
       setGradeLevels(levels);
       
-      // ✅ Auto-select all grade levels
+      //  Auto-select all grade levels
       const allLevels = response.grade_levels;
       setSelectedGradeLevels(allLevels);
       setPositionFormData(prev => ({ ...prev, grade_levels: allLevels }));
@@ -269,13 +269,13 @@ const handleEditPositionAssessment = async (assessment) => {
       })) || []
     });
     
-    // ✅ Set selected grade levels
+    //  Set selected grade levels
     setEditSelectedGradeLevels(detailedAssessment.grade_levels || []);
     
     if (assessment.position_group) {
       await handleEditPositionGroupChange(assessment.position_group);
       
-      // ✅ After loading grade options, set selected ones
+      //  After loading grade options, set selected ones
       if (detailedAssessment.grade_levels && detailedAssessment.grade_levels.length > 0) {
         setEditSelectedGradeLevels(detailedAssessment.grade_levels);
       }
@@ -311,7 +311,7 @@ const handleUpdatePositionAssessment = async () => {
 
   setIsSubmitting(true);
   try {
-    // ✅ Clean data
+    //  Clean data
     const cleanedGradeLevels = gradeLevelsToSend
       .filter(g => g !== null && g !== undefined && g !== '')
       .map(g => String(g).trim());
@@ -480,16 +480,16 @@ const fetchCompanies = async () => {
   }
 };
 
-// ✅ Replace fetchData function
+//  Replace fetchData function
 const fetchData = async () => {
   setIsLoading(true);
   try {
-    // ✅ Build params with proper type conversion
+    //  Build params with proper type conversion
     const employeeParams = {};
     
     
     if (selectedCompany && selectedCompany !== '') {
-      // ✅ Convert to number
+      //  Convert to number
       const companyId = parseInt(selectedCompany, 10);
       
       if (isNaN(companyId)) {
@@ -512,7 +512,7 @@ const fetchData = async () => {
       behavioralGroupsRes
     ] = await Promise.all([
       assessmentApi.positionBehavioral.getAll(),
-      assessmentApi.employeeBehavioral.getAll(employeeParams),  // ✅ Pass params
+      assessmentApi.employeeBehavioral.getAll(employeeParams),  //  Pass params
       assessmentApi.employees.getAll(),
       assessmentApi.positionGroups.getAll(),
       assessmentApi.behavioralScales.getAll(),
@@ -553,10 +553,10 @@ const fetchData = async () => {
   }
 };
 
-// ✅ Update useEffect - remove duplicate
+//  Update useEffect - remove duplicate
 useEffect(() => {
   fetchData();
-}, [selectedCompany]);  // ✅ Re-fetch when company changes
+}, [selectedCompany]);  //  Re-fetch when company changes
 
 
   const handleEditAssessment = async (assessment) => {
@@ -610,7 +610,7 @@ const handleCreateEmployeeAssessment = async (isDraft = true) => {
     
    
     
-    // ✅ Düzgün API - employeeBehavioral
+    //  Düzgün API - employeeBehavioral
     await assessmentApi.employeeBehavioral.create(data);
     
     setShowCreateEmployeeModal(false);
@@ -657,7 +657,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
     
 
     
-    // ✅ Düzgün API - employeeBehavioral
+    //  Düzgün API - employeeBehavioral
     await assessmentApi.employeeBehavioral.update(editFormData.id, data);
     
     setShowEditEmployeeModal(false);
@@ -1205,7 +1205,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
             </div>
             
             <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
-              {/* ✅ 2 column grid */}
+              {/*  2 column grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">

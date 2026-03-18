@@ -25,7 +25,7 @@ export default function CompaniesView({
   onAddCompany,
   onEditCompany,
   onDeleteCompany,
-  userAccess, // ✅ Add userAccess prop
+  userAccess, //  Add userAccess prop
 }) {
   const [search, setSearch] = useState("");
 
@@ -60,7 +60,7 @@ export default function CompaniesView({
             </div>
           </div>
 
-          {/* ✅ Add Company Button - only show if user is admin */}
+          {/*  Add Company Button - only show if user is admin */}
           {userAccess?.is_admin && (
             <button
               onClick={onAddCompany}
@@ -191,7 +191,7 @@ export default function CompaniesView({
                   <Building2 className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex items-center gap-1">
-                  {/* ✅ Manual company-lər üçün edit/delete buttonları - only if admin */}
+                  {/*  Manual company-lər üçün edit/delete buttonları - only if admin */}
                   {company.type === 'policy_company' && userAccess?.is_admin && (
                     <>
                       <button

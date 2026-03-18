@@ -12,7 +12,7 @@ export const LoadingSpinner = ({ message = "Loading..." }) => (
       </div>
       <h3 className="text-base font-medium text-almet-cloud-burst dark:text-white mb-2">{message}</h3>
       <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">
-        Please wait while we load the grading system
+        Please wait while we load 
       </p>
       <div className="mt-4 flex justify-center">
         <div className="flex space-x-1">

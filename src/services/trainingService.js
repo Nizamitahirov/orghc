@@ -5,7 +5,7 @@ import axios from 'axios';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const TRAINING_BASE = `${API_BASE_URL}/trainings`;
 
-// ✅ Token Manager
+//  Token Manager
 const TokenManager = {
   getAccessToken: () => typeof window !== 'undefined' ? localStorage.getItem("accessToken") : null,
   getRefreshToken: () => typeof window !== 'undefined' ? localStorage.getItem("refreshToken") : null,
@@ -19,7 +19,7 @@ const TokenManager = {
   }
 };
 
-// ✅ Axios Instance
+//  Axios Instance
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -28,7 +28,7 @@ const api = axios.create({
   timeout: 600000,
 });
 
-// ✅ Request Interceptor
+//  Request Interceptor
 api.interceptors.request.use(
   (config) => {
     const token = TokenManager.getAccessToken();
@@ -40,7 +40,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// ✅ Response Interceptor
+//  Response Interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -130,7 +130,7 @@ export const trainingAPI = {
     }
   },
 
-  // ✅ Get training statistics
+  //  Get training statistics
   getStatistics: async () => {
     try {
       const response = await api.get(`${TRAINING_BASE}/trainings/statistics/`);
@@ -141,7 +141,7 @@ export const trainingAPI = {
     }
   },
 
-  // ✅ Bulk assign trainings to employees
+  //  Bulk assign trainings to employees
   bulkAssign: async (data) => {
     try {
       const response = await api.post(
@@ -216,7 +216,7 @@ export const trainingAssignmentAPI = {
     }
   },
 
-  // ✅ Get my trainings
+  //  Get my trainings
   getMyTrainings: async (params = {}) => {
     try {
       const response = await api.get(`${TRAINING_BASE}/assignments/my_trainings/`, { params });
@@ -227,7 +227,7 @@ export const trainingAssignmentAPI = {
     }
   },
 
-  // ✅ Complete material
+  //  Complete material
   completeMaterial: async (assignmentId, materialId) => {
     try {
       const response = await api.post(
@@ -241,7 +241,7 @@ export const trainingAssignmentAPI = {
     }
   },
 
-  // ✅ Get overdue assignments
+  //  Get overdue assignments
   getOverdue: async () => {
     try {
       const response = await api.get(`${TRAINING_BASE}/assignments/overdue/`);
@@ -374,7 +374,7 @@ export const trainingRequestAPI = {
     }
   },
 
-  // ✅ Get my training requests
+  //  Get my training requests
   getMyRequests: async (params = {}) => {
     try {
       const response = await api.get(`${TRAINING_BASE}/requests/my_requests/`, { params });
@@ -385,7 +385,7 @@ export const trainingRequestAPI = {
     }
   },
 
-  // ✅ Get pending approval requests
+  //  Get pending approval requests
   getPendingApproval: async () => {
     try {
       const response = await api.get(`${TRAINING_BASE}/requests/pending_approval/`);
@@ -396,7 +396,7 @@ export const trainingRequestAPI = {
     }
   },
 
-  // ✅ Approve or reject request
+  //  Approve or reject request
   approveReject: async (id, data) => {
     try {
       const response = await api.post(
@@ -410,7 +410,7 @@ export const trainingRequestAPI = {
     }
   },
 
-  // ✅ Get statistics
+  //  Get statistics
   getStatistics: async () => {
     try {
       const response = await api.get(`${TRAINING_BASE}/requests/statistics/`);

@@ -25,7 +25,7 @@ export default function FoldersView({
   onSelectFolder,
   confirmModal,
   setConfirmModal,
-  userAccess, // ✅ Add userAccess prop
+  userAccess, //  Add userAccess prop
 }) {
   const { showSuccess, showError, showWarning } = useToast();
   
@@ -62,7 +62,7 @@ export default function FoldersView({
   };
 
   const handleCreateFolder = async () => {
-    // ✅ Check access
+    //  Check access
     if (!userAccess?.is_admin) {
       showWarning('You do not have permission to create folders');
       return;
@@ -104,7 +104,7 @@ export default function FoldersView({
   };
 
   const handleUpdateFolder = async () => {
-    // ✅ Check access
+    //  Check access
     if (!userAccess?.is_admin) {
       showWarning('You do not have permission to update folders');
       return;
@@ -145,7 +145,7 @@ export default function FoldersView({
   };
 
   const handleDeleteFolder = (folderId, folderName, policyCount) => {
-    // ✅ Check access
+    //  Check access
     if (!userAccess?.is_admin) {
       showWarning('You do not have permission to delete folders');
       return;
@@ -176,7 +176,7 @@ export default function FoldersView({
 
   const startEditFolder = (folder, e) => {
     e.stopPropagation();
-    // ✅ Check access
+    //  Check access
     if (!userAccess?.is_admin) {
       showWarning('You do not have permission to edit folders');
       return;
@@ -198,7 +198,7 @@ export default function FoldersView({
   };
 
   const openCreateModal = () => {
-    // ✅ Check access before opening
+    //  Check access before opening
     if (!userAccess?.is_admin) {
       showWarning('You do not have permission to create folders');
       return;
@@ -244,7 +244,7 @@ export default function FoldersView({
             </div>
           </div>
 
-          {/* ✅ New Folder Button - only show if admin */}
+          {/*  New Folder Button - only show if admin */}
           {userAccess?.is_admin && (
             <button
               onClick={openCreateModal}
@@ -284,7 +284,7 @@ export default function FoldersView({
                   <div className="flex items-start justify-between mb-3">
                     <div className="text-3xl">{folder.icon || "📁"}</div>
                     <div className="flex items-center gap-1">
-                      {/* ✅ Edit/Delete buttons - only if admin */}
+                      {/*  Edit/Delete buttons - only if admin */}
                       {userAccess?.is_admin && (
                         <>
                           <button

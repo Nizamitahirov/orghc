@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import performanceApi from "@/services/performanceService";
 import competencyApi from "@/services/competencyApi";
-import pmSurveyApi from "@/services/pmSurveyService"; 
+import pmSurveyApi from "@/services/pmSurveyService";
 
 // Component Imports
 import PerformanceHeader from "@/components/performance/PerformanceHeader";
@@ -23,9 +23,9 @@ export default function PerformanceManagementPage() {
   const { darkMode } = useTheme();
   const router = useRouter();
   const { showSuccess, showError, showWarning, showInfo } = useToast();
-  
+
   // UI State
-  const [activeView, setActiveView] = useState('dashboard'); 
+  const [activeView, setActiveView] = useState('dashboard');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -54,11 +54,11 @@ export default function PerformanceManagementPage() {
   const [selectedPerformanceId, setSelectedPerformanceId] = useState(null);
   const [performanceData, setPerformanceData] = useState({});
 
+  // Survey
   const [surveyData, setSurveyData] = useState(null);
-  const [surveyQuestionsData, setSurveyQuestionsData] = useState([]); 
+  const [surveyStatus, setSurveyStatus] = useState(null); // preloaded status
+  const [surveyQuestionsData, setSurveyQuestionsData] = useState([]);
   const [teamSurveys, setTeamSurveys] = useState(null);
-
-
 
   const [settings, setSettings] = useState({
     weightConfigs: [],
@@ -89,12 +89,14 @@ export default function PerformanceManagementPage() {
     setError(null);
     try {
       await loadUserAccess();
-      
+
+      const year = await loadActiveYear(); // returns year value directly
+
       await Promise.all([
-        loadActiveYear(),
         loadSettings(),
         loadBehavioralCompetencies(),
-        loadLeadershipCompetencies() 
+        loadLeadershipCompetencies(),
+        loadSurveyStatus(year), // pass year directly, don't rely on state
       ]);
 
     } catch (error) {
@@ -109,7 +111,6 @@ export default function PerformanceManagementPage() {
   const loadUserAccess = async () => {
     try {
       const accessInfo = await performanceApi.performances.getMyAccessInfo();
-      
       setUserAccess({
         can_view_all: accessInfo.can_view_all || false,
         is_manager: accessInfo.is_manager || false,
@@ -119,7 +120,6 @@ export default function PerformanceManagementPage() {
         employee_id: accessInfo.employee_id || null,
         employee_name: accessInfo.employee_name || ''
       });
-      
     } catch (error) {
       console.error('❌ Error loading user access:', error);
       throw error;
@@ -131,45 +131,61 @@ export default function PerformanceManagementPage() {
       const yearData = await performanceApi.years.getActiveYear();
       setActiveYear(yearData);
       setSelectedYear(yearData.year);
-      
+
       const allYears = await performanceApi.years.list();
       setPerformanceYears(allYears.results || allYears);
+
+      return yearData.year; // ← return so initializeApp can pass it directly
     } catch (error) {
       console.error('❌ Error loading year:', error);
       throw error;
     }
   };
 
+  // Preloads just the status — called once on init
+  const loadSurveyStatus = async (year) => {
+    try {
+      const survey = await pmSurveyApi.responses.getMySurvey(year);
+      setSurveyStatus(survey?.status ?? null);
+      console.log('✅ Survey status preloaded:', survey?.status);
+    } catch (err) {
+      if (err.response?.status === 404) {
+        // No survey yet → show "Start Now" banner
+        setSurveyStatus('NOT_STARTED');
+        console.log('ℹ️ No survey yet → status set to NOT_STARTED');
+      } else {
+        console.error('❌ Error preloading survey status:', err);
+      }
+    }
+  };
+
   const loadSettings = async () => {
     try {
-      const [weightsRes, limitsRes,  scalesRes, targetsRes, statusesRes] = 
+      const [weightsRes, limitsRes, scalesRes, targetsRes, statusesRes] =
         await Promise.all([
           performanceApi.weightConfigs.list(),
           performanceApi.goalLimits.getActiveConfig(),
-         
           performanceApi.evaluationScales.list(),
           performanceApi.evaluationTargets.getActiveConfig(),
           performanceApi.objectiveStatuses.list()
         ]);
-      
+
       const sortedScales = (scalesRes.results || scalesRes).sort(
         (a, b) => a.range_min - b.range_min
       );
-      
+
       setSettings({
         weightConfigs: weightsRes.results || weightsRes,
         goalLimits: {
           min: limitsRes.min_goals,
           max: limitsRes.max_goals
         },
-     
         evaluationScale: sortedScales,
         evaluationTargets: {
           objective_score_target: targetsRes.objective_score_target
         },
         statusTypes: statusesRes.results || statusesRes
       });
-      
     } catch (error) {
       console.error('❌ Error loading settings:', error);
       throw error;
@@ -181,24 +197,19 @@ export default function PerformanceManagementPage() {
       showError('No active performance year');
       return;
     }
-
     try {
       setLoading(true);
-      
-      const result = await performanceApi.performances.initialize({
+      await performanceApi.performances.initialize({
         employee: employee.id,
         performance_year: activeYear.id
       });
-      
-      showSuccess(`✅ Performance initialized for ${employee.name || employee.employee_name}`);
-      
+      showSuccess(`Performance initialized for ${employee.name || employee.employee_name}`);
       await loadEmployees();
-      
     } catch (error) {
       console.error('❌ Error initializing employee:', error);
-      const errorMsg = error.response?.data?.error || 
-                       error.response?.data?.message || 
-                       'Failed to initialize performance';
+      const errorMsg = error.response?.data?.error ||
+        error.response?.data?.message ||
+        'Failed to initialize performance';
       showError(errorMsg);
     } finally {
       setLoading(false);
@@ -209,14 +220,12 @@ export default function PerformanceManagementPage() {
     try {
       const groupsResponse = await competencyApi.behavioralGroups.getAll();
       const groups = groupsResponse.results || groupsResponse;
-      
       const allCompetencies = [];
-      
+
       for (const group of groups) {
         try {
           const competenciesResponse = await competencyApi.behavioralGroups.getCompetencies(group.id);
           const competencies = competenciesResponse || [];
-          
           competencies.forEach(comp => {
             allCompetencies.push({
               id: comp.id,
@@ -230,7 +239,7 @@ export default function PerformanceManagementPage() {
           console.error(`❌ Error loading competencies for group ${group.name}:`, error);
         }
       }
-      
+
       setBehavioralCompetencies(allCompetencies);
       return allCompetencies;
     } catch (error) {
@@ -243,19 +252,17 @@ export default function PerformanceManagementPage() {
     try {
       const mainGroupsResponse = await competencyApi.leadershipMainGroups.getAll();
       const mainGroups = mainGroupsResponse.results || mainGroupsResponse;
-      
       const allLeadershipItems = [];
-      
+
       for (const mainGroup of mainGroups) {
         try {
           const mainGroupDetail = await competencyApi.leadershipMainGroups.getById(mainGroup.id);
           const childGroups = mainGroupDetail.child_groups || [];
-          
+
           for (const childGroup of childGroups) {
             try {
               const childGroupDetail = await competencyApi.leadershipChildGroups.getById(childGroup.id);
               const items = childGroupDetail.items || [];
-              
               items.forEach(item => {
                 allLeadershipItems.push({
                   id: item.id,
@@ -275,7 +282,7 @@ export default function PerformanceManagementPage() {
           console.error(`❌ Error loading child groups for main group ${mainGroup.name}:`, error);
         }
       }
-      
+
       setLeadershipCompetencies(allLeadershipItems);
       setLeadershipMainGroups(mainGroups);
       return allLeadershipItems;
@@ -290,14 +297,11 @@ export default function PerformanceManagementPage() {
       console.error('❌ Cannot load dashboard - no employee_id');
       return;
     }
-    
     setLoading(true);
     try {
       const stats = await performanceApi.dashboard.getStatistics(selectedYear);
       setDashboardStats(stats);
-      
       await loadEmployees();
-      
     } catch (error) {
       console.error('❌ Error loading dashboard:', error);
       showError('Error loading dashboard data');
@@ -306,188 +310,169 @@ export default function PerformanceManagementPage() {
     }
   };
 
+  const loadEmployees = async () => {
+    try {
+      if (!userAccess.employee_id) { setEmployees([]); return; }
 
-// ── Replace loadEmployees in page.jsx ─────────────────────────────────────
+      const teamResponse = await performanceApi.performances.getTeamMembersWithStatus(selectedYear);
 
-const loadEmployees = async () => {
-  try {
-    if (!userAccess.employee_id) { setEmployees([]); return; }
+      const mapped = teamResponse.team_members.map(member => {
+        const emp = member.employee;
+        const perf = member.performance;
 
-    const teamResponse = await performanceApi.performances.getTeamMembersWithStatus(selectedYear);
+        return {
+          id: emp.id,
+          employee_id: emp.employee_id,
+          name: emp.full_name,
+          employee_name: emp.full_name,
+          employee_business_function: emp.business_function_name,
+          employee_unit: emp.unit_name,
+          employee_position_group: emp.position_group,
+          company: emp.business_function_name,
+          employee_company: emp.business_function_name,
+          position: emp.position_group,
+          line_manager: emp.line_manager_name,
+          line_manager_hc: emp.line_manager_hc,
+          has_performance: member.has_performance,
+          can_initialize: member.can_initialize,
+          performanceId: perf?.id || null,
+          objectives_percentage: parseFloat(perf?.objectives_percentage || 0),
+          competencies_percentage: parseFloat(perf?.competencies_percentage || 0),
+          overall_weighted_percentage: parseFloat(perf?.overall_weighted_percentage || 0),
+          final_rating: perf?.final_rating || null,
+          competencies_letter_grade: perf?.competencies_letter_grade || null,
+          objectives_employee_approved: perf?.objectives_employee_approved || false,
+          objectives_manager_approved: perf?.objectives_manager_approved || false,
+          mid_year_completed: perf?.mid_year_completed || false,
+          end_year_completed: perf?.end_year_completed || false,
+          approval_status: perf?.approval_status || 'NOT_STARTED',
+        };
+      });
 
-    const mapped = teamResponse.team_members.map(member => {
-      const emp  = member.employee;
-      const perf = member.performance;
+      setEmployees(mapped);
+    } catch (error) {
+      console.error('❌ Error loading team members:', error);
+      showError('Error loading team members');
+    }
+  };
 
-      return {
-        // Identity
-        id:           emp.id,
-        employee_id:  emp.employee_id,
-        name:         emp.full_name,
-        employee_name: emp.full_name,
-
-        // ✅ Org hierarchy — all three separate
-        employee_business_function: emp.business_function_name,   // e.g. "Almet MMC"
-        employee_unit:              emp.unit_name,                 // e.g. "Finance Unit"
-        employee_position_group:    emp.position_group,
-
-        // Legacy aliases (used elsewhere in app)
-        company:          emp.business_function_name,
-        employee_company: emp.business_function_name,
-        position:         emp.position_group,
-
-        line_manager:    emp.line_manager_name,
-        line_manager_hc: emp.line_manager_hc,
-
-        // Performance status
-        has_performance: member.has_performance,
-        can_initialize:  member.can_initialize,
-        performanceId:   perf?.id || null,
-
-        // ✅ Score fields
-        objectives_percentage:        parseFloat(perf?.objectives_percentage    || 0),
-        competencies_percentage:      parseFloat(perf?.competencies_percentage  || 0),
-        overall_weighted_percentage:  parseFloat(perf?.overall_weighted_percentage || 0),
-        final_rating:                 perf?.final_rating              || null,
-        competencies_letter_grade:    perf?.competencies_letter_grade || null,
-
-        // Workflow flags
-        objectives_employee_approved: perf?.objectives_employee_approved || false,
-        objectives_manager_approved:  perf?.objectives_manager_approved  || false,
-        mid_year_completed:           perf?.mid_year_completed           || false,
-        end_year_completed:           perf?.end_year_completed           || false,
-        approval_status:              perf?.approval_status              || 'NOT_STARTED',
-      };
-    });
-
-    setEmployees(mapped);
-  } catch (error) {
-    console.error('❌ Error loading team members:', error);
-    showError('Error loading team members');
-  }
-};
-const loadSurveyQuestions = async () => {
-  if (surveyQuestionsData.length > 0) return surveyQuestionsData; // cache
-  try {
-    const data = await pmSurveyApi.questions.getBySection();
-    setSurveyQuestionsData(data);
-    return data;
-  } catch (err) {
-    console.error('❌ Error loading survey questions:', err);
-    return [];
-  }
-};
+  const loadSurveyQuestions = async () => {
+    if (surveyQuestionsData.length > 0) return surveyQuestionsData;
+    try {
+      const data = await pmSurveyApi.questions.getBySection();
+      setSurveyQuestionsData(data);
+      return data;
+    } catch (err) {
+      console.error('❌ Error loading survey questions:', err);
+      return [];
+    }
+  };
 
   const handleLoadMySurvey = async () => {
-  setLoading(true);
-  try {
-    await loadSurveyQuestions();
-
-    let survey = null;
+    setLoading(true);
     try {
-      survey = await pmSurveyApi.responses.getMySurvey(selectedYear);
-    } catch (err) {
-      if (err.response?.status !== 404) {
-        showError('Error loading survey');
-        return;
-      }
-    }
+      await loadSurveyQuestions();
 
-    if (!survey) {
-      if (!activeYear?.id || !userAccess.employee_id) {
-        showError('Missing employee or year info');
-        return;
-      }
-
+      let survey = null;
       try {
-        const initRes = await pmSurveyApi.responses.initialize({
-          employee: userAccess.employee_id,
-          performance_year: activeYear.id
-        });
-        survey = initRes.data ?? initRes;
-        showSuccess('Survey initialized!');
-      } catch (initErr) {
-        const d = initErr.response?.data;
-
-        if (d?.survey_id) {
-          survey = await pmSurveyApi.responses.get(d.survey_id);
-        } else {
-          const msg = d?.error || d?.message || d?.non_field_errors?.[0] || 'Cannot initialize survey';
-          showError(msg);
+        survey = await pmSurveyApi.responses.getMySurvey(selectedYear);
+      } catch (err) {
+        if (err.response?.status !== 404) {
+          showError('Error loading survey');
           return;
         }
       }
-    }
 
-    setSurveyData(survey);
-    setActiveView('pm-survey');
-  } catch (error) {
-    console.error('❌ handleLoadMySurvey:', error);
-    showError('Error loading survey');
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-
-const handleTakePMSurvey = async (employeeId) => {
-  setLoading(true);
-  try {
-    await loadSurveyQuestions();
-
-    if (employeeId === userAccess.employee_id) {
-      await handleLoadMySurvey();
-      return;
-    }
-
-    let survey = null;
-
-    try {
-      const list = await pmSurveyApi.responses.list({ year: selectedYear });
-      const surveys = list.results ?? list;
-      survey = surveys.find(s => s.employee === employeeId) ?? null;
-    } catch (err) {
-      console.error('❌ Error fetching surveys list:', err);
-    }
-
-    if (!survey) {
-      try {
-        const initRes = await pmSurveyApi.responses.initialize({
-          employee: employeeId,
-          performance_year: activeYear.id
-        });
-        survey = initRes.data ?? initRes;
-        showSuccess('Survey initialized!');
-      } catch (initErr) {
-        const d = initErr.response?.data;
-        if (d?.survey_id) {
-          survey = await pmSurveyApi.responses.get(d.survey_id);
-        } else {
-          showError(d?.error || d?.message || 'Cannot initialize survey');
+      if (!survey) {
+        if (!activeYear?.id || !userAccess.employee_id) {
+          showError('Missing employee or year info');
           return;
         }
+        try {
+          const initRes = await pmSurveyApi.responses.initialize({
+            employee: userAccess.employee_id,
+            performance_year: activeYear.id
+          });
+          survey = initRes.data ?? initRes;
+          showSuccess('Survey initialized!');
+        } catch (initErr) {
+          const d = initErr.response?.data;
+          if (d?.survey_id) {
+            survey = await pmSurveyApi.responses.get(d.survey_id);
+          } else {
+            const msg = d?.error || d?.message || d?.non_field_errors?.[0] || 'Cannot initialize survey';
+            showError(msg);
+            return;
+          }
+        }
       }
-    } else {
-      survey = await pmSurveyApi.responses.get(survey.id);
-    }
 
-    setSurveyData(survey);
-    setActiveView('pm-survey');
-  } catch (error) {
-    console.error('❌ handleTakePMSurvey:', error);
-    showError('Error loading survey');
-  } finally {
-    setLoading(false);
-  }
-};
+      setSurveyData(survey);
+      setSurveyStatus(survey?.status ?? null); // ← sync banner status
+      setActiveView('pm-survey');
+    } catch (error) {
+      console.error('❌ handleLoadMySurvey:', error);
+      showError('Error loading survey');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTakePMSurvey = async (employeeId) => {
+    setLoading(true);
+    try {
+      await loadSurveyQuestions();
+
+      if (employeeId === userAccess.employee_id) {
+        await handleLoadMySurvey();
+        return;
+      }
+
+      let survey = null;
+      try {
+        const list = await pmSurveyApi.responses.list({ year: selectedYear });
+        const surveys = list.results ?? list;
+        survey = surveys.find(s => s.employee === employeeId) ?? null;
+      } catch (err) {
+        console.error('❌ Error fetching surveys list:', err);
+      }
+
+      if (!survey) {
+        try {
+          const initRes = await pmSurveyApi.responses.initialize({
+            employee: employeeId,
+            performance_year: activeYear.id
+          });
+          survey = initRes.data ?? initRes;
+          showSuccess('Survey initialized!');
+        } catch (initErr) {
+          const d = initErr.response?.data;
+          if (d?.survey_id) {
+            survey = await pmSurveyApi.responses.get(d.survey_id);
+          } else {
+            showError(d?.error || d?.message || 'Cannot initialize survey');
+            return;
+          }
+        }
+      } else {
+        survey = await pmSurveyApi.responses.get(survey.id);
+      }
+
+      setSurveyData(survey);
+      setActiveView('pm-survey');
+    } catch (error) {
+      console.error('❌ handleTakePMSurvey:', error);
+      showError('Error loading survey');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSaveSurveyAnswers = async (answers) => {
     if (!surveyData?.id) return;
     try {
       setLoading(true);
-      const res = await pmSurveyApi.responses.saveAnswers(surveyData.id, answers);
-      
+      await pmSurveyApi.responses.saveAnswers(surveyData.id, answers);
       const updated = await pmSurveyApi.responses.get(surveyData.id);
       setSurveyData(updated);
     } catch (error) {
@@ -506,6 +491,7 @@ const handleTakePMSurvey = async (employeeId) => {
       showSuccess('Survey submitted successfully! Thank you for your feedback.');
       const updated = await pmSurveyApi.responses.get(surveyData.id);
       setSurveyData(updated);
+      setSurveyStatus(updated?.status ?? null); // ← sync banner status
     } catch (error) {
       console.error('❌ Error submitting survey:', error);
       showError(error.response?.data?.message || error.response?.data?.error || 'Error submitting survey');
@@ -531,7 +517,7 @@ const handleTakePMSurvey = async (employeeId) => {
   const handleViewSurvey = async (survey) => {
     try {
       setLoading(true);
-      await loadSurveyQuestions(); 
+      await loadSurveyQuestions();
       const response = await pmSurveyApi.responses.get(survey.id);
       setSurveyData(response);
       setActiveView('pm-survey');
@@ -543,20 +529,18 @@ const handleTakePMSurvey = async (employeeId) => {
     }
   };
 
-
   const loadPerformanceData = async (employeeId, year) => {
     const key = `${employeeId}_${year}`;
-    
     setLoading(true);
     try {
       const response = await performanceApi.performances.list({
         employee_id: employeeId,
         year: year
       });
-      
+
       const perfs = response.results || response;
       let detailData;
-      
+
       if (perfs.length > 0) {
         const performance = perfs[0];
         detailData = await performanceApi.performances.get(performance.id);
@@ -566,30 +550,27 @@ const handleTakePMSurvey = async (employeeId) => {
           performance_year: activeYear.id
         });
       }
-      
+
       const employee = employees.find(e => e.id === employeeId);
       const positionName = employee?.position?.toUpperCase().replace('_', ' ').trim() || '';
-      
+
       const leadershipKeywords = [
-        'MANAGER', 'VICE_CHAIRMAN', 'VICE CHAIRMAN', 
+        'MANAGER', 'VICE_CHAIRMAN', 'VICE CHAIRMAN',
         'DIRECTOR', 'VICE', 'HOD', 'HEAD OF DEPARTMENT'
       ];
-      
-      const isLeadershipPosition = leadershipKeywords.some(keyword => 
+
+      const isLeadershipPosition = leadershipKeywords.some(keyword =>
         positionName === keyword.toUpperCase() ||
         positionName.includes(keyword.toUpperCase())
       );
-      
+
       if (detailData.competency_ratings && detailData.competency_ratings.length > 0) {
         const firstRating = detailData.competency_ratings[0];
-        
         const hasLeadershipItem = firstRating.leadership_item !== null && firstRating.leadership_item !== undefined;
         const hasBehavioralCompetency = firstRating.behavioral_competency !== null && firstRating.behavioral_competency !== undefined;
-        
-        const actualType = hasLeadershipItem ? 'LEADERSHIP' : 
-                          hasBehavioralCompetency ? 'BEHAVIORAL' : 
-                          'UNKNOWN';
-        
+        const actualType = hasLeadershipItem ? 'LEADERSHIP' :
+          hasBehavioralCompetency ? 'BEHAVIORAL' : 'UNKNOWN';
+
         if (isLeadershipPosition && actualType === 'BEHAVIORAL') {
           showError(
             `⚠️ ERROR: ${employee.name} is a ${positionName} but has BEHAVIORAL competencies. ` +
@@ -598,29 +579,20 @@ const handleTakePMSurvey = async (employeeId) => {
           setLoading(false);
           return null;
         }
-        
+
         if (actualType === 'LEADERSHIP') {
           if (!leadershipCompetencies || leadershipCompetencies.length === 0) {
             await loadLeadershipCompetencies();
           }
-          
           const enrichedRatings = detailData.competency_ratings.map((rating) => {
-            const leadershipItem = leadershipCompetencies.find(
-              item => item.id === rating.leadership_item
-            );
-            
+            const leadershipItem = leadershipCompetencies.find(item => item.id === rating.leadership_item);
             let ratingValue = 0;
             if (rating.end_year_rating_value !== null && rating.end_year_rating_value !== undefined) {
               ratingValue = parseFloat(rating.end_year_rating_value);
             } else if (rating.end_year_rating) {
-              const selectedScale = settings.evaluationScale?.find(
-                s => s.id === rating.end_year_rating
-              );
-              if (selectedScale) {
-                ratingValue = selectedScale.value;
-              }
+              const selectedScale = settings.evaluationScale?.find(s => s.id === rating.end_year_rating);
+              if (selectedScale) ratingValue = selectedScale.value;
             }
-            
             return {
               ...rating,
               competency_name: leadershipItem?.name || `Leadership Item ${rating.leadership_item}`,
@@ -635,32 +607,22 @@ const handleTakePMSurvey = async (employeeId) => {
               competency_type: 'LEADERSHIP'
             };
           });
-          
           detailData.competency_ratings = enrichedRatings;
           detailData.is_leadership_assessment = true;
-          
+
         } else if (actualType === 'BEHAVIORAL') {
           if (!behavioralCompetencies || behavioralCompetencies.length === 0) {
             await loadBehavioralCompetencies();
           }
-          
           const enrichedRatings = detailData.competency_ratings.map((rating) => {
-            const competency = behavioralCompetencies.find(
-              comp => comp.id === rating.behavioral_competency
-            );
-            
+            const competency = behavioralCompetencies.find(comp => comp.id === rating.behavioral_competency);
             let ratingValue = 0;
             if (rating.end_year_rating_value !== null && rating.end_year_rating_value !== undefined) {
               ratingValue = parseFloat(rating.end_year_rating_value);
             } else if (rating.end_year_rating) {
-              const selectedScale = settings.evaluationScale?.find(
-                s => s.id === rating.end_year_rating
-              );
-              if (selectedScale) {
-                ratingValue = selectedScale.value;
-              }
+              const selectedScale = settings.evaluationScale?.find(s => s.id === rating.end_year_rating);
+              if (selectedScale) ratingValue = selectedScale.value;
             }
-            
             return {
               ...rating,
               competency_name: competency?.name || `Behavioral Competency ${rating.behavioral_competency}`,
@@ -673,23 +635,16 @@ const handleTakePMSurvey = async (employeeId) => {
               competency_type: 'BEHAVIORAL'
             };
           });
-          
           detailData.competency_ratings = enrichedRatings;
           detailData.is_leadership_assessment = false;
         }
       }
-      
+
       const recalculatedData = recalculateScores(detailData);
-      
-      setPerformanceData(prev => ({
-        ...prev,
-        [key]: recalculatedData
-      }));
-      
+      setPerformanceData(prev => ({ ...prev, [key]: recalculatedData }));
       setSelectedPerformanceId(recalculatedData.id);
-      
       return recalculatedData;
-      
+
     } catch (error) {
       console.error('❌ Error loading performance data:', error);
       showError('Error loading performance data');
@@ -699,157 +654,97 @@ const handleTakePMSurvey = async (employeeId) => {
     }
   };
 
-  const canViewEmployee = (employeeId) => {
-    return employees.some(e => e.id === employeeId);
+  const canViewEmployee = (employeeId) => employees.some(e => e.id === employeeId);
+
+  const getLetterGradeFromScale = (percentage) => {
+    if (!settings.evaluationScale || settings.evaluationScale.length === 0) return 'N/A';
+    const numPercentage = parseFloat(percentage);
+    if (isNaN(numPercentage)) return 'N/A';
+    const matchingScale = settings.evaluationScale.find(scale =>
+      numPercentage >= scale.range_min && numPercentage <= scale.range_max
+    );
+    if (matchingScale) return matchingScale.name;
+    if (numPercentage < settings.evaluationScale[0].range_min) return settings.evaluationScale[0].name;
+    return settings.evaluationScale[settings.evaluationScale.length - 1].name;
   };
 
-const getLetterGradeFromScale = (percentage) => {
-  if (!settings.evaluationScale || settings.evaluationScale.length === 0) {
-    return 'N/A';
-  }
-  
-  // ✅ Ensure we're working with a number
-  const numPercentage = parseFloat(percentage);
-  if (isNaN(numPercentage)) return 'N/A';
-  
-  // ✅ Find matching scale (scales are already sorted by range_min)
-  const matchingScale = settings.evaluationScale.find(scale => 
-    numPercentage >= scale.range_min && numPercentage <= scale.range_max
-  );
-  
-  if (matchingScale) {
-    return matchingScale.name;
-  }
-  
-
-  if (numPercentage < settings.evaluationScale[0].range_min) {
-    return settings.evaluationScale[0].name;
-  }
-  
-  // If above all ranges, return highest grade
-  return settings.evaluationScale[settings.evaluationScale.length - 1].name;
-};
-
   const recalculateScores = (data) => {
-  if (!data) return data;
-  
-  // ✅ CRITICAL: Don't mutate input data
-  const newData = JSON.parse(JSON.stringify(data)); // Deep clone
-  
-  // Calculate objectives
-  let totalObjectivesScore = 0;
-  (newData.objectives || []).forEach(obj => {
-    if (!obj.is_cancelled) {
-      totalObjectivesScore += parseFloat(obj.calculated_score) || 0;
+    if (!data) return data;
+    const newData = JSON.parse(JSON.stringify(data));
+
+    let totalObjectivesScore = 0;
+    (newData.objectives || []).forEach(obj => {
+      if (!obj.is_cancelled) totalObjectivesScore += parseFloat(obj.calculated_score) || 0;
+    });
+
+    const targetScore = settings.evaluationTargets?.objective_score_target || 21;
+    const objectivesPercentage = targetScore > 0 ? (totalObjectivesScore / targetScore) * 100 : 0;
+    newData.total_objectives_score = totalObjectivesScore;
+    newData.objectives_percentage = objectivesPercentage;
+    newData.objectives_letter_grade = getLetterGradeFromScale(objectivesPercentage);
+
+    let totalRequired = 0;
+    let totalActual = 0;
+    (newData.competency_ratings || []).forEach(comp => {
+      totalRequired += parseFloat(comp.required_level) || 0;
+      totalActual += parseFloat(comp.end_year_rating_value) || 0;
+    });
+    const competenciesPercentage = totalRequired > 0 ? (totalActual / totalRequired) * 100 : 0;
+    newData.total_competencies_required_score = totalRequired;
+    newData.total_competencies_actual_score = totalActual;
+    newData.competencies_percentage = competenciesPercentage;
+    newData.competencies_letter_grade = getLetterGradeFromScale(competenciesPercentage);
+
+    const objectivesWeight = parseFloat(newData.objectives_weight) || 70;
+    const competenciesWeight = parseFloat(newData.competencies_weight) || 30;
+    const overallPercentage =
+      (objectivesPercentage * objectivesWeight / 100) +
+      (competenciesPercentage * competenciesWeight / 100);
+    newData.overall_weighted_percentage = overallPercentage;
+    if (!newData.final_rating) newData.final_rating = getLetterGradeFromScale(overallPercentage);
+
+    return newData;
+  };
+
+  const handleCompleteEndYear = async (performanceId) => {
+    setLoading(true);
+    try {
+      await performanceApi.performances.completeEndYear(performanceId, '');
+      showSuccess('End-year review completed successfully!');
+      await loadPerformanceData(selectedEmployee.id, selectedYear);
+      await loadEmployees();
+    } catch (error) {
+      console.error('❌ Error completing end-year:', error);
+      const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Error completing end-year review';
+      showError(errorMsg);
+    } finally {
+      setLoading(false);
     }
-  });
-  
-  const targetScore = settings.evaluationTargets?.objective_score_target || 21;
-  const objectivesPercentage = targetScore > 0 
-    ? (totalObjectivesScore / targetScore) * 100 
-    : 0;
-  
-  newData.total_objectives_score = totalObjectivesScore;
-  newData.objectives_percentage = objectivesPercentage;
-  newData.objectives_letter_grade = getLetterGradeFromScale(objectivesPercentage);
-
-  // Calculate competencies
-  let totalRequired = 0;
-  let totalActual = 0;
-  (newData.competency_ratings || []).forEach(comp => {
-    const required = parseFloat(comp.required_level) || 0;
-    const actual = parseFloat(comp.end_year_rating_value) || 0;
-    totalRequired += required;
-    totalActual += actual;
-  });
-  
-  const competenciesPercentage = totalRequired > 0 
-    ? (totalActual / totalRequired) * 100 
-    : 0;
-  
-  newData.total_competencies_required_score = totalRequired;
-  newData.total_competencies_actual_score = totalActual;
-  newData.competencies_percentage = competenciesPercentage;
-  newData.competencies_letter_grade = getLetterGradeFromScale(competenciesPercentage);
-
-  // Calculate overall
-  const objectivesWeight = parseFloat(newData.objectives_weight) || 70;
-  const competenciesWeight = parseFloat(newData.competencies_weight) || 30;
-  
-  const overallPercentage = 
-    (objectivesPercentage * objectivesWeight / 100) + 
-    (competenciesPercentage * competenciesWeight / 100);
-  
-  newData.overall_weighted_percentage = overallPercentage;
-  
-  if (!newData.final_rating) {
-    newData.final_rating = getLetterGradeFromScale(overallPercentage);
-  }
-  
-
-  
-  return newData;
-};
-
-// ==================== COMPLETE END-YEAR HANDLER ====================
-const handleCompleteEndYear = async (performanceId) => {
-  setLoading(true);
-  try {
-    await performanceApi.performances.completeEndYear(performanceId, '');
-    showSuccess('✅ End-year review completed successfully! Performance cycle is now finalized.');
-    await loadPerformanceData(selectedEmployee.id, selectedYear);
-    await loadEmployees(); // Refresh employee list
-  } catch (error) {
-    console.error('❌ Error completing end-year:', error);
-    const errorMsg = error.response?.data?.error || 
-                     error.response?.data?.detail || 
-                     'Error completing end-year review';
-    showError(errorMsg);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // ==================== OBJECTIVE HANDLERS ====================
   const saveObjectivesTimeoutRef = useRef(null);
 
   const debouncedSaveObjectives = useCallback((performanceId, objectives) => {
-    if (saveObjectivesTimeoutRef.current) {
-      clearTimeout(saveObjectivesTimeoutRef.current);
-    }
-    
+    if (saveObjectivesTimeoutRef.current) clearTimeout(saveObjectivesTimeoutRef.current);
     saveObjectivesTimeoutRef.current = setTimeout(async () => {
       try {
         const scrollY = window.scrollY;
-        
         await performanceApi.performances.saveObjectivesDraft(performanceId, objectives);
-        
-        requestAnimationFrame(() => {
-          window.scrollTo(0, scrollY);
-        });
-        
+        requestAnimationFrame(() => window.scrollTo(0, scrollY));
       } catch (error) {
         console.error('❌ Auto-save error:', error);
       }
     }, 1000);
-  }, []); 
+  }, []);
 
   const handleLoadEmployeePerformance = async (employeeId, year) => {
     try {
-      const response = await performanceApi.performances.list({
-        employee_id: employeeId,
-        year: year
-      });
-      
+      const response = await performanceApi.performances.list({ employee_id: employeeId, year });
       const perfs = response.results || response;
-      
       if (perfs.length > 0) {
-        const performance = perfs[0];
-        const detailData = await performanceApi.performances.get(performance.id);
-        
-        return detailData;
+        return await performanceApi.performances.get(perfs[0].id);
       }
-      
       return null;
     } catch (error) {
       console.error('❌ Error loading performance for analytics:', error);
@@ -857,183 +752,102 @@ const handleCompleteEndYear = async (performanceId) => {
     }
   };
 
-  // ==================== END-YEAR OBJECTIVES HANDLERS ====================
-
-const handleSaveEndYearObjectivesDraft = async (objectives) => {
-  if (!selectedPerformanceId) return;
-  
-  setLoading(true);
-  try {
-    await performanceApi.performances.saveEndYearObjectivesDraft(
-      selectedPerformanceId,
-      objectives
-    );
-    showSuccess('End-year objective ratings draft saved');
-    await loadPerformanceData(selectedEmployee.id, selectedYear);
-  } catch (error) {
-    console.error('❌ Error saving end-year objectives:', error);
-    showError(error.response?.data?.error || 'Error saving end-year objectives');
-  } finally {
-    setLoading(false);
-  }
-};
-
-const handleSubmitEndYearObjectives = async (objectives) => {
-  if (!selectedPerformanceId) return;
-  
-  setLoading(true);
-  try {
-    await performanceApi.performances.submitEndYearObjectives(
-      selectedPerformanceId,
-      objectives
-    );
-    showSuccess('End-year objective ratings submitted successfully');
-    await loadPerformanceData(selectedEmployee.id, selectedYear);
-  } catch (error) {
-    console.error('❌ Error submitting end-year objectives:', error);
-    showError(error.response?.data?.error || 'Error submitting end-year objectives');
-  } finally {
-    setLoading(false);
-  }
-};
-// ==================== OBJECTIVE COMMENT HANDLERS ====================
-
-const handleAddObjectiveComment = async (objectiveId, comment) => {
-  if (!selectedPerformanceId) return;
-  
-  setLoading(true);
-  try {
-    await performanceApi.performances.addObjectiveComment(
-      selectedPerformanceId,
-      objectiveId,
-      comment
-    );
-    showSuccess('Comment added successfully');
-    await loadPerformanceData(selectedEmployee.id, selectedYear);
-  } catch (error) {
-    console.error('❌ Error adding comment:', error);
-    showError(error.response?.data?.error || 'Error adding comment');
-  } finally {
-    setLoading(false);
-  }
-};
-
-const handleDeleteObjectiveComment = async (commentId) => {
-  if (!selectedPerformanceId) return;
-  
-  setLoading(true);
-  try {
-    await performanceApi.performances.deleteObjectiveComment(
-      selectedPerformanceId,
-      commentId
-    );
-    showSuccess('Comment deleted successfully');
-    await loadPerformanceData(selectedEmployee.id, selectedYear);
-  } catch (error) {
-    console.error('❌ Error deleting comment:', error);
-    showError(error.response?.data?.error || 'Error deleting comment');
-  } finally {
-    setLoading(false);
-  }
-};
-const handleUpdateObjective = (index, field, value) => {
-  const scrollY = window.scrollY;
-  
-  const key = `${selectedEmployee.id}_${selectedYear}`;
-  const data = performanceData[key];
-  
-
-  
-  const newObjectives = data.objectives.map((obj, idx) => {
-    if (idx !== index) {
-     
-      return { ...obj };
+  const handleSaveEndYearObjectivesDraft = async (objectives) => {
+    if (!selectedPerformanceId) return;
+    setLoading(true);
+    try {
+      await performanceApi.performances.saveEndYearObjectivesDraft(selectedPerformanceId, objectives);
+      showSuccess('End-year objective ratings draft saved');
+      await loadPerformanceData(selectedEmployee.id, selectedYear);
+    } catch (error) {
+      console.error('❌ Error saving end-year objectives:', error);
+      showError(error.response?.data?.error || 'Error saving end-year objectives');
+    } finally {
+      setLoading(false);
     }
-    
-    // ✅ For changed objective, create new object with update
-    const updatedObj = {
-      ...obj,
-      [field]: value
-    };
-    
-    // ✅ Handle end_year_rating calculation
-    if (field === 'end_year_rating') {
-      const selectedScaleId = value ? parseInt(value) : null;
-      
-      if (selectedScaleId) {
-        const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
-        if (selectedScale) {
-          const weight = parseFloat(updatedObj.weight) || 0;
-          updatedObj.calculated_score = (weight / 100) * selectedScale.value;
-          
-         
-        }
-      } else {
-        updatedObj.end_year_rating = null;
-        updatedObj.calculated_score = 0;
-      }
-    }
-    
-  
-    
-    return updatedObj;
-  });
-  
-
-  
-  const updatedData = {
-    ...data,
-    objectives: newObjectives
   };
-  
-  const recalculatedData = recalculateScores(updatedData);
-  
 
-  
-  setPerformanceData(prev => ({
-    ...prev,
-    [key]: recalculatedData
-  }));
-  
-  requestAnimationFrame(() => {
-    window.scrollTo(0, scrollY);
-  });
-  
-  // ✅ Auto-save
-  if (selectedPerformanceId) {
-    debouncedSaveObjectives(selectedPerformanceId, newObjectives);
-  }
-};
+  const handleSubmitEndYearObjectives = async (objectives) => {
+    if (!selectedPerformanceId) return;
+    setLoading(true);
+    try {
+      await performanceApi.performances.submitEndYearObjectives(selectedPerformanceId, objectives);
+      showSuccess('End-year objective ratings submitted successfully');
+      await loadPerformanceData(selectedEmployee.id, selectedYear);
+    } catch (error) {
+      console.error('❌ Error submitting end-year objectives:', error);
+      showError(error.response?.data?.error || 'Error submitting end-year objectives');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddObjectiveComment = async (objectiveId, comment) => {
+    if (!selectedPerformanceId) return;
+    setLoading(true);
+    try {
+      await performanceApi.performances.addObjectiveComment(selectedPerformanceId, objectiveId, comment);
+      showSuccess('Comment added successfully');
+      await loadPerformanceData(selectedEmployee.id, selectedYear);
+    } catch (error) {
+      console.error('❌ Error adding comment:', error);
+      showError(error.response?.data?.error || 'Error adding comment');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteObjectiveComment = async (commentId) => {
+    if (!selectedPerformanceId) return;
+    setLoading(true);
+    try {
+      await performanceApi.performances.deleteObjectiveComment(selectedPerformanceId, commentId);
+      showSuccess('Comment deleted successfully');
+      await loadPerformanceData(selectedEmployee.id, selectedYear);
+    } catch (error) {
+      console.error('❌ Error deleting comment:', error);
+      showError(error.response?.data?.error || 'Error deleting comment');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateObjective = (index, field, value) => {
+    const scrollY = window.scrollY;
+    const key = `${selectedEmployee.id}_${selectedYear}`;
+    const data = performanceData[key];
+
+    const newObjectives = data.objectives.map((obj, idx) => {
+      if (idx !== index) return { ...obj };
+      const updatedObj = { ...obj, [field]: value };
+      if (field === 'end_year_rating') {
+        const selectedScaleId = value ? parseInt(value) : null;
+        if (selectedScaleId) {
+          const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
+          if (selectedScale) {
+            const weight = parseFloat(updatedObj.weight) || 0;
+            updatedObj.calculated_score = (weight / 100) * selectedScale.value;
+          }
+        } else {
+          updatedObj.end_year_rating = null;
+          updatedObj.calculated_score = 0;
+        }
+      }
+      return updatedObj;
+    });
+
+    const recalculatedData = recalculateScores({ ...data, objectives: newObjectives });
+    setPerformanceData(prev => ({ ...prev, [key]: recalculatedData }));
+    requestAnimationFrame(() => window.scrollTo(0, scrollY));
+    if (selectedPerformanceId) debouncedSaveObjectives(selectedPerformanceId, newObjectives);
+  };
 
   const handleAddObjective = () => {
     const key = `${selectedEmployee.id}_${selectedYear}`;
-    
-    const defaultStatus = settings.statusTypes && settings.statusTypes.length > 0 
-      ? settings.statusTypes[0].id 
-      : null;
-    
-    const newObjective = {
-      title: '',
-      description: '',
-      weight: 0,
- 
-      status: defaultStatus,
-      end_year_rating: null,
-      calculated_score: 0,
-      is_cancelled: false
-    };
-    
-    const updatedData = {
-      ...performanceData[key],
-      objectives: [...(performanceData[key].objectives || []), newObjective]
-    };
-    
-    const recalculatedData = recalculateScores(updatedData);
-    
-    setPerformanceData(prev => ({
-      ...prev,
-      [key]: recalculatedData
-    }));
+    const defaultStatus = settings.statusTypes?.length > 0 ? settings.statusTypes[0].id : null;
+    const newObjective = { title: '', description: '', weight: 0, status: defaultStatus, end_year_rating: null, calculated_score: 0, is_cancelled: false };
+    const updatedData = { ...performanceData[key], objectives: [...(performanceData[key].objectives || []), newObjective] };
+    setPerformanceData(prev => ({ ...prev, [key]: recalculateScores(updatedData) }));
   };
 
   const handleDeleteObjective = (index) => {
@@ -1041,23 +855,11 @@ const handleUpdateObjective = (index, field, value) => {
     const data = performanceData[key];
     const newObjectives = [...(data.objectives || [])];
     newObjectives.splice(index, 1);
-    
-    const updatedData = {
-      ...data,
-      objectives: newObjectives
-    };
-    
-    const recalculatedData = recalculateScores(updatedData);
-    
-    setPerformanceData(prev => ({
-      ...prev,
-      [key]: recalculatedData
-    }));
+    setPerformanceData(prev => ({ ...prev, [key]: recalculateScores({ ...data, objectives: newObjectives }) }));
   };
 
   const handleSaveObjectivesDraft = async (objectives) => {
     if (!selectedPerformanceId) return;
-    
     setLoading(true);
     try {
       await performanceApi.performances.saveObjectivesDraft(selectedPerformanceId, objectives);
@@ -1073,13 +875,9 @@ const handleUpdateObjective = (index, field, value) => {
 
   const handleSubmitObjectives = async (objectives) => {
     if (!selectedPerformanceId) return;
-    
     setLoading(true);
     try {
-      await performanceApi.performances.submitObjectives(
-        selectedPerformanceId,
-        objectives
-      );
+      await performanceApi.performances.submitObjectives(selectedPerformanceId, objectives);
       showSuccess('Objectives submitted successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
@@ -1092,7 +890,6 @@ const handleUpdateObjective = (index, field, value) => {
 
   const handleCancelObjective = async (objectiveId, reason) => {
     if (!selectedPerformanceId) return;
-    
     setLoading(true);
     try {
       await performanceApi.performances.cancelObjective(selectedPerformanceId, objectiveId, reason);
@@ -1111,45 +908,22 @@ const handleUpdateObjective = (index, field, value) => {
     const key = `${selectedEmployee.id}_${selectedYear}`;
     const data = performanceData[key];
     const newCompetencies = [...(data.competency_ratings || [])];
-    
-    const updatedCompetency = {
-      ...newCompetencies[index],
-      [field]: value
-    };
-    
+    const updatedCompetency = { ...newCompetencies[index], [field]: value };
     if (field === 'end_year_rating') {
       const selectedScaleId = value ? parseInt(value) : null;
       if (selectedScaleId) {
         const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
-        if (selectedScale) {
-          updatedCompetency.end_year_rating_value = selectedScale.value;
-        }
+        if (selectedScale) updatedCompetency.end_year_rating_value = selectedScale.value;
       } else {
         updatedCompetency.end_year_rating_value = 0;
       }
     }
-    
     newCompetencies[index] = updatedCompetency;
-    
-    const updatedData = {
-      ...data,
-      competency_ratings: newCompetencies
-    };
-    
-    const recalculatedData = recalculateScores(updatedData);
-    
-    setPerformanceData(prev => ({
-      ...prev,
-      [key]: recalculatedData
-    }));
+    setPerformanceData(prev => ({ ...prev, [key]: recalculateScores({ ...data, competency_ratings: newCompetencies }) }));
   };
 
   const handleSaveCompetenciesDraft = async (competencies) => {
-    if (!selectedPerformanceId) {
-      showError('No performance record selected');
-      return;
-    }
-    
+    if (!selectedPerformanceId) { showError('No performance record selected'); return; }
     setLoading(true);
     try {
       const preparedCompetencies = competencies.map(comp => ({
@@ -1160,22 +934,13 @@ const handleUpdateObjective = (index, field, value) => {
         end_year_rating: comp.end_year_rating,
         notes: comp.notes || ''
       }));
-      
-      const response = await performanceApi.performances.saveCompetenciesDraft(
-        selectedPerformanceId, 
-        preparedCompetencies
-      );
-      
+      const response = await performanceApi.performances.saveCompetenciesDraft(selectedPerformanceId, preparedCompetencies);
       if (response.synced_to_assessment) {
-        showSuccess(
-          `✔ Competencies saved and synced to ${response.assessment_type || 'assessment'}`
-        );
+        showSuccess(`✔ Competencies saved and synced to ${response.assessment_type || 'assessment'}`);
       } else {
         showSuccess('Competencies draft saved successfully');
       }
-      
       await loadPerformanceData(selectedEmployee.id, selectedYear);
-      
     } catch (error) {
       console.error('❌ Error saving competencies:', error);
       showError(error.response?.data?.error || 'Error saving competencies');
@@ -1185,11 +950,7 @@ const handleUpdateObjective = (index, field, value) => {
   };
 
   const handleSubmitCompetencies = async (competencies) => {
-    if (!selectedPerformanceId) {
-      showError('No performance record selected');
-      return;
-    }
-    
+    if (!selectedPerformanceId) { showError('No performance record selected'); return; }
     setLoading(true);
     try {
       const preparedCompetencies = competencies.map(comp => ({
@@ -1200,20 +961,12 @@ const handleUpdateObjective = (index, field, value) => {
         end_year_rating: comp.end_year_rating,
         notes: comp.notes || ''
       }));
-      
-      const response = await performanceApi.performances.submitCompetencies(
-        selectedPerformanceId,
-        preparedCompetencies
-      );
-      
+      const response = await performanceApi.performances.submitCompetencies(selectedPerformanceId, preparedCompetencies);
       if (response.synced_to_assessment) {
-        showSuccess(
-          `Competencies submitted and synced to ${response.assessment_type || 'assessment'}`
-        );
+        showSuccess(`Competencies submitted and synced to ${response.assessment_type || 'assessment'}`);
       } else {
         showSuccess('Competencies submitted successfully');
       }
-      
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error submitting competencies:', error);
@@ -1225,14 +978,9 @@ const handleUpdateObjective = (index, field, value) => {
 
   const handleSubmitMidYearEmployee = async (comment, objectives = null) => {
     if (!selectedPerformanceId) return;
-    
     setLoading(true);
     try {
-      await performanceApi.performances.submitMidYearEmployee(
-        selectedPerformanceId,
-        comment,
-        objectives
-      );
+      await performanceApi.performances.submitMidYearEmployee(selectedPerformanceId, comment, objectives);
       showSuccess('Mid-year self-review submitted successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
@@ -1245,14 +993,9 @@ const handleUpdateObjective = (index, field, value) => {
 
   const handleSubmitMidYearManager = async (comment, objectives = null) => {
     if (!selectedPerformanceId) return;
-    
     setLoading(true);
     try {
-      await performanceApi.performances.submitMidYearManager(
-        selectedPerformanceId,
-        comment,
-        objectives
-      );
+      await performanceApi.performances.submitMidYearManager(selectedPerformanceId, comment, objectives);
       showSuccess('Mid-year review completed successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
@@ -1265,13 +1008,9 @@ const handleUpdateObjective = (index, field, value) => {
 
   const handleSubmitEndYearEmployee = async (comment) => {
     if (!selectedPerformanceId) return;
-    
     setLoading(true);
     try {
-      await performanceApi.performances.submitEndYearEmployee(
-        selectedPerformanceId,
-        comment
-      );
+      await performanceApi.performances.submitEndYearEmployee(selectedPerformanceId, comment);
       showSuccess('End-year self-review submitted successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
@@ -1284,13 +1023,9 @@ const handleUpdateObjective = (index, field, value) => {
 
   const handleSubmitEndYearManager = async (comment) => {
     if (!selectedPerformanceId) return;
-    
     setLoading(true);
     try {
-      await performanceApi.performances.submitEndYearManager(
-        selectedPerformanceId,
-        comment
-      );
+      await performanceApi.performances.submitEndYearManager(selectedPerformanceId, comment);
       showSuccess('End-year assessment submitted successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
@@ -1306,35 +1041,16 @@ const handleUpdateObjective = (index, field, value) => {
     const key = `${selectedEmployee.id}_${selectedYear}`;
     const data = performanceData[key];
     const newNeeds = [...(data.development_needs || [])];
-    newNeeds[index] = {
-      ...newNeeds[index],
-      [field]: value
-    };
-    
-    setPerformanceData(prev => ({
-      ...prev,
-      [key]: {
-        ...prev[key],
-        development_needs: newNeeds
-      }
-    }));
+    newNeeds[index] = { ...newNeeds[index], [field]: value };
+    setPerformanceData(prev => ({ ...prev, [key]: { ...prev[key], development_needs: newNeeds } }));
   };
 
   const handleAddDevelopmentNeed = () => {
     const key = `${selectedEmployee.id}_${selectedYear}`;
-    const newNeed = {
-      competency_gap: '',
-      development_activity: '',
-      progress: 0,
-      comment: ''
-    };
-    
+    const newNeed = { competency_gap: '', development_activity: '', progress: 0, comment: '' };
     setPerformanceData(prev => ({
       ...prev,
-      [key]: {
-        ...prev[key],
-        development_needs: [...(prev[key].development_needs || []), newNeed]
-      }
+      [key]: { ...prev[key], development_needs: [...(prev[key].development_needs || []), newNeed] }
     }));
   };
 
@@ -1343,28 +1059,16 @@ const handleUpdateObjective = (index, field, value) => {
     const data = performanceData[key];
     const newNeeds = [...(data.development_needs || [])];
     newNeeds.splice(index, 1);
-    
-    setPerformanceData(prev => ({
-      ...prev,
-      [key]: {
-        ...prev[key],
-        development_needs: newNeeds
-      }
-    }));
+    setPerformanceData(prev => ({ ...prev, [key]: { ...prev[key], development_needs: newNeeds } }));
   };
 
   const handleSaveDevelopmentNeedsDraft = async () => {
     if (!selectedPerformanceId) return;
-    
     const key = `${selectedEmployee.id}_${selectedYear}`;
     const data = performanceData[key];
-    
     setLoading(true);
     try {
-      await performanceApi.performances.saveDevelopmentNeedsDraft(
-        selectedPerformanceId,
-        data.development_needs || []
-      );
+      await performanceApi.performances.saveDevelopmentNeedsDraft(selectedPerformanceId, data.development_needs || []);
       showSuccess('Development needs submitted successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
@@ -1381,30 +1085,24 @@ const handleUpdateObjective = (index, field, value) => {
       showError('You do not have permission to view this employee');
       return;
     }
-    
     setSelectedEmployee(employee);
     await loadPerformanceData(employee.id, selectedYear);
     setActiveView('detail');
   };
 
-     const handleBackToDashboard = () => {
+  const handleBackToDashboard = () => {
     setSelectedEmployee(null);
     setSelectedPerformanceId(null);
     setSurveyData(null);
     setTeamSurveys(null);
-  
     setActiveView('dashboard');
   };
 
   const handleExportExcel = async () => {
     if (!selectedPerformanceId) return;
-    
     setLoading(true);
     try {
-      await performanceApi.downloadExcel(
-        selectedPerformanceId, 
-        `performance_${selectedEmployee.employee_id}_${selectedYear}.xlsx`
-      );
+      await performanceApi.downloadExcel(selectedPerformanceId, `performance_${selectedEmployee.employee_id}_${selectedYear}.xlsx`);
       showSuccess('Export successful');
     } catch (error) {
       console.error('❌ Error exporting:', error);
@@ -1455,131 +1153,125 @@ const handleUpdateObjective = (index, field, value) => {
     <DashboardLayout>
       <div className="min-h-screen p-6 mx-auto">
         <PerformanceHeader
-  selectedYear={selectedYear}
-  setSelectedYear={setSelectedYear}
-  performanceYears={performanceYears}
-  loading={loading}
-  currentPeriod={activeYear?.current_period || 'CLOSED'}
-  onRefresh={loadDashboardData}
-  onSettings={() => router.push('/efficiency/settings')}
-  onViewMySurvey={handleLoadMySurvey}
-  onViewTeamSurveys={(userAccess.is_manager || userAccess.is_admin) ? handleLoadTeamSurveys : null}
-  darkMode={darkMode}
-  permissions={compatiblePermissions}
-/>
+          selectedYear={selectedYear}
+          setSelectedYear={setSelectedYear}
+          performanceYears={performanceYears}
+          loading={loading}
+          currentPeriod={activeYear?.current_period || 'CLOSED'}
+          onRefresh={loadDashboardData}
+          onSettings={() => router.push('/efficiency/settings')}
+          onViewMySurvey={handleLoadMySurvey}
+          onViewTeamSurveys={(userAccess.is_manager || userAccess.is_admin) ? handleLoadTeamSurveys : null}
+          darkMode={darkMode}
+          permissions={compatiblePermissions}
+        />
 
+        {activeView === 'dashboard' && (
+          <PerformanceDashboard
+            dashboardStats={dashboardStats}
+            employees={employees}
+            settings={settings}
+            selectedYear={selectedYear}
+            permissions={compatiblePermissions}
+            onSelectEmployee={handleSelectEmployee}
+            canViewEmployee={canViewEmployee}
+            onLoadEmployeePerformance={handleLoadEmployeePerformance}
+            onInitializeEmployee={handleInitializeEmployee}
+            performanceYearId={activeYear?.id}
+            canInitialize={userAccess.is_admin || userAccess.is_manager}
+            darkMode={darkMode}
+            surveyStatus={surveyStatus}
+            onViewMySurvey={handleLoadMySurvey}
+            currentPeriod={activeYear?.current_period || 'CLOSED'}
+            endYearCompleted={
+              employees.find(e => e.id === userAccess.employee_id)
+                ?.end_year_completed ?? false
+            }
+          />
+        )}
 
+        {activeView === 'detail' && selectedEmployee && currentPerformanceData && (
+          <EmployeePerformanceDetail
+            employee={selectedEmployee}
+            performanceData={currentPerformanceData}
+            settings={settings}
+            currentPeriod={activeYear?.current_period || 'CLOSED'}
+            activeYear={activeYear}
+            onCompleteEndYear={handleCompleteEndYear}
+            permissions={compatiblePermissions}
+            loading={loading}
+            darkMode={darkMode}
+            onBack={handleBackToDashboard}
+            onExport={handleExportExcel}
+            onAddObjectiveComment={handleAddObjectiveComment}
+            onDeleteObjectiveComment={handleDeleteObjectiveComment}
+            onUpdateObjective={handleUpdateObjective}
+            onAddObjective={handleAddObjective}
+            onDeleteObjective={handleDeleteObjective}
+            onSaveObjectivesDraft={handleSaveObjectivesDraft}
+            onSubmitObjectives={handleSubmitObjectives}
+            onCancelObjective={handleCancelObjective}
+            onUpdateCompetency={handleUpdateCompetency}
+            onSaveCompetenciesDraft={handleSaveCompetenciesDraft}
+            onSubmitCompetencies={handleSubmitCompetencies}
+            onSaveEndYearObjectivesDraft={handleSaveEndYearObjectivesDraft}
+            onSubmitEndYearObjectives={handleSubmitEndYearObjectives}
+            onSubmitMidYearEmployee={handleSubmitMidYearEmployee}
+            onSubmitMidYearManager={handleSubmitMidYearManager}
+            onSubmitEndYearEmployee={handleSubmitEndYearEmployee}
+            onSubmitEndYearManager={handleSubmitEndYearManager}
+            onUpdateDevelopmentNeed={handleUpdateDevelopmentNeed}
+            onAddDevelopmentNeed={handleAddDevelopmentNeed}
+            onDeleteDevelopmentNeed={handleDeleteDevelopmentNeed}
+            onSaveDevelopmentNeedsDraft={handleSaveDevelopmentNeedsDraft}
+            onTakePMSurvey={handleTakePMSurvey}
+          />
+        )}
 
-{activeView === 'dashboard' && (
-  <PerformanceDashboard
-    dashboardStats={dashboardStats}
-    employees={employees}
-    settings={settings}
-    selectedYear={selectedYear}
-    permissions={compatiblePermissions}
-    onSelectEmployee={handleSelectEmployee}
-    canViewEmployee={canViewEmployee}
-    onLoadEmployeePerformance={handleLoadEmployeePerformance}
-    onInitializeEmployee={handleInitializeEmployee}
-    performanceYearId={activeYear?.id}
-    canInitialize={userAccess.is_admin || userAccess.is_manager}
-    darkMode={darkMode}
-     surveyStatus={surveyData?.status ?? null}   // ← add this
-    onViewMySurvey={handleLoadMySurvey}
-    currentPeriod={activeYear?.current_period || 'CLOSED'} 
-  />
-)}
+        {activeView === 'pm-survey' && surveyData && (
+          <PMSurveyComponent
+            surveyData={surveyData}
+            questionsData={surveyQuestionsData}
+            onSaveAnswers={handleSaveSurveyAnswers}
+            onSubmit={handleSubmitSurvey}
+            onBack={() => {
+              setSurveyData(null);
+              if (teamSurveys) {
+                setActiveView('pm-survey-list');
+              } else {
+                setActiveView('dashboard');
+              }
+            }}
+            loading={loading}
+            darkMode={darkMode}
+          />
+        )}
 
+        {activeView === 'pm-survey-list' && teamSurveys && (
+          <PMSurveyList
+            surveys={teamSurveys.surveys || []}
+            statistics={teamSurveys.statistics}
+            onViewSurvey={handleViewSurvey}
+            onBack={handleBackToDashboard}
+            darkMode={darkMode}
+          />
+        )}
 
-
-{activeView === 'detail' && selectedEmployee && currentPerformanceData && (
-  <EmployeePerformanceDetail
-    employee={selectedEmployee}
-    performanceData={currentPerformanceData}
-    settings={settings}
-    currentPeriod={activeYear?.current_period || 'CLOSED'}
-    activeYear={activeYear}
-    onCompleteEndYear={handleCompleteEndYear}
-    permissions={compatiblePermissions}
-    loading={loading}
-    darkMode={darkMode}
-    onBack={handleBackToDashboard}
-    onExport={handleExportExcel}
-    onAddObjectiveComment={handleAddObjectiveComment}
-    onDeleteObjectiveComment={handleDeleteObjectiveComment}
-    onUpdateObjective={handleUpdateObjective}
-    onAddObjective={handleAddObjective}
-    onDeleteObjective={handleDeleteObjective}
-    onSaveObjectivesDraft={handleSaveObjectivesDraft}
-    onSubmitObjectives={handleSubmitObjectives}
-    onCancelObjective={handleCancelObjective}
-    onUpdateCompetency={handleUpdateCompetency}
-    onSaveCompetenciesDraft={handleSaveCompetenciesDraft}
-    onSubmitCompetencies={handleSubmitCompetencies}
-    onSaveEndYearObjectivesDraft={handleSaveEndYearObjectivesDraft}
-    onSubmitEndYearObjectives={handleSubmitEndYearObjectives}
-    onSubmitMidYearEmployee={handleSubmitMidYearEmployee}
-    onSubmitMidYearManager={handleSubmitMidYearManager}
-    onSubmitEndYearEmployee={handleSubmitEndYearEmployee}
-    onSubmitEndYearManager={handleSubmitEndYearManager}
-    onUpdateDevelopmentNeed={handleUpdateDevelopmentNeed}
-    onAddDevelopmentNeed={handleAddDevelopmentNeed}
-    onDeleteDevelopmentNeed={handleDeleteDevelopmentNeed}
-    onSaveDevelopmentNeedsDraft={handleSaveDevelopmentNeedsDraft}
-    onTakePMSurvey={handleTakePMSurvey}  
-  />
-)}
-
-
-{activeView === 'pm-survey' && surveyData && (
-  <PMSurveyComponent
-    surveyData={surveyData}
-    questionsData={surveyQuestionsData}   
-    onSaveAnswers={handleSaveSurveyAnswers}
-    onSubmit={handleSubmitSurvey}
-    onBack={() => {
-      setSurveyData(null);
-      // Əgər team survey list-dən gəlibsə ora qayıt
-      if (teamSurveys) {
-        setActiveView('pm-survey-list');
-      } else {
-        setActiveView('dashboard');
-      }
-    }}
-    loading={loading}
-    darkMode={darkMode}
-  />
-)}
-
-{activeView === 'pm-survey-list' && teamSurveys && (
-  <PMSurveyList
-    surveys={teamSurveys.surveys || []}
-    statistics={teamSurveys.statistics}
-    onViewSurvey={handleViewSurvey}
-   
-    onBack={handleBackToDashboard}      
-    darkMode={darkMode}
-  />
-)}
-
-
-{activeView === 'detail' && !selectedEmployee && (
-  <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl border shadow-sm p-16 text-center`}>
-    <Users className="w-20 h-20 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
-    <h3 className="text-lg font-semibold mb-2 text-gray-600 dark:text-gray-400">
-      No Employee Selected
-    </h3>
-    <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-      Select a team member from the dashboard to view their performance
-    </p>
-    <button
-      onClick={handleBackToDashboard}
-      className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-medium transition-all shadow-sm"
-    >
-      Back to Dashboard
-    </button>
-  </div>
-)}
+        {activeView === 'detail' && !selectedEmployee && (
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl border shadow-sm p-16 text-center`}>
+            <Users className="w-20 h-20 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+            <h3 className="text-lg font-semibold mb-2 text-gray-600 dark:text-gray-400">No Employee Selected</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              Select a team member from the dashboard to view their performance
+            </p>
+            <button
+              onClick={handleBackToDashboard}
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-medium transition-all shadow-sm"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        )}
 
         {loading && activeYear && (
           <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">

@@ -1,6 +1,10 @@
-// components/vacation/MySchedulesTab.jsx - WITH PAGINATION & EMPLOYEE FILTER
+// components/vacation/MySchedulesTab.jsx
 
-import { Download, Edit, Trash, Check, Eye, Calendar, CheckCircle, XCircle, Filter, X, Search, BarChart3 } from 'lucide-react';
+import {
+  Download, Edit, Trash, Check, Eye, Calendar,
+  CheckCircle, XCircle, Clock, AlertCircle, Info,
+  CalendarDays, Users
+} from 'lucide-react';
 import { useState } from 'react';
 import { VacationService } from '@/services/vacationService';
 import Pagination from '@/components/common/Pagination';
@@ -27,570 +31,363 @@ export default function MySchedulesTab({
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [loading, setLoading] = useState(false);
-  
-  // Filters
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    status: '',
-    vacation_type: '',
-    start_date: '',
-    end_date: '',
-    employee_name: '' // ✅ NEW
-  });
-  
-  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const getSubTabs = () => {
-    const tabs = [
-      { key: 'upcoming', label: 'My Upcoming', count: scheduleTabs.upcoming?.length || 0 }
-    ];
-
-    if (userAccess.is_manager || userAccess.is_admin) {
-      tabs.push({ 
-        key: 'peers', 
-        label: 'My Team', 
-        count: scheduleTabs.peers?.length || 0 
-      });
-    }
-
-    tabs.push({ 
-      key: 'all', 
+  const subTabs = [
+    { key: 'upcoming', label: 'My Upcoming', description: 'Your planned vacations', count: scheduleTabs.upcoming?.length || 0 },
+    ...(userAccess.is_manager || userAccess.is_admin
+      ? [{ key: 'peers', label: 'My Team', description: "Team members' schedules", count: scheduleTabs.peers?.length || 0 }]
+      : []),
+    {
+      key: 'all',
       label: userAccess.is_admin ? 'All Schedules' : 'My Peers',
-      count: scheduleTabs.all?.length || 0 
-    });
+      description: userAccess.is_admin ? 'All employees' : 'Colleagues schedules',
+      count: scheduleTabs.all?.length || 0
+    },
+  ];
 
-    return tabs;
-  };
-
-  const subTabs = getSubTabs();
   const currentSchedules = scheduleTabs[activeSubTab] || [];
+  const totalPages = Math.ceil(currentSchedules.length / itemsPerPage);
+  const paginated = currentSchedules.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const getFilteredSchedules = () => {
-    let filtered = currentSchedules;
-    
-    if (filters.status) {
-      filtered = filtered.filter(s => s.status === filters.status);
-    }
-    
-    if (filters.vacation_type) {
-      filtered = filtered.filter(s => 
-        s.vacation_type_name?.toLowerCase().includes(filters.vacation_type.toLowerCase())
-      );
-    }
-    
-    if (filters.start_date) {
-      filtered = filtered.filter(s => s.start_date >= filters.start_date);
-    }
-    
-    if (filters.end_date) {
-      filtered = filtered.filter(s => s.end_date <= filters.end_date);
-    }
-    
-    // ✅ Employee name filter
-    if (filters.employee_name) {
-      filtered = filtered.filter(s => 
-        s.employee_name?.toLowerCase().includes(filters.employee_name.toLowerCase())
-      );
-    }
-    
-    return filtered;
-  };
+  const canDeleteSchedule = () => userAccess.is_admin;
+  const canRegisterSchedule = s => userAccess.is_admin && s.status === 'SCHEDULED';
+  const canApproveSchedule = s =>
+    (userAccess.is_manager || userAccess.is_admin) && s.status === 'PENDING_MANAGER';
 
-  const filteredSchedules = getFilteredSchedules();
-  
-  // ✅ Pagination calculations
-  const totalPages = Math.ceil(filteredSchedules.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedSchedules = filteredSchedules.slice(startIndex, endIndex);
-  
-  // Reset to page 1 when filters change
-  const handleFilterChange = (newFilters) => {
-    setFilters(newFilters);
-    setCurrentPage(1);
-  };
-
-  const canDeleteSchedule = (schedule) => {
-    return userAccess.is_admin;
-  };
-
-  const canRegisterSchedule = (schedule) => {
-    return userAccess.is_admin && schedule.status === 'SCHEDULED';
-  };
-
-  const canApproveSchedule = (schedule) => {
-    return (userAccess.is_manager || userAccess.is_admin) && 
-           schedule.status === 'PENDING_MANAGER';
+  const getStatusBadge = (status, display) => {
+    const cfg = {
+      PENDING_MANAGER: { style: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300', icon: <Clock className="w-3 h-3" />, label: 'Waiting for Approval' },
+      SCHEDULED:       { style: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',   icon: <CalendarDays className="w-3 h-3" />, label: 'Scheduled' },
+      REGISTERED:      { style: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', icon: <CheckCircle className="w-3 h-3" />, label: 'Registered' },
+    };
+    const c = cfg[status] || { style: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300', icon: null, label: display || status };
+    return (
+      <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full ${c.style}`}>
+        {c.icon}{c.label}
+      </span>
+    );
   };
 
   return (
-    <div className="space-y-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
-        <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 p-3">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">
-              My Schedules
-            </h2>
-            <div className="flex items-center gap-2">
-              {/* ✅ Planning Statistics Button */}
-              {(userAccess.is_manager || userAccess.is_admin) && (
-                <button
-                  onClick={() => setShowStatsModal(true)}
-                  className="px-2.5 py-1.5 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all flex items-center gap-1.5 shadow-sm"
-                >
-                  <BarChart3 className="w-3 h-3" />
-                  Planning Stats
-                </button>
-              )}
+    <div className="space-y-5">
 
-              {/* Filter Toggle */}
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="px-2.5 py-1.5 text-xs bg-almet-mystic dark:bg-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/60 dark:hover:bg-gray-600 transition-all flex items-center gap-1.5"
-              >
-                <Filter className="w-3 h-3" />
-                Filter
-              </button>
-              
-              <button 
-                onClick={handleExportSchedules} 
-                className="px-2.5 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 shadow-sm"
-              >
-                <Download className="w-3 h-3" />
-                Export
-              </button>
-            </div>
-          </div>
-
-          {/* Filters Panel */}
-          {showFilters && (
-            <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
-              <div className="grid grid-cols-5 gap-3">
-                {/* ✅ Employee Name Filter */}
-                <div>
-                  <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
-                    Employee
-                  </label>
-                  <div className="relative">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-almet-waterloo dark:text-gray-400" />
-                    <input
-                      type="text"
-                      value={filters.employee_name}
-                      onChange={(e) => handleFilterChange({...filters, employee_name: e.target.value})}
-                      placeholder="Search employee..."
-                      className="w-full pl-7 pr-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-almet-sapphire border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
-                    Status
-                  </label>
-                  <select
-                    value={filters.status}
-                    onChange={(e) => handleFilterChange({...filters, status: e.target.value})}
-                    className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">All</option>
-                    <option value="PENDING_MANAGER">Pending Manager</option>
-                    <option value="SCHEDULED">Scheduled</option>
-                    <option value="REGISTERED">Registered</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
-                    Leave Type
-                  </label>
-                  <input
-                    type="text"
-                    value={filters.vacation_type}
-                    onChange={(e) => handleFilterChange({...filters, vacation_type: e.target.value})}
-                    placeholder="Search..."
-                    className="w-full px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-almet-sapphire border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
-                    From Date
-                  </label>
-                  <input
-                    type="date"
-                    value={filters.start_date}
-                    onChange={(e) => handleFilterChange({...filters, start_date: e.target.value})}
-                    className="w-full px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-almet-sapphire text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
-                    To Date
-                  </label>
-                  <input
-                    type="date"
-                    value={filters.end_date}
-                    onChange={(e) => handleFilterChange({...filters, end_date: e.target.value})}
-                    className="w-full px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-almet-sapphire border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-2 flex justify-end">
-                <button
-                  onClick={() => handleFilterChange({ status: '', vacation_type: '', start_date: '', end_date: '', employee_name: '' })}
-                  className="px-3 py-1 text-xs bg-white dark:bg-gray-700 border border-almet-mystic dark:border-almet-comet rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all"
-                >
-                  Clear Filters
-                </button>
-              </div>
-            </div>
+      {/* ── Page Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-bold text-almet-cloud-burst dark:text-white">Vacation Schedules</h2>
+          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-0.5">
+            Pre-planned vacation dates that have been submitted for the year
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {(userAccess.is_manager || userAccess.is_admin) && (
+            <button
+              onClick={() => setShowStatsModal(true)}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all shadow-sm"
+            >
+              <Users className="w-3.5 h-3.5" />
+              Planning Overview
+            </button>
           )}
-
-          <div className="grid grid-cols-3 gap-2"> 
-            {subTabs.map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => {
-                  setActiveSubTab(tab.key);
-                  setCurrentPage(1); // Reset pagination
-                }}
-                className={`
-                  relative px-4 py-2 rounded-lg font-medium text-xs transition-all 
-                  ${activeSubTab === tab.key
-                    ? 'bg-almet-sapphire text-white shadow-lg scale-105'
-                    : 'bg-almet-mystic/30 dark:bg-gray-700 text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/50 dark:hover:bg-gray-600'
-                  }
-                `}
-              >
-                <div className="flex items-center justify-between">
-                  <span>{tab.label}</span>
-                  <span className={`
-                    px-2 py-0.5 rounded-full text-xs font-bold 
-                    ${activeSubTab === tab.key
-                      ? 'bg-white/20 text-white'
-                      : 'bg-almet-sapphire/20 text-almet-sapphire dark:bg-almet-astral/20 dark:text-almet-astral'
-                    }
-                  `}>
-                    {tab.count}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
+          <button
+            onClick={handleExportSchedules}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-sm"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export
+          </button>
         </div>
+      </div>
 
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
-            <thead className="bg-almet-mystic/50 dark:bg-gray-700/50">
-              <tr>
-                {['Employee', 'Type', 'Start', 'End', 'Days', 'Status', 'Edit Count', 'Actions'].map(h => (
-                  <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide"> 
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
-              {paginatedSchedules.map(schedule => (
-                <tr key={schedule.id} className="hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors">
-                  <td className="px-3 py-2 text-xs font-medium text-almet-cloud-burst dark:text-white">
-                    {schedule.employee_name}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                    {schedule.vacation_type_name}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                    {schedule.start_date}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                    {schedule.end_date}
-                  </td>
-                  <td className="px-3 py-2 text-xs font-semibold text-almet-cloud-burst dark:text-white">
-                    {schedule.number_of_days}
-                  </td>
-                  <td className="px-3 py-2">
-                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                      schedule.status === 'PENDING_MANAGER'
-                        ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                        : schedule.status === 'SCHEDULED' 
-                        ? 'bg-blue-50 text-almet-sapphire dark:bg-blue-900/30 dark:text-almet-astral' 
-                        : 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                    }`}>
-                      {schedule.status_display}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-xs text-center">
-                    <span className={`font-semibold ${
-                      schedule.edit_count >= maxScheduleEdits 
-                        ? 'text-red-600 dark:text-red-400' 
-                        : 'text-almet-waterloo dark:text-almet-bali-hai'
-                    }`}>
-                      {schedule.edit_count}/{maxScheduleEdits}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-xs">
-                    <div className="flex gap-1.5"> 
-                      <button 
-                        onClick={() => handleViewScheduleDetail(schedule.id)}
-                        className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
-                        title="View Details"
-                      >
-                        <Eye className="w-3 h-3" />
-                      </button>
-
-                      {canApproveSchedule(schedule) && (
-                        <>
-                          <button 
-                            onClick={() => {
-                              setApprovingSchedule(schedule);
-                              setShowApproveModal(true);
-                            }}
-                            className="text-green-600 hover:text-green-800 dark:text-green-400 flex items-center gap-1 font-medium"
-                            title="Approve"
-                          >
-                            <CheckCircle className="w-3 h-3" />
-                          </button>
-                          <button 
-                            onClick={() => {
-                              setApprovingSchedule(schedule);
-                              setShowRejectModal(true);
-                            }}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 flex items-center gap-1 font-medium"
-                            title="Reject"
-                          >
-                            <XCircle className="w-3 h-3" />
-                          </button>
-                        </>
-                      )}
-
-                      {canEditSchedule(schedule) && (
-                        <button 
-                          onClick={() => handleEditSchedule(schedule)} 
-                          className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
-                          title="Edit"
-                        >
-                          <Edit className="w-3 h-3" />
-                        </button>
-                      )}
-                      
-                      {canDeleteSchedule(schedule) && (
-                        <button 
-                          onClick={() => handleDeleteSchedule(schedule.id)} 
-                          className="text-red-600 hover:text-red-800 dark:text-red-400 flex items-center gap-1 font-medium"
-                          title="Delete (Admin)"
-                        >
-                          <Trash className="w-3 h-3" />
-                        </button>
-                      )}
-                      
-                      {canRegisterSchedule(schedule) && (
-                        <button 
-                          onClick={() => handleRegisterSchedule(schedule.id)} 
-                          className="text-green-600 hover:text-green-800 dark:text-green-400 flex items-center gap-1 font-medium"
-                          title="Register (Admin)"
-                        >
-                          <Check className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {paginatedSchedules.length === 0 && (
-                <tr>
-                  <td colSpan="8" className="px-3 py-8 text-center"> 
-                    <Calendar className="w-8 h-8 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-2" /> 
-                    <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                      {filteredSchedules.length === 0 && currentSchedules.length > 0 
-                        ? 'No schedules match current filters' 
-                        : 'No schedules found'}
-                    </p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {/* ── Info Banner ── */}
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3">
+        <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-xs font-semibold text-blue-900 dark:text-blue-200">What are schedules?</p>
+          <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
+            Schedules are vacation dates you plan in advance for the year. They go through an approval process
+            and once approved become <strong>Scheduled</strong>. An admin then marks them as <strong>Registered</strong> when finalized.
+          </p>
         </div>
+      </div>
 
-        {/* ✅ Pagination */}
-        {filteredSchedules.length > itemsPerPage && (
-          <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 p-4">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={filteredSchedules.length}
-              itemsPerPage={itemsPerPage}
-              onPageChange={setCurrentPage}
-              darkMode={darkMode}
-            />
+      {/* ── Sub Tabs ── */}
+      <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${subTabs.length}, 1fr)` }}>
+        {subTabs.map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => { setActiveSubTab(tab.key); setCurrentPage(1); }}
+            className={`rounded-xl border p-3 text-left transition-all ${
+              activeSubTab === tab.key
+                ? 'bg-almet-sapphire border-almet-sapphire text-white shadow-md'
+                : 'bg-white dark:bg-gray-800 border-almet-mystic/50 dark:border-almet-comet text-almet-cloud-burst dark:text-white hover:border-almet-sapphire/50'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <p className={`text-sm font-semibold ${activeSubTab === tab.key ? 'text-white' : 'text-almet-cloud-burst dark:text-white'}`}>
+                {tab.label}
+              </p>
+              <span className={`text-lg font-bold ${activeSubTab === tab.key ? 'text-white' : 'text-almet-sapphire dark:text-almet-astral'}`}>
+                {tab.count}
+              </span>
+            </div>
+            <p className={`text-xs mt-0.5 ${activeSubTab === tab.key ? 'text-blue-100' : 'text-almet-waterloo dark:text-almet-bali-hai'}`}>
+              {tab.description}
+            </p>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Table Card ── */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic/50 dark:border-almet-comet shadow-sm overflow-hidden">
+        {currentSchedules.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-16 px-4 text-center">
+            <div className="w-16 h-16 bg-almet-mystic/30 dark:bg-gray-700 rounded-full flex items-center justify-center">
+              <Calendar className="w-8 h-8 text-almet-waterloo/40 dark:text-almet-bali-hai/40" />
+            </div>
+            <p className="text-sm font-medium text-almet-waterloo dark:text-almet-bali-hai">No schedules yet</p>
+            <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 max-w-xs">
+              {activeSubTab === 'upcoming'
+                ? 'Go to the "Planning" tab to schedule your vacation dates for the year.'
+                : 'No schedules found for this view.'}
+            </p>
           </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
+                <thead className="bg-gray-50 dark:bg-gray-700/50">
+                  <tr>
+                    {['Employee', 'Leave Type', 'Start Date', 'End Date', 'Days', 'Status', 'Edits Used', 'Actions'].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
+                  {paginated.map(schedule => (
+                    <tr key={schedule.id} className="hover:bg-almet-mystic/10 dark:hover:bg-gray-700/30 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="text-xs font-medium text-almet-cloud-burst dark:text-white">{schedule.employee_name}</p>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                        {schedule.vacation_type_name}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{schedule.start_date}</td>
+                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{schedule.end_date}</td>
+                      <td className="px-4 py-3 text-xs font-bold text-almet-cloud-burst dark:text-white">{schedule.number_of_days}</td>
+                      <td className="px-4 py-3">{getStatusBadge(schedule.status, schedule.status_display)}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
+                          {Array.from({ length: maxScheduleEdits }).map((_, i) => (
+                            <div key={i} className={`w-2 h-2 rounded-full ${i < schedule.edit_count ? 'bg-almet-sapphire' : 'bg-almet-mystic dark:bg-gray-600'}`} />
+                          ))}
+                          <span className={`text-xs ml-1 ${schedule.edit_count >= maxScheduleEdits ? 'text-red-500' : 'text-almet-waterloo dark:text-almet-bali-hai'}`}>
+                            {schedule.edit_count}/{maxScheduleEdits}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <button
+                            onClick={() => handleViewScheduleDetail(schedule.id)}
+                            title="View details"
+                            className="p-1.5 rounded-lg text-almet-sapphire hover:bg-almet-sapphire/10 dark:text-almet-astral transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+
+                          {canApproveSchedule(schedule) && (
+                            <>
+                              <button
+                                onClick={() => { setApprovingSchedule(schedule); setShowApproveModal(true); }}
+                                title="Approve"
+                                className="p-1.5 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => { setApprovingSchedule(schedule); setShowRejectModal(true); }}
+                                title="Reject"
+                                className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+
+                          {canEditSchedule(schedule) && (
+                            <button
+                              onClick={() => handleEditSchedule(schedule)}
+                              title="Edit dates"
+                              className="p-1.5 rounded-lg text-almet-sapphire hover:bg-almet-sapphire/10 dark:text-almet-astral transition-colors"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          {canRegisterSchedule(schedule) && (
+                            <button
+                              onClick={() => handleRegisterSchedule(schedule.id)}
+                              title="Mark as Registered"
+                              className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
+                            >
+                              <Check className="w-3 h-3" /> Register
+                            </button>
+                          )}
+
+                          {canDeleteSchedule() && (
+                            <button
+                              onClick={() => handleDeleteSchedule(schedule.id)}
+                              title="Delete"
+                              className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            >
+                              <Trash className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {currentSchedules.length > itemsPerPage && (
+              <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 p-4">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={currentSchedules.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  darkMode={darkMode}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Approve Modal */}
+      {/* ── Approve Modal ── */}
       {showApproveModal && approvingSchedule && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full border border-almet-mystic/50 dark:border-almet-comet">
-            <div className="px-5 py-4 border-b border-almet-mystic/30 dark:border-almet-comet/30">
-              <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                Approve Schedule
-              </h3>
-            </div>
-            
-            <div className="p-5 space-y-4">
-              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                Approve schedule for <strong>{approvingSchedule.employee_name}</strong>?
-              </p>
-              
-              <div>
-                <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-                  Comment (Optional)
-                </label>
-                <textarea
-                  value={approveComment}
-                  onChange={(e) => setApproveComment(e.target.value)}
-                  rows={3}
-                  placeholder="Add approval comment..."
-                  className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white resize-none"
-                />
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-almet-mystic/50 dark:border-almet-comet">
+            <div className="px-6 py-5 border-b border-almet-mystic/30 dark:border-almet-comet/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-almet-cloud-burst dark:text-white">Approve Schedule</h3>
+                  <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-0.5">
+                    {approvingSchedule.employee_name} · {approvingSchedule.start_date} → {approvingSchedule.end_date}
+                  </p>
+                </div>
               </div>
             </div>
-
-            <div className="px-5 py-4 border-t border-almet-mystic/30 dark:border-almet-comet/30 flex justify-end gap-3">
+            <div className="p-6">
+              <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                Comment <span className="text-almet-waterloo">(optional)</span>
+              </label>
+              <textarea
+                value={approveComment}
+                onChange={e => setApproveComment(e.target.value)}
+                rows={3}
+                placeholder="Add a note for the employee..."
+                className="w-full px-3 py-2.5 text-sm border outline-0 focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white resize-none"
+              />
+            </div>
+            <div className="px-6 pb-5 flex justify-end gap-3">
               <button
-                onClick={() => {
-                  setShowApproveModal(false);
-                  setApprovingSchedule(null);
-                  setApproveComment('');
-                }}
-                disabled={loading}
-                className="px-4 py-2 text-xs border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all disabled:opacity-50"
+                onClick={() => { setShowApproveModal(false); setApprovingSchedule(null); setApproveComment(''); }}
+                className="px-4 py-2 text-xs border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
               >
                 Cancel
               </button>
               <button
+                disabled={loading}
                 onClick={async () => {
                   setLoading(true);
                   try {
-                    await VacationService.approveSchedule(approvingSchedule.id, {
-                      action: 'approve',
-                      comment: approveComment
-                    });
+                    await VacationService.approveSchedule(approvingSchedule.id, { action: 'approve', comment: approveComment });
                     showSuccess?.('Schedule approved successfully');
-                    setShowApproveModal(false);
-                    setApprovingSchedule(null);
-                    setApproveComment('');
+                    setShowApproveModal(false); setApprovingSchedule(null); setApproveComment('');
                     window.location.reload();
-                  } catch (error) {
-                    console.error('Approve error:', error);
-                    showError?.('Failed to approve schedule');
-                  } finally {
-                    setLoading(false);
-                  }
+                  } catch { showError?.('Failed to approve'); }
+                  finally { setLoading(false); }
                 }}
-                disabled={loading}
-                className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-sm disabled:opacity-50 flex items-center gap-2"
+                className="px-5 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-sm disabled:opacity-50 flex items-center gap-2"
               >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
-                    Approving...
-                  </>
-                ) : (
-                  'Approve'
-                )}
+                {loading ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                Approve
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Reject Modal */}
+      {/* ── Reject Modal ── */}
       {showRejectModal && approvingSchedule && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full border border-almet-mystic/50 dark:border-almet-comet">
-            <div className="px-5 py-4 border-b border-almet-mystic/30 dark:border-almet-comet/30">
-              <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white flex items-center gap-2">
-                <XCircle className="w-4 h-4 text-red-600" />
-                Reject Schedule
-              </h3>
-            </div>
-            
-            <div className="p-5 space-y-4">
-              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                Reject schedule for <strong>{approvingSchedule.employee_name}</strong>?
-              </p>
-              
-              <div>
-                <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-                  Reason (Optional)
-                </label>
-                <textarea
-                  value={approveComment}
-                  onChange={(e) => setApproveComment(e.target.value)}
-                  rows={3}
-                  placeholder="Add rejection reason..."
-                  className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white resize-none"
-                />
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full border border-almet-mystic/50 dark:border-almet-comet">
+            <div className="px-6 py-5 border-b border-almet-mystic/30 dark:border-almet-comet/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                  <XCircle className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-almet-cloud-burst dark:text-white">Reject Schedule</h3>
+                  <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-0.5">
+                    {approvingSchedule.employee_name} · {approvingSchedule.start_date} → {approvingSchedule.end_date}
+                  </p>
+                </div>
               </div>
             </div>
-
-            <div className="px-5 py-4 border-t border-almet-mystic/30 dark:border-almet-comet/30 flex justify-end gap-3">
+            <div className="p-6">
+              <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                Reason <span className="text-almet-waterloo">(optional)</span>
+              </label>
+              <textarea
+                value={approveComment}
+                onChange={e => setApproveComment(e.target.value)}
+                rows={3}
+                placeholder="Explain why you are rejecting this schedule..."
+                className="w-full px-3 py-2.5 text-sm border outline-0 focus:ring-1 focus:ring-red-400 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white resize-none"
+              />
+            </div>
+            <div className="px-6 pb-5 flex justify-end gap-3">
               <button
-                onClick={() => {
-                  setShowRejectModal(false);
-                  setApprovingSchedule(null);
-                  setApproveComment('');
-                }}
-                disabled={loading}
-                className="px-4 py-2 text-xs border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all disabled:opacity-50"
+                onClick={() => { setShowRejectModal(false); setApprovingSchedule(null); setApproveComment(''); }}
+                className="px-4 py-2 text-xs border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
               >
                 Cancel
               </button>
               <button
+                disabled={loading}
                 onClick={async () => {
                   setLoading(true);
                   try {
-                    await VacationService.approveSchedule(approvingSchedule.id, {
-                      action: 'reject',
-                      comment: approveComment
-                    });
-                    showSuccess?.('Schedule rejected successfully');
-                    setShowRejectModal(false);
-                    setApprovingSchedule(null);
-                    setApproveComment('');
+                    await VacationService.approveSchedule(approvingSchedule.id, { action: 'reject', comment: approveComment });
+                    showSuccess?.('Schedule rejected');
+                    setShowRejectModal(false); setApprovingSchedule(null); setApproveComment('');
                     window.location.reload();
-                  } catch (error) {
-                    console.error('Reject error:', error);
-                    showError?.('Failed to reject schedule');
-                  } finally {
-                    setLoading(false);
-                  }
+                  } catch { showError?.('Failed to reject'); }
+                  finally { setLoading(false); }
                 }}
-                disabled={loading}
-                className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-sm disabled:opacity-50 flex items-center gap-2"
+                className="px-5 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-sm disabled:opacity-50 flex items-center gap-2"
               >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
-                    Rejecting...
-                  </>
-                ) : (
-                  'Reject'
-                )}
+                {loading ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                Reject
               </button>
             </div>
           </div>
         </div>
       )}
-      
-      {/* ✅ Planning Statistics Modal */}
+
       <PlanningStatisticsModal
         show={showStatsModal}
         onClose={() => setShowStatsModal(false)}

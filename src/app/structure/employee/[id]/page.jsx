@@ -78,7 +78,7 @@ const EmployeeDetailPageContent = () => {
     employment: true,
     status: true
   });
-
+console.log(currentEmployee)
   // Resignation & Probation States
   const [showResignationModal, setShowResignationModal] = useState(false);
   const [showProbationModal, setShowProbationModal] = useState(false);
@@ -89,7 +89,7 @@ const EmployeeDetailPageContent = () => {
   const [contractConfigs, setContractConfigs] = useState({});
   const [selectedReview, setSelectedReview] = useState(null);
   const [activeReviewFilter, setActiveReviewFilter] = useState('all'); // 'all', 'employee', 'manager'
-const [respondentType, setRespondentType] = useState('EMPLOYEE'); // ✅ ƏLAVƏ ET
+const [respondentType, setRespondentType] = useState('EMPLOYEE'); //  ƏLAVƏ ET
 
   // Theme classes
   const bgPrimary = darkMode ? "bg-almet-cloud-burst" : "bg-almet-mystic";
@@ -277,6 +277,10 @@ const [respondentType, setRespondentType] = useState('EMPLOYEE'); // ✅ ƏLAVƏ
       'status_name': currentEmployee.status_detail?.name,
       'status_type': currentEmployee.status_detail?.status_type,
       'status_color': currentEmployee.status_detail?.color,
+      
+'hiring_date': currentEmployee.hiring_date,
+'employment_type_name': currentEmployee.employment_type_detail?.name ||
+                        currentEmployee.employment_type?.name,
       'line_manager_name': currentEmployee.line_manager_detail?.name || currentEmployee.line_manager_detail?.full_name,
       'line_manager_id': currentEmployee.line_manager_detail?.id,
       'line_manager_employee_id': currentEmployee.line_manager_detail?.employee_id,
@@ -353,18 +357,7 @@ const [respondentType, setRespondentType] = useState('EMPLOYEE'); // ✅ ƏLAVƏ
     return colors[urgencyLevel] || colors.normal;
   };
 
-  // 🆕 Get review type badge
-  const getReviewTypeBadge = (reviewType) => {
-    const badges = {
-      'EMPLOYEE_30': { color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', label: 'Employee 30' },
-      'MANAGER_30': { color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400', label: 'Manager 30' },
-      'EMPLOYEE_60': { color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', label: 'Employee 60' },
-      'MANAGER_60': { color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400', label: 'Manager 60' },
-      'EMPLOYEE_90': { color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', label: 'Employee 90' },
-      'MANAGER_90': { color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', label: 'Manager 90' },
-    };
-    return badges[reviewType] || { color: 'bg-gray-100 text-gray-700', label: reviewType };
-  };
+
 
   // Enhanced Info Item Component (keep existing)
   const InfoItem = ({ icon, label, value, isLink, linkPath }) => (
@@ -942,6 +935,18 @@ const [respondentType, setRespondentType] = useState('EMPLOYEE'); // ✅ ƏLAVƏ
                               label="Contract Duration"
                               value={getFieldValue('contract_duration_display')}
                             />
+                            
+<InfoItem
+  icon={<Calendar size={12} className="text-blue-600" />}
+  label="Hiring Date"
+  value={formatDate(getFieldValue('hiring_date'))}
+/>
+<InfoItem
+  icon={<Briefcase size={12} className="text-blue-600" />}
+  label="Employment Type"
+  value={getFieldValue('employment_type_name')}
+/>
+
                             <InfoItem 
                               icon={<TrendingUp size={12} className="text-blue-600" />}
                               label="Years of Service"
@@ -1111,13 +1116,13 @@ const [respondentType, setRespondentType] = useState('EMPLOYEE'); // ✅ ƏLAVƏ
           const hasEmployeeResponse = review.employee_responses && review.employee_responses.length > 0;
           const hasManagerResponse = review.manager_responses && review.manager_responses.length > 0;
           
-          // ✅ Can employee complete self-assessment?
+          //  Can employee complete self-assessment?
           const canEmployeeComplete =  !hasEmployeeResponse;
           
-          // ✅ Can view employee responses?
+          //  Can view employee responses?
           const canViewEmployeeResponse = hasEmployeeResponse;
           
-          // ✅ Can view manager responses?
+          //  Can view manager responses?
           const canViewManagerResponse = hasManagerResponse;
           
           return (
@@ -1161,7 +1166,7 @@ const [respondentType, setRespondentType] = useState('EMPLOYEE'); // ✅ ƏLAVƏ
 
               {/* Actions */}
               <div className="flex items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
-                {/* ✅ Employee can complete self-assessment if pending and not submitted */}
+                {/*  Employee can complete self-assessment if pending and not submitted */}
                 {canEmployeeComplete && (
   <button
     onClick={() => {
@@ -1176,7 +1181,7 @@ const [respondentType, setRespondentType] = useState('EMPLOYEE'); // ✅ ƏLAVƏ
                   </button>
                 )}
                 
-                {/* ✅ View employee responses */}
+                {/*  View employee responses */}
 {canViewEmployeeResponse && (
   <button
     onClick={() => {
@@ -1191,7 +1196,7 @@ const [respondentType, setRespondentType] = useState('EMPLOYEE'); // ✅ ƏLAVƏ
   </button>
 )}
 
-{/* ✅ View manager responses */}
+{/*  View manager responses */}
 {canViewManagerResponse && (
   <button
     onClick={() => {
@@ -1400,7 +1405,7 @@ const [respondentType, setRespondentType] = useState('EMPLOYEE'); // ✅ ƏLAVƏ
           setSelectedReview(null);
           loadProbationData();
         }}
-        respondentType={respondentType}  // ✅ state-dən istifadə edir
+        respondentType={respondentType}  //  state-dən istifadə edir
         viewMode={
           (respondentType === 'EMPLOYEE' && selectedReview.employee_responses?.length > 0) ||
           (respondentType === 'MANAGER' && selectedReview.manager_responses?.length > 0)

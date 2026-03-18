@@ -1,4 +1,11 @@
-import { Users, Settings, Eye, CheckCircle, XCircle, Lock, Shield, AlertTriangle } from 'lucide-react';
+// components/vacation/ApprovalSection.jsx
+
+import { useState } from 'react';
+import {
+  CheckCircle, XCircle, Eye, Clock, History,
+  User, Calendar, AlertCircle, Info, FileText
+} from 'lucide-react';
+import Pagination from '@/components/common/Pagination';
 
 export default function ApprovalSection({
   userAccess,
@@ -6,295 +13,247 @@ export default function ApprovalSection({
   approvalHistory,
   handleOpenApprovalModal,
   handleOpenRejectionModal,
-  handleViewDetails
+  handleViewDetails,
 }) {
-  
+  const [activeTab, setActiveTab] = useState('pending');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const lineManagerRequests = pendingRequests?.line_manager_requests || [];
+  const hrRequests          = pendingRequests?.hr_requests || [];
+  const allPending          = [...lineManagerRequests, ...hrRequests];
+  const history             = approvalHistory || [];
+
+  const displayList   = activeTab === 'pending' ? allPending : history;
+  const totalPages    = Math.ceil(displayList.length / itemsPerPage);
+  const paginated     = displayList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const handleTabChange = tab => { setActiveTab(tab); setCurrentPage(1); };
+
+  const getStatusStyle = (status = '') => {
+    const s = status.toLowerCase();
+    if (s.includes('approved')) return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300';
+    if (s.includes('pending'))  return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300';
+    if (s.includes('rejected')) return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300';
+    return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300';
+  };
+
+  const isPending = r =>
+    r.status === 'PENDING_LINE_MANAGER' ||
+    r.status === 'PENDING_HR' ||
+    r.status === 'PENDING_UK_ADDITIONAL';
+
   return (
-    <div className="space-y-4">
-      {/* Access Info Banner */}
-      <div className={`rounded-lg border-l-4 p-4 ${
-        userAccess.is_admin 
-          ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-500 dark:border-purple-600'
-          : 'bg-blue-50 dark:bg-blue-900/20 border-blue-500 dark:border-blue-600'
-      }`}>
-        <div className="flex items-start gap-3">
-          <Shield className={`w-5 h-5 flex-shrink-0 ${
-            userAccess.is_admin 
-              ? 'text-purple-600 dark:text-purple-400'
-              : 'text-blue-600 dark:text-blue-400'
-          }`} />
-          <div>
-            <h3 className={`text-sm font-semibold ${
-              userAccess.is_admin
-                ? 'text-purple-900 dark:text-purple-200'
-                : 'text-blue-900 dark:text-blue-200'
+    <div className="space-y-5">
+
+      {/* ── Header ── */}
+      <div>
+        <h2 className="text-lg font-bold text-almet-cloud-burst dark:text-white">Approval Queue</h2>
+        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-0.5">
+          Review and approve or reject vacation requests from your team
+        </p>
+      </div>
+
+      {/* ── Summary cards ── */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          {
+            label: 'Awaiting Your Action',
+            value: allPending.length,
+            icon: <Clock className="w-4 h-4" />,
+            color: 'text-amber-600',
+            bg: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800',
+            urgent: allPending.length > 0,
+          },
+          {
+            label: 'From Line Manager Queue',
+            value: lineManagerRequests.length,
+            icon: <User className="w-4 h-4" />,
+            color: 'text-almet-sapphire',
+            bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
+          },
+          {
+            label: 'Total Reviewed',
+            value: history.length,
+            icon: <History className="w-4 h-4" />,
+            color: 'text-green-600',
+            bg: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
+          },
+        ].map(s => (
+          <div key={s.label} className={`rounded-xl border  p-4 ${s.bg} ${s.urgent ? 'ring-2 ring-amber-400 dark:ring-amber-600' : ''}`}>
+            
+            <div className='flex gap-4 items-center '><div className={` ${s.color}`}>{s.icon}</div>
+            <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">{s.label}</p>
+              </div>
+              
+            <p className={`text-xl font-bold mt-0.5 ${s.color}`}>{s.value}</p>
+            {s.urgent && s.value > 0 && (
+              <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-1">Needs your attention</p>
+            )}
+          </div>
+        ))}
+      </div>
+
+     
+      {/* ── Tabs ── */}
+      <div className="flex gap-1 bg-almet-mystic/30 dark:bg-gray-700/50 rounded-xl p-1 w-fit">
+        {[
+          { key: 'pending', label: 'Pending Approval', count: allPending.length },
+          { key: 'history', label: 'Approval History', count: history.length },
+        ].map(t => (
+          <button
+            key={t.key}
+            onClick={() => handleTabChange(t.key)}
+            className={`flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg transition-all ${
+              activeTab === t.key
+                ? 'bg-white dark:bg-gray-800 text-almet-sapphire shadow-sm'
+                : 'text-almet-waterloo dark:text-almet-bali-hai hover:text-almet-cloud-burst dark:hover:text-white'
+            }`}
+          >
+            {t.key === 'pending' ? <Clock className="w-3.5 h-3.5" /> : <History className="w-3.5 h-3.5" />}
+            {t.label}
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+              activeTab === t.key
+                ? 'bg-almet-sapphire/10 text-almet-sapphire'
+                : 'bg-almet-bali-hai/20 text-almet-waterloo dark:text-almet-bali-hai'
             }`}>
-              {userAccess.is_admin ? 'Admin Mode Active' : 'Manager Approval Access'}
-            </h3>
-            <p className={`text-xs mt-1 ${
-              userAccess.is_admin
-                ? 'text-purple-800 dark:text-purple-300'
-                : 'text-blue-800 dark:text-blue-300'
-            }`}>
-              {userAccess.is_admin 
-                ? 'You can approve/reject requests at all stages: Line Manager, UK Additional, and HR.'
-                : 'You can approve/reject requests as Line Manager for your team members only.'}
+              {t.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Table ── */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic/50 dark:border-almet-comet shadow-sm overflow-hidden">
+        {paginated.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-16">
+            <div className="w-14 h-14 bg-almet-mystic/30 dark:bg-gray-700 rounded-full flex items-center justify-center">
+              <FileText className="w-7 h-7 text-almet-waterloo/40 dark:text-almet-bali-hai/40" />
+            </div>
+            <p className="text-sm font-medium text-almet-waterloo dark:text-almet-bali-hai">
+              {activeTab === 'pending' ? 'No requests pending approval' : 'No approval history yet'}
             </p>
           </div>
-        </div>
-      </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
+                <thead className="bg-gray-50 dark:bg-gray-700/50">
+                  <tr>
+                    {['Request ID', 'Employee', 'Leave Type', 'Period', 'Days', 'Status',
+                      ...(activeTab === 'pending' ? ['Actions'] : ['Reviewed On'])
+                    ].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
+                  {paginated.map(req => (
+                    <tr key={req.id} className="hover:bg-almet-mystic/10 dark:hover:bg-gray-700/30 transition-colors">
 
-      {/* Pending Approvals */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
-        <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">Pending Approvals</h2>
-          <span className="bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 px-3 py-1 rounded-full text-xs font-semibold">
-            {(pendingRequests.line_manager_requests?.length || 0) + 
-             (pendingRequests.uk_additional_requests?.length || 0) + 
-             (pendingRequests.hr_requests?.length || 0)} Pending
-          </span>
-        </div>
-        
-        <div className="p-5 space-y-5">
-          {/* Line Manager Approvals */}
-          {pendingRequests.line_manager_requests?.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
-                <Users className="w-4 h-4 text-almet-sapphire" />
-                Line Manager Approvals ({pendingRequests.line_manager_requests.length})
-              </h3>
-              <div className="space-y-3">
-                {pendingRequests.line_manager_requests?.map(request => (
-                  <div key={request.id} className="border border-almet-mystic/40 dark:border-almet-comet rounded-lg p-4 hover:border-almet-sapphire/50 dark:hover:border-almet-astral/50 transition-all">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <h4 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">{request.employee_name}</h4>
-                        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                          {request.vacation_type_name} • {request.start_date} to {request.end_date} • <strong>{request.number_of_days} days</strong>
-                        </p>
-                        {/* ✅ Show if UK request with 5+ days */}
-                        {request.is_uk && request.requires_uk_approval && (
-                          <div className="mt-2 flex items-center gap-1 text-xs text-orange-700 dark:text-orange-400">
-                            <AlertTriangle className="w-3 h-3" />
-                            UK request (5+ days) - Additional approver required
+                      {/* Request ID */}
+                      <td className="px-4 py-3 text-xs font-mono font-medium text-almet-sapphire whitespace-nowrap">
+                        {req.request_id}
+                      </td>
+
+                      {/* Employee */}
+                      <td className="px-4 py-3">
+                        <p className="text-xs font-medium text-almet-cloud-burst dark:text-white">{req.employee_name}</p>
+                        {req.department && (
+                          <p className="text-[10px] text-almet-waterloo dark:text-almet-bali-hai mt-0.5">{req.department}</p>
+                        )}
+                      </td>
+
+                      {/* Leave Type */}
+                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                        {req.vacation_type}
+                        {req.is_half_day && (
+                          <span className="ml-1.5 px-1.5 py-0.5 bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-300 rounded text-[10px]">
+                            Half Day
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Period */}
+                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3 flex-shrink-0" />
+                          {req.start_date}
+                          {req.start_date !== req.end_date && <> → {req.end_date}</>}
+                        </div>
+                      </td>
+
+                      {/* Days */}
+                      <td className="px-4 py-3 text-xs font-bold text-almet-cloud-burst dark:text-white">
+                        {req.days || req.number_of_days}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-4 py-3">
+                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full whitespace-nowrap ${getStatusStyle(req.status_display || req.status)}`}>
+                          {req.status_display || req.status}
+                        </span>
+                      </td>
+
+                      {/* Pending: actions | History: reviewed date */}
+                      {activeTab === 'pending' ? (
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <button
+                              onClick={() => handleViewDetails(req.id)}
+                              title="View details"
+                              className="p-1.5 rounded-lg text-almet-sapphire hover:bg-almet-sapphire/10 transition-colors"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            {isPending(req) && (
+                              <>
+                                <button
+                                  onClick={() => handleOpenApprovalModal(req)}
+                                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
+                                >
+                                  <CheckCircle className="w-3 h-3" /> Approve
+                                </button>
+                                <button
+                                  onClick={() => handleOpenRejectionModal(req)}
+                                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all"
+                                >
+                                  <XCircle className="w-3 h-3" /> Reject
+                                </button>
+                              </>
+                            )}
                           </div>
-                        )}
-                        {request.comment && (
-                          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-2 italic">"{request.comment}"</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => handleViewDetails(request.id)}
-                          className="px-3 py-2 text-xs bg-almet-sapphire/10 text-almet-sapphire rounded-lg hover:bg-almet-sapphire/20 transition-all flex items-center gap-1.5 font-medium"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          Details
-                        </button>
-                        <button 
-                          onClick={() => handleOpenApprovalModal(request)} 
-                          className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
-                        >
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          Approve
-                        </button>
-                        <button 
-                          onClick={() => handleOpenRejectionModal(request)} 
-                          className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                        </td>
+                      ) : (
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                          {req.reviewed_at
+                            ? new Date(req.reviewed_at).toLocaleDateString()
+                            : req.updated_at
+                            ? new Date(req.updated_at).toLocaleDateString()
+                            : '—'}
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
 
-          {/* ✅ UK ADDITIONAL APPROVALS */}
-          {pendingRequests.uk_additional_requests?.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
-                <Shield className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                UK Additional Approvals ({pendingRequests.uk_additional_requests.length})
-                <span className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded font-medium">
-                  UK 5+ Days
-                </span>
-              </h3>
-              <div className="space-y-3">
-                {pendingRequests.uk_additional_requests?.map(request => (
-                  <div key={request.id} className="border border-orange-200/60 dark:border-orange-800/40 rounded-lg p-4 bg-orange-50/30 dark:bg-orange-900/10 hover:border-orange-300 dark:hover:border-orange-700 transition-all">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">{request.employee_name}</h4>
-                          <span className="text-xs bg-orange-100 dark:bg-orange-800/50 px-2 py-0.5 rounded font-medium text-orange-700 dark:text-orange-300">UK Additional</span>
-                        </div>
-                        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                          {request.vacation_type_name} • {request.start_date} to {request.end_date} • <strong>{request.number_of_days} days</strong>
-                        </p>
-                        {request.comment && (
-                          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-2 italic">"{request.comment}"</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => handleViewDetails(request.id)}
-                          className="px-3 py-2 text-xs bg-almet-sapphire/10 text-almet-sapphire rounded-lg hover:bg-almet-sapphire/20 transition-all flex items-center gap-1.5 font-medium"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          Details
-                        </button>
-                        <button 
-                          onClick={() => handleOpenApprovalModal(request)} 
-                          className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
-                        >
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          Approve
-                        </button>
-                        <button 
-                          onClick={() => handleOpenRejectionModal(request)} 
-                          className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+            {displayList.length > itemsPerPage && (
+              <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 p-4">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={displayList.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                />
               </div>
-            </div>
-          )}
-
-          {/* HR Approvals - Only for Admin */}
-          {userAccess.is_admin && pendingRequests.hr_requests?.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
-                <Settings className="w-4 h-4 text-almet-astral" />
-                HR Approvals ({pendingRequests.hr_requests.length})
-                <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded font-medium">
-                  Admin Only
-                </span>
-              </h3>
-              <div className="space-y-3">
-                {pendingRequests.hr_requests?.map(request => (
-                  <div key={request.id} className="border border-blue-200/60 dark:border-blue-800/40 rounded-lg p-4 bg-blue-50/30 dark:bg-blue-900/10 hover:border-blue-300 dark:hover:border-blue-700 transition-all">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">{request.employee_name}</h4>
-                          <span className="text-xs bg-blue-100 dark:bg-blue-800/50 px-2 py-0.5 rounded font-medium text-blue-700 dark:text-blue-300">HR Review</span>
-                        </div>
-                        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                          {request.vacation_type_name} • {request.start_date} to {request.end_date} • <strong>{request.number_of_days} days</strong>
-                        </p>
-                        {request.comment && (
-                          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-2 italic">"{request.comment}"</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => handleViewDetails(request.id)}
-                          className="px-3 py-2 text-xs bg-almet-sapphire/10 text-almet-sapphire rounded-lg hover:bg-almet-sapphire/20 transition-all flex items-center gap-1.5 font-medium"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          Details
-                        </button>
-                        <button 
-                          onClick={() => handleOpenApprovalModal(request)} 
-                          className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
-                        >
-                          <CheckCircle className="w-3.5 h-3.5" />
-                          Approve
-                        </button>
-                        <button 
-                          onClick={() => handleOpenRejectionModal(request)} 
-                          className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* No Pending Requests */}
-          {(pendingRequests.line_manager_requests?.length === 0 && 
-            pendingRequests.uk_additional_requests?.length === 0 &&
-            (userAccess.is_admin ? pendingRequests.hr_requests?.length === 0 : true)) && (
-            <div className="text-center py-12">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 mb-4">
-                <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
-              </div>
-              <p className="text-sm font-medium text-almet-waterloo dark:text-almet-bali-hai">No pending approval requests</p>
-              <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">All requests have been processed</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Approval History */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
-        <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4">
-          <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">My Approval History</h2>
-          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-0.5">
-            Requests you have approved or rejected
-          </p>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
-            <thead className="bg-almet-mystic/50 dark:bg-gray-700/50">
-              <tr>
-                {['Request ID', 'Employee', 'Type', 'Period', 'Days', 'Action', 'Comment', 'Date'].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
-              {approvalHistory.map((item, index) => (
-                <tr key={index} className="hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors">
-                  <td className="px-4 py-3 text-xs font-medium text-almet-sapphire">{item.request_id}</td>
-                  <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{item.employee_name}</td>
-                  <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{item.vacation_type}</td>
-                  <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{item.start_date} - {item.end_date}</td>
-                  <td className="px-4 py-3 text-xs font-semibold text-almet-cloud-burst dark:text-white">{item.days}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                      item.action === 'Approved' 
-                        ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' 
-                        : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                    }`}>
-                      {item.action}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai italic max-w-xs truncate">
-                    {item.comment || '-'}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                    {new Date(item.date).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-              {approvalHistory.length === 0 && (
-                <tr>
-                  <td colSpan="8" className="px-4 py-12 text-center text-sm text-almet-waterloo dark:text-almet-bali-hai">
-                    No approval history found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

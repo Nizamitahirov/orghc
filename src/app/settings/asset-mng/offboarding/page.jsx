@@ -1,625 +1,437 @@
 // src/app/asset-management/offboarding/page.jsx
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { useTheme } from "@/components/common/ThemeProvider";
 import { offboardingService, employeeService } from "@/services/assetService";
-import {
-  UserMinus,
-  Loader,
-  Eye,
-  Plus,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertCircle,
-  Calendar,
-  Package,
-  TrendingUp,
-  Search,
-  Filter,
-  ChevronLeft,
-  ChevronRight,
-  User,
-  Activity
-} from "lucide-react";
+import { useToast } from "@/components/common/Toast";
+import Pagination from "@/components/common/Pagination";
 import SearchableDropdown from "@/components/common/SearchableDropdown";
-import Link from "next/link";
+import {
+  UserMinus, Plus, Loader, Search,
+  Eye, X, Package, AlertCircle,
+  CalendarDays, ArrowRightLeft, ArrowLeft,
+} from "lucide-react";
 
-const OffboardingPage = () => {
-  const { darkMode } = useTheme();
-  const router = useRouter();
-  
-  // State
-  const [offboardings, setOffboardings] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [filterEmployee, setFilterEmployee] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [notification, setNotification] = useState(null);
+// ── Status Badge ──────────────────────────────────────────────────────────────
+const STATUS_STYLE = {
+  PENDING:     { label: "Pending",     cls: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-800" },
+  IN_PROGRESS: { label: "In Progress", cls: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 ring-1 ring-blue-200 dark:ring-blue-800" },
+  COMPLETED:   { label: "Completed",   cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 ring-1 ring-emerald-200 dark:ring-emerald-800" },
+  CANCELLED:   { label: "Cancelled",   cls: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400" },
+};
 
-  const itemsPerPage = 12;
-
-  // Theme classes
-  const bgCard = darkMode ? "bg-gray-800" : "bg-white";
-  const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
-  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
-  const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
-  const btnPrimary = "bg-almet-sapphire hover:bg-almet-astral text-white";
-  const btnSecondary = darkMode ? "bg-gray-700 hover:bg-gray-600 text-gray-200" : "bg-white hover:bg-gray-50 text-gray-700 border border-gray-200";
-  const bgAccent = darkMode ? "bg-gray-700/30" : "bg-gray-50";
-
-  // Fetch offboardings
-  const fetchOffboardings = async () => {
-    setLoading(true);
-    try {
-      const params = {
-        page: currentPage,
-        page_size: itemsPerPage,
-        search: searchTerm
-      };
-
-      if (filterStatus !== "all") {
-        params.status = filterStatus;
-      }
-
-      const response = await offboardingService.getOffboardings(params);
-      setOffboardings(response.results || []);
-      setTotalCount(response.count || 0);
-    } catch (err) {
-      console.error("Failed to fetch offboardings:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch employees
-  const fetchEmployees = async () => {
-    try {
-      const response = await employeeService.getEmployees({ page_size: 100 });
-      setEmployees(response.results || []);
-    } catch (err) {
-      console.error("Failed to fetch employees:", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchOffboardings();
-  }, [currentPage, searchTerm, filterStatus]);
-
-  useEffect(() => {
-    fetchEmployees();
-  }, []);
-
-  const filteredOffboardings = offboardings.filter(offboarding => {
-    if (filterEmployee !== "all" && offboarding.employee?.id !== parseInt(filterEmployee)) {
-      return false;
-    }
-    return true;
-  });
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    return new Date(dateString).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric"
-    });
-  };
-
-  const getStatusColor = (status) => {
-    const colors = {
-      'PENDING': 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400',
-      'IN_PROGRESS': 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400',
-      'COMPLETED': 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400',
-      'CANCELLED': 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-950/50 dark:text-gray-400'
-    };
-    return colors[status] || 'bg-gray-50 text-gray-600 border-gray-200';
-  };
-
-  const getStatusIcon = (status) => {
-    switch(status) {
-      case 'PENDING': return <Clock size={12} />;
-      case 'IN_PROGRESS': return <Activity size={12} />;
-      case 'COMPLETED': return <CheckCircle size={12} />;
-      case 'CANCELLED': return <XCircle size={12} />;
-      default: return <AlertCircle size={12} />;
-    }
-  };
-
-  const statusOptions = [
-    { value: 'all', label: 'All Status' },
-    { value: 'PENDING', label: 'Pending' },
-    { value: 'IN_PROGRESS', label: 'In Progress' },
-    { value: 'COMPLETED', label: 'Completed' },
-    { value: 'CANCELLED', label: 'Cancelled' }
-  ];
-
-  const employeeOptions = [
-    { value: 'all', label: 'All Employees' },
-    ...employees.map(emp => ({
-      value: emp.id,
-      label: `${emp.name || emp.full_name} (${emp.employee_id})`
-    }))
-  ];
-
-  // Statistics
-  const stats = {
-    total: offboardings.length,
-    pending: offboardings.filter(o => o.status === 'PENDING').length,
-    inProgress: offboardings.filter(o => o.status === 'IN_PROGRESS').length,
-    completed: offboardings.filter(o => o.status === 'COMPLETED').length
-  };
-
-  const totalPages = Math.ceil(totalCount / itemsPerPage);
-
+const StatusBadge = ({ status }) => {
+  const s = STATUS_STYLE[status] ?? { label: status, cls: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" };
   return (
-    <DashboardLayout>
-      <div className="min-h-screen">
-        <div className="mx-auto px-4 py-6">
-          {/* Notification */}
-          {notification && (
-            <div className={`fixed top-4 right-4 z-50 ${notification.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'} text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2`}>
-              {notification.type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />}
-              <span className="text-sm">{notification.message}</span>
-              <button onClick={() => setNotification(null)} className="ml-2">
-                <XCircle size={14} />
-              </button>
-            </div>
-          )}
-
-          {/* Header */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className={`text-2xl font-bold ${textPrimary} mb-2`}>Employee Offboarding</h1>
-                <p className={`${textMuted} text-sm`}>
-                  Manage asset transfers for departing employees
-                </p>
-              </div>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className={`${btnPrimary} px-4 py-2.5 rounded-lg flex items-center text-sm hover:shadow-lg transition-all`}
-              >
-                <Plus size={16} className="mr-2" />
-                Initiate Offboarding
-              </button>
-            </div>
-          </div>
-
-          {/* Statistics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className={`${bgCard} rounded-xl p-4 border ${borderColor}`}>
-              <div className="flex items-center justify-between mb-2">
-                <UserMinus className="text-almet-sapphire" size={20} />
-                <TrendingUp className="text-emerald-500" size={16} />
-              </div>
-              <p className={`${textMuted} text-xs mb-1`}>Total Offboardings</p>
-              <p className={`${textPrimary} text-2xl font-bold`}>{stats.total}</p>
-            </div>
-
-            <div className={`${bgCard} rounded-xl p-4 border ${borderColor}`}>
-              <div className="flex items-center justify-between mb-2">
-                <Clock className="text-amber-500" size={20} />
-              </div>
-              <p className={`${textMuted} text-xs mb-1`}>Pending</p>
-              <p className={`${textPrimary} text-2xl font-bold`}>{stats.pending}</p>
-            </div>
-
-            <div className={`${bgCard} rounded-xl p-4 border ${borderColor}`}>
-              <div className="flex items-center justify-between mb-2">
-                <Activity className="text-blue-500" size={20} />
-              </div>
-              <p className={`${textMuted} text-xs mb-1`}>In Progress</p>
-              <p className={`${textPrimary} text-2xl font-bold`}>{stats.inProgress}</p>
-            </div>
-
-            <div className={`${bgCard} rounded-xl p-4 border ${borderColor}`}>
-              <div className="flex items-center justify-between mb-2">
-                <CheckCircle className="text-emerald-500" size={20} />
-              </div>
-              <p className={`${textMuted} text-xs mb-1`}>Completed</p>
-              <p className={`${textPrimary} text-2xl font-bold`}>{stats.completed}</p>
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className={`${bgCard} rounded-xl border ${borderColor} p-4 mb-6`}>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-              <div className="relative">
-                <Search size={14} className={`absolute left-3 top-1/2 -translate-y-1/2 ${textMuted}`} />
-                <input
-                  type="text"
-                  placeholder="Search offboardings..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`w-full pl-9 pr-3 py-2.5 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} text-sm outline-0`}
-                />
-              </div>
-
-              <SearchableDropdown
-                options={statusOptions}
-                value={filterStatus}
-                onChange={setFilterStatus}
-                placeholder="All Status"
-                darkMode={darkMode}
-                icon={<Filter size={12} />}
-              />
-
-              <SearchableDropdown
-                options={employeeOptions}
-                value={filterEmployee}
-                onChange={setFilterEmployee}
-                placeholder="All Employees"
-                darkMode={darkMode}
-                icon={<User size={12} />}
-              />
-
-              <button
-                onClick={() => {
-                  setSearchTerm("");
-                  setFilterStatus("all");
-                  setFilterEmployee("all");
-                }}
-                className={`${btnSecondary} px-4 py-2.5 rounded-lg text-sm`}
-              >
-                Reset
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700 mt-3">
-              <p className={`${textMuted} text-xs`}>
-                {filteredOffboardings.length} of {totalCount} offboardings
-              </p>
-            </div>
-          </div>
-
-          {/* Offboardings List */}
-          <div className={`${bgCard} rounded-xl border ${borderColor}`}>
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader className="w-6 h-6 animate-spin text-almet-sapphire mr-2" />
-                <span className={`${textMuted}`}>Loading offboardings...</span>
-              </div>
-            ) : filteredOffboardings.length === 0 ? (
-              <div className="text-center py-12">
-                <UserMinus className="w-12 h-12 mx-auto text-gray-400 mb-3" />
-                <p className={`${textPrimary} font-medium mb-1`}>No offboardings found</p>
-                <p className={`${textMuted} text-sm mb-4`}>
-                  {searchTerm || filterStatus !== 'all' || filterEmployee !== 'all'
-                    ? 'Try adjusting your filters'
-                    : 'No offboarding processes have been initiated'}
-                </p>
-                {!searchTerm && filterStatus === 'all' && filterEmployee === 'all' && (
-                  <button
-                    onClick={() => setShowCreateModal(true)}
-                    className={`${btnPrimary} px-4 py-2 rounded-lg text-sm`}
-                  >
-                    <Plus size={14} className="mr-2 inline" />
-                    Initiate Offboarding
-                  </button>
-                )}
-              </div>
-            ) : (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className={`${bgAccent} border-b ${borderColor}`}>
-                      <tr>
-                        <th className={`px-6 py-4 text-left text-xs font-semibold ${textMuted} uppercase`}>
-                          Employee
-                        </th>
-                        <th className={`px-6 py-4 text-left text-xs font-semibold ${textMuted} uppercase`}>
-                          Last Working Day
-                        </th>
-                        <th className={`px-6 py-4 text-left text-xs font-semibold ${textMuted} uppercase`}>
-                          Assets
-                        </th>
-                        <th className={`px-6 py-4 text-left text-xs font-semibold ${textMuted} uppercase`}>
-                          Progress
-                        </th>
-                        <th className={`px-6 py-4 text-left text-xs font-semibold ${textMuted} uppercase`}>
-                          Status
-                        </th>
-                        <th className={`px-6 py-4 text-left text-xs font-semibold ${textMuted} uppercase`}>
-                          Created
-                        </th>
-                        <th className={`px-6 py-4 text-center text-xs font-semibold ${textMuted} uppercase`}>
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                      {filteredOffboardings.map((offboarding) => (
-                        <tr key={offboarding.id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
-                          <td className="px-6 py-4">
-                            <div>
-                              <p className={`${textPrimary} font-medium text-sm`}>
-                                {offboarding.employee_detail?.full_name}
-                              </p>
-                              <p className={`${textMuted} text-xs`}>
-                                ID: {offboarding.employee_detail?.employee_id}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center">
-                              <Calendar size={14} className={`${textMuted} mr-2`} />
-                              <span className={`${textSecondary} text-sm`}>
-                                {formatDate(offboarding.last_working_day)}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div>
-                              <p className={`${textPrimary} text-sm font-semibold`}>
-                                {offboarding.total_assets}
-                              </p>
-                              <p className={`${textMuted} text-xs`}>
-                                Transferred: {offboarding.assets_transferred}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="w-full">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className={`${textMuted} text-xs`}>
-                                  {offboarding.progress_percentage}%
-                                </span>
-                              </div>
-                              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                <div
-                                  className={`h-2 rounded-full ${
-                                    offboarding.progress_percentage === 100
-                                      ? 'bg-emerald-500'
-                                      : offboarding.progress_percentage > 50
-                                      ? 'bg-blue-500'
-                                      : 'bg-amber-500'
-                                  }`}
-                                  style={{ width: `${offboarding.progress_percentage}%` }}
-                                />
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs border ${getStatusColor(offboarding.status)}`}>
-                              {getStatusIcon(offboarding.status)}
-                              <span className="ml-1.5">{offboarding.status}</span>
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`${textSecondary} text-sm`}>
-                              {formatDate(offboarding.created_at)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-center">
-                            <Link
-                              href={`/settings/asset-mng/offboarding/${offboarding.id}`}
-                              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg inline-block"
-                            >
-                              <Eye size={14} className="text-almet-sapphire" />
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className={`px-6 py-4 border-t ${borderColor} ${bgAccent}`}>
-                    <div className="flex items-center justify-between">
-                      <p className={`${textMuted} text-xs`}>
-                        Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount}
-                      </p>
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                          disabled={currentPage === 1}
-                          className={`${btnSecondary} px-4 py-2 rounded-lg text-xs disabled:opacity-50`}
-                        >
-                          <ChevronLeft size={14} className="mr-1 inline" />
-                          Prev
-                        </button>
-
-                        <div className="flex space-x-1">
-                          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                            let pageNum;
-                            if (totalPages <= 5) {
-                              pageNum = i + 1;
-                            } else if (currentPage <= 3) {
-                              pageNum = i + 1;
-                            } else if (currentPage >= totalPages - 2) {
-                              pageNum = totalPages - 4 + i;
-                            } else {
-                              pageNum = currentPage - 2 + i;
-                            }
-
-                            return (
-                              <button
-                                key={pageNum}
-                                onClick={() => setCurrentPage(pageNum)}
-                                className={`px-3 py-2 rounded-lg text-xs ${
-                                  currentPage === pageNum
-                                    ? 'bg-almet-sapphire text-white'
-                                    : `${btnSecondary}`
-                                }`}
-                              >
-                                {pageNum}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <button
-                          onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                          disabled={currentPage === totalPages}
-                          className={`${btnSecondary} px-4 py-2 rounded-lg text-xs disabled:opacity-50`}
-                        >
-                          Next
-                          <ChevronRight size={14} className="ml-1 inline" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Create Offboarding Modal */}
-      {showCreateModal && (
-        <CreateOffboardingModal
-          employees={employees}
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={() => {
-            setShowCreateModal(false);
-            fetchOffboardings();
-            setNotification({ message: "Offboarding initiated successfully", type: "success" });
-          }}
-          darkMode={darkMode}
-        />
-      )}
-    </DashboardLayout>
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${s.cls}`}>
+      {s.label}
+    </span>
   );
 };
 
-// Create Offboarding Modal
-const CreateOffboardingModal = ({ employees, onClose, onSuccess, darkMode }) => {
-  const [formData, setFormData] = useState({
-    employee_id: '',
-    last_working_day: '',
-    notes: ''
+// ── Shared ────────────────────────────────────────────────────────────────────
+const inputCls = "w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-steel-blue/50 focus:border-almet-steel-blue transition-colors placeholder:text-gray-400";
+
+const ErrBox = ({ msg }) => msg ? (
+  <div className="flex items-start gap-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 rounded-xl px-4 py-3 text-sm">
+    <AlertCircle size={15} className="mt-0.5 shrink-0" /> {msg}
+  </div>
+) : null;
+
+const TYPE_STYLE = {
+  RETURN:   "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400",
+  TRANSFER: "bg-purple-50 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400",
+  MIXED:    "bg-orange-50 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400",
+};
+
+// ── Type options ──────────────────────────────────────────────────────────────
+const TYPE_OPTIONS = [
+  {
+    value: "RETURN",
+    icon:  "🖥️",
+    label: "Return to IT",
+    desc:  "Employee hands all assets back to IT department.",
+  },
+  {
+    value: "TRANSFER",
+    icon:  "🔄",
+    label: "Transfer",
+    desc:  "All assets go to other employees — you'll pick who gets what.",
+  },
+  {
+    value: "MIXED",
+    icon:  "📦",
+    label: "Mixed",
+    desc:  "Some assets returned, some transferred — decide per asset.",
+  },
+];
+
+// ── Initiate Modal ────────────────────────────────────────────────────────────
+const InitiateModal = ({ employees, onClose, onSuccess }) => {
+  const [form, setForm] = useState({
+    employee_id: "", last_working_day: "", offboarding_type: "RETURN", notes: "",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError]     = useState("");
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  const bgCard = darkMode ? "bg-gray-800" : "bg-white";
-  const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
-  const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
-  const btnPrimary = "bg-almet-sapphire hover:bg-almet-astral text-white";
-  const btnSecondary = darkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-100 hover:bg-gray-200";
-
-  const employeeOptions = employees.map(emp => ({
-    value: emp.id,
-    label: `${emp.name || emp.full_name} (${emp.employee_id})`
+  const employeeOptions = employees.map(e => ({
+    value: String(e.id),
+    label: `${e.name} (${e.employee_id})`,
   }));
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
+  const submit = async () => {
+    if (!form.employee_id)      return setError("Please select an employee.");
+    if (!form.last_working_day) return setError("Last working day is required.");
+    setLoading(true); setError("");
     try {
-      await offboardingService.initiateOffboarding(formData);
-      onSuccess();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to initiate offboarding');
-    } finally {
-      setLoading(false);
-    }
+      await offboardingService.initiate({ ...form, employee_id: parseInt(form.employee_id) });
+      onSuccess("Offboarding initiated successfully.");
+    } catch (e) {
+      const d = e.response?.data;
+      setError(typeof d === "string" ? d : d?.error ?? d?.message ?? "Failed to initiate offboarding.");
+    } finally { setLoading(false); }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`${bgCard} rounded-xl w-full max-w-lg shadow-2xl border ${borderColor}`}>
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className={`${textPrimary} text-xl font-bold`}>Initiate Offboarding</h2>
-            <button type="button" onClick={onClose} className={`${textMuted} hover:${textPrimary}`}>
-              <XCircle size={24} />
-            </button>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-40 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+
+        {/* Header */}
+        <div className="flex items-start justify-between p-6 border-b border-gray-100 dark:border-gray-800">
+          <div>
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">Start Offboarding</h2>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              Begin the asset handover process for a departing employee.
+            </p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          <ErrBox msg={error} />
+
+          {/* Step 1 */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+              1 · Which employee is leaving? <span className="text-red-500">*</span>
+            </label>
+            <SearchableDropdown
+              options={employeeOptions}
+              value={form.employee_id}
+              onChange={v => set("employee_id", v ?? "")}
+              placeholder="Select employee…"
+              searchPlaceholder="Search employees…"
+              allowUncheck={false}
+            />
           </div>
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
+          {/* Step 2 */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+              2 · Last working day <span className="text-red-500">*</span>
+            </label>
+            <input type="date" className={inputCls} value={form.last_working_day}
+              onChange={e => set("last_working_day", e.target.value)} />
+          </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                Employee *
-              </label>
-              <SearchableDropdown
-                options={employeeOptions}
-                value={formData.employee_id}
-                onChange={(value) => setFormData(prev => ({ ...prev, employee_id: value }))}
-                placeholder="Select employee"
-                searchPlaceholder="Search employees..."
-                darkMode={darkMode}
-                allowUncheck={true}
-              />
-            </div>
-
-            <div>
-              <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                Last Working Day *
-              </label>
-              <input
-                type="date"
-                value={formData.last_working_day}
-                onChange={(e) => setFormData(prev => ({ ...prev, last_working_day: e.target.value }))}
-                required
-                className={`w-full px-4 py-3 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} text-sm outline-0`}
-              />
-            </div>
-
-            <div>
-              <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                Notes
-              </label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                className={`w-full px-4 py-3 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} text-sm outline-0`}
-                rows="3"
-                placeholder="Add any notes about the offboarding..."
-              />
+          {/* Step 3 */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+              3 · What happens to the assets?
+            </label>
+            <div className="space-y-2">
+              {TYPE_OPTIONS.map(t => (
+                <button
+                  key={t.value}
+                  onClick={() => set("offboarding_type", t.value)}
+                  className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl border-2 text-left transition-all
+                    ${form.offboarding_type === t.value
+                      ? "border-almet-cloud-burst bg-almet-mystic dark:bg-almet-cloud-burst/10 dark:border-almet-steel-blue"
+                      : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                    }`}>
+                  <span className="text-xl shrink-0">{t.icon}</span>
+                  <div className="flex-1">
+                    <p className={`text-sm font-semibold ${form.offboarding_type === t.value ? "text-almet-cloud-burst dark:text-almet-steel-blue" : "text-gray-800 dark:text-gray-200"}`}>
+                      {t.label}
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{t.desc}</p>
+                  </div>
+                  <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center
+                    ${form.offboarding_type === t.value
+                      ? "border-almet-cloud-burst dark:border-almet-steel-blue bg-almet-cloud-burst dark:bg-almet-steel-blue"
+                      : "border-gray-300 dark:border-gray-600"
+                    }`}>
+                    {form.offboarding_type === t.value && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    )}
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className={`${btnSecondary} px-6 py-2.5 rounded-lg text-sm`}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading || !formData.employee_id || !formData.last_working_day}
-              className={`${btnPrimary} px-6 py-2.5 rounded-lg text-sm disabled:opacity-50 flex items-center`}
-            >
-              {loading ? (
-                <>
-                  <Loader size={16} className="mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Plus size={16} className="mr-2" />
-                  Initiate Offboarding
-                </>
-              )}
-            </button>
+          {/* Notes */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+              Notes (optional)
+            </label>
+            <textarea className={`${inputCls} resize-none`} rows={2} value={form.notes}
+              onChange={e => set("notes", e.target.value)}
+              placeholder="Any additional context…" />
           </div>
-        </form>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 rounded-b-2xl">
+          <button onClick={onClose}
+            className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            Cancel
+          </button>
+          <button onClick={submit} disabled={loading}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-almet-cloud-burst hover:bg-almet-sapphire text-white text-sm font-semibold disabled:opacity-50 transition-colors shadow-sm shadow-almet-cloud-burst/20">
+            {loading && <Loader size={14} className="animate-spin" />}
+            Start Offboarding
+          </button>
+        </div>
       </div>
     </div>
   );
 };
 
-export default OffboardingPage;
+// ═════════════════════════════════════════════════════════════════════════════
+const PAGE_SIZE = 12;
+
+const STATUS_TABS = [
+  { value: "all",         label: "All" },
+  { value: "PENDING",     label: "Pending" },
+  { value: "IN_PROGRESS", label: "In Progress" },
+  { value: "COMPLETED",   label: "Completed" },
+];
+
+export default function OffboardingPage() {
+  const router = useRouter();
+  const { showSuccess } = useToast();
+
+  const [offboardings, setOffboardings] = useState([]);
+  const [employees, setEmployees]       = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [totalCount, setTotalCount]     = useState(0);
+  const [page, setPage]                 = useState(1);
+  const [search, setSearch]             = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [showInitiate, setShowInitiate] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = {
+        page, page_size: PAGE_SIZE,
+        ...(search && { search }),
+        ...(statusFilter !== "all" && { status: statusFilter }),
+      };
+      const res = await offboardingService.list(params);
+      setOffboardings(res.results ?? res);
+      setTotalCount(res.count ?? (res.results ?? res).length);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
+  }, [page, search, statusFilter]);
+
+  useEffect(() => {
+    employeeService.list({ page_size: 500 })
+      .then(r => setEmployees(r.results ?? r))
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const daysUntil = dateStr => {
+    if (!dateStr) return null;
+    return Math.ceil((new Date(dateStr) - new Date()) / (1000 * 60 * 60 * 24));
+  };
+
+  return (
+    <DashboardLayout>
+      {showInitiate && (
+        <InitiateModal
+          employees={employees}
+          onClose={() => setShowInitiate(false)}
+          onSuccess={msg => { setShowInitiate(false); showSuccess(msg); load(); }}
+        />
+      )}
+
+      <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+
+        {/* Back */}
+        <button onClick={() => router.push("/settings/asset-mng")}
+          className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
+          <ArrowLeft size={15} /> Back to Dashboard
+        </button>
+
+        {/* Header */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Offboarding</h1>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+              Manage asset returns and transfers for departing employees
+            </p>
+          </div>
+          <button onClick={() => setShowInitiate(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-almet-cloud-burst hover:bg-almet-sapphire text-white text-sm font-semibold transition-colors shadow-sm shadow-almet-cloud-burst/20">
+            <Plus size={15} /> Start Offboarding
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-3">
+          <div className="relative flex-1 min-w-56">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by employee name…"
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-steel-blue/50 focus:border-almet-steel-blue transition-colors placeholder:text-gray-400"
+            />
+          </div>
+          <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
+            {STATUS_TABS.map(t => (
+              <button key={t.value} onClick={() => { setStatusFilter(t.value); setPage(1); }}
+                className={`px-3.5 py-2 text-xs font-semibold rounded-lg transition-all
+                  ${statusFilter === t.value
+                    ? "bg-white dark:bg-gray-900 text-almet-cloud-burst dark:text-almet-steel-blue shadow-sm"
+                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  }`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Cards */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center h-56 gap-3">
+            <Loader size={24} className="animate-spin text-almet-steel-blue" />
+            <p className="text-sm text-gray-400">Loading offboarding records…</p>
+          </div>
+        ) : offboardings.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-56 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl gap-3">
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl p-5">
+              <UserMinus size={28} className="text-gray-300 dark:text-gray-600" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">No offboarding records</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">Start a new offboarding process above</p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {offboardings.map(o => {
+              const pct    = o.progress_pct ?? 0;
+              const days   = daysUntil(o.last_working_day);
+              const urgent = days !== null && days <= 3 && o.status !== "COMPLETED";
+              const typeOpt = TYPE_OPTIONS.find(t => t.value === o.offboarding_type);
+
+              return (
+                <div key={o.id}
+                  className={`bg-white dark:bg-gray-900 border rounded-2xl overflow-hidden hover:shadow-md transition-all duration-200
+                    ${urgent ? "border-red-200 dark:border-red-800" : "border-gray-100 dark:border-gray-800"}`}>
+
+                  {/* Urgent banner */}
+                  {urgent && (
+                    <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 px-4 py-2 flex items-center gap-2">
+                      <AlertCircle size={13} className="text-red-500 shrink-0" />
+                      <p className="text-xs font-semibold text-red-600 dark:text-red-400">
+                        {days === 0 ? "Last day today!" : days < 0 ? "Overdue!" : `${days} day${days !== 1 ? "s" : ""} remaining`}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="p-5 space-y-4">
+                    {/* Employee + status */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-bold text-gray-900 dark:text-white">{o.employee_info?.full_name ?? "—"}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{o.employee_info?.employee_id}</p>
+                      </div>
+                      <StatusBadge status={o.status} />
+                    </div>
+
+                    {/* Details */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2.5">
+                        <CalendarDays size={14} className="text-gray-300 dark:text-gray-600 shrink-0" />
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Last day:</span>
+                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                          {o.last_working_day
+                            ? new Date(o.last_working_day).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+                            : "—"}
+                        </span>
+                        {days !== null && !urgent && days > 0 && (
+                          <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">{days}d left</span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2.5">
+                        <Package size={14} className="text-gray-300 dark:text-gray-600 shrink-0" />
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Assets:</span>
+                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                          {o.assets_processed} / {o.total_assets} processed
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2.5">
+                        <ArrowRightLeft size={14} className="text-gray-300 dark:text-gray-600 shrink-0" />
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-md flex items-center gap-1 ${TYPE_STYLE[o.offboarding_type] ?? "bg-gray-100 text-gray-600"}`}>
+                          {typeOpt && <span>{typeOpt.icon}</span>}
+                          {o.type_display ?? typeOpt?.label ?? o.offboarding_type}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    {o.total_assets > 0 && (
+                      <div>
+                        <div className="flex justify-between text-xs text-gray-400 mb-1.5">
+                          <span>Progress</span>
+                          <span className="font-semibold text-gray-600 dark:text-gray-300">{Math.round(pct)}%</span>
+                        </div>
+                        <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-700 ${pct >= 100 ? "bg-emerald-500" : "bg-almet-steel-blue"}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* CTA */}
+                    <button onClick={() => router.push(`${o.id}`)}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-almet-mystic hover:border-almet-steel-blue hover:text-almet-cloud-burst dark:hover:bg-almet-cloud-burst/10 dark:hover:border-almet-steel-blue dark:hover:text-almet-steel-blue transition-all">
+                      <Eye size={14} />
+                      {o.status === "COMPLETED" ? "View Details" : "Manage"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Pagination */}
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={totalCount}
+          itemsPerPage={PAGE_SIZE}
+          onPageChange={setPage}
+        />
+      </div>
+    </DashboardLayout>
+  );
+}

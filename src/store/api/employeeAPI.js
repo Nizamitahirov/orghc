@@ -481,7 +481,7 @@ export: (params = {}) => {
     ...filterParams 
   };
   
-  // ✅ Call apiService
+  //  Call apiService
   return apiService.exportEmployees(
     exportPayload.export_format,
     exportPayload
@@ -814,7 +814,10 @@ downloadTemplate: () => apiService.downloadEmployeeTemplate(),
       contractDuration: rawData.contract_duration,
       contractStartDate: rawData.contract_start_date,
       contractEndDate: rawData.contract_end_date,
-
+      
+      employmentType: rawData.employment_type,
+      hiringDate: rawData.hiring_date,
+employmentTypeName: rawData.employment_type.name,
 
       yearsOfService: rawData.years_of_service,
       status: rawData.status_name || rawData.current_status_display,

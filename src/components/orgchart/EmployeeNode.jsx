@@ -9,7 +9,7 @@ import Avatar from './Avatar';
 const cleanEmployeeData = (employee) => {
     if (!employee) return null;
     
-    // ✅ FIXED: More robust vacancy check
+    //  FIXED: More robust vacancy check
     const isVacancy = Boolean(
         employee.employee_details?.is_vacancy === true ||
         employee.is_vacancy === true || 

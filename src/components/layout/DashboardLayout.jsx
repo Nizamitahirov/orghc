@@ -8,8 +8,7 @@ import ProtectedRoute from "../auth/ProtectedRoute";
 const DashboardLayout = ({ children }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  
-  // Pin state - localStorage-dan oxu
+
   const [isPinned, setIsPinned] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('sidebarPinned') === 'true';
@@ -17,15 +16,19 @@ const DashboardLayout = ({ children }) => {
     return false;
   });
 
-  // Hover state - yalnız pin-siz rejim üçün
   const [isHovered, setIsHovered] = useState(false);
 
-  // Sidebar faktiki olaraq genişdirmi?
-  const isSidebarExpanded = isPinned || isHovered;
+  const isSidebarExpanded = isMobile ? isSidebarOpen : (isPinned || isHovered);
 
+  // Desktop: toggle = pin/unpin; Mobile: toggle = open/close
   const toggleSidebar = () => {
     if (isMobile) {
-      setSidebarOpen(!isSidebarOpen);
+      setSidebarOpen(prev => !prev);
+    } else {
+      const newPinned = !isPinned;
+      setIsPinned(newPinned);
+      localStorage.setItem('sidebarPinned', String(newPinned));
+      if (newPinned) setIsHovered(false);
     }
   };
 
@@ -33,7 +36,7 @@ const DashboardLayout = ({ children }) => {
     const newPinned = !isPinned;
     setIsPinned(newPinned);
     localStorage.setItem('sidebarPinned', String(newPinned));
-    if (newPinned) setIsHovered(false); // pin edəndə hover sıfırla
+    if (newPinned) setIsHovered(false);
   };
 
   useEffect(() => {
@@ -42,8 +45,6 @@ const DashboardLayout = ({ children }) => {
       setIsMobile(mobile);
       if (mobile) {
         setSidebarOpen(false);
-      } else {
-        setSidebarOpen(true);
       }
     };
     handleResize();
@@ -61,13 +62,13 @@ const DashboardLayout = ({ children }) => {
             transition-all duration-300 ease-in-out
             h-full
             ${isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''}
-            ${!isMobile && isSidebarExpanded ? 'w-52' : 'w-16'}
+            ${isSidebarExpanded ? 'w-52' : 'w-16'}
           `}
-          onMouseEnter={() => !isPinned && setIsHovered(true)}
-          onMouseLeave={() => !isPinned && setIsHovered(false)}
+          onMouseEnter={() => !isMobile && !isPinned && setIsHovered(true)}
+          onMouseLeave={() => !isMobile && !isPinned && setIsHovered(false)}
         >
           <Sidebar
-            collapsed={!isMobile && !isSidebarExpanded}
+            collapsed={!isSidebarExpanded}
             isPinned={isPinned}
             togglePin={togglePin}
           />
@@ -83,7 +84,11 @@ const DashboardLayout = ({ children }) => {
 
         {/* Main content */}
         <div className="flex-1 flex flex-col overflow-hidden bg-almet-mystic dark:bg-gray-900">
-          <Header toggleSidebar={toggleSidebar} />
+          <Header
+            toggleSidebar={toggleSidebar}
+            isMobile={isMobile}
+            isSidebarCollapsed={!isSidebarExpanded}
+          />
           <main className="flex-1 overflow-y-auto p-4">
             {children}
           </main>

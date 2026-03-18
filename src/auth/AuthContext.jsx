@@ -28,11 +28,11 @@ export function AuthProvider({ children }) {
   
   const isProcessingAuth = useRef(false);
 
-  // ✅ Storage operations
+  //  Storage operations
   const setStorageItem = useCallback((key, value) => {
     try {
       localStorage.setItem(key, value);
-      console.log(`✅ Stored ${key}`);
+      console.log(` Stored ${key}`);
       return true;
     } catch (error) {
       console.error(`❌ Storage error for ${key}:`, error);
@@ -57,7 +57,7 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // ✅ Backend validation
+  //  Backend validation
   const validateTokenWithBackend = async (token, retries = 2) => {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
@@ -77,7 +77,7 @@ export function AuthProvider({ children }) {
         }
         
         const data = await response.json();
-        console.log("✅ Token valid, user data:", data);
+        console.log(" Token valid, user data:", data);
         return data;
       } catch (error) {
         console.error(`❌ Validation attempt ${attempt + 1} failed:`, error.message);
@@ -91,7 +91,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // ✅ Clear authentication
+  //  Clear authentication
   const clearAuth = useCallback(async () => {
    
     
@@ -114,7 +114,7 @@ export function AuthProvider({ children }) {
     }
   }, [msalInstance, removeStorageItem]);
 
-  // ✅ Refresh Graph token
+  //  Refresh Graph token
   const refreshGraphToken = useCallback(async (accountToRefresh) => {
     if (!msalInstance || !accountToRefresh) {
       console.warn("⚠️ Cannot refresh Graph token - missing instance or account");
@@ -216,12 +216,11 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
   }
 };
 
-  // ✅ Authenticate with backend
+  //  Authenticate with backend
   const authenticateWithBackend = async (idToken, graphToken, msalAccount) => {
     try {
     
-      console.log("📡 Backend URL:", BACKEND_URL);
-      console.log("  - ID Token length:", idToken?.length || 0);
+      
 
       if (!idToken) {
         throw new Error("No ID token available");
@@ -240,7 +239,6 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
         signal: AbortSignal.timeout(15000),
       });
 
-      console.log("📥 Response status:", response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -268,8 +266,7 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
         }
         
       
-        console.log("  - Access token length:", accessToken.length);
-        console.log("  - Refresh token length:", refreshToken.length);
+
         
         // Store JWT tokens
         const accessStored = setStorageItem("accessToken", accessToken);
@@ -320,7 +317,7 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
     }
   };
 
-  // ✅ MSAL initialization
+  //  MSAL initialization
   useEffect(() => {
     const initializeMsal = async () => {
       if (isProcessingAuth.current) return;
@@ -328,7 +325,6 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
       
       try {
        
-        console.log("📡 Backend URL:", BACKEND_URL);
         
         const msalApp = new PublicClientApplication(msalConfig);
         await msalApp.initialize();
@@ -415,7 +411,7 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
     initializeMsal();
   }, []);
 
-  // ✅ Graph token auto-refresh (every 10 minutes)
+  //  Graph token auto-refresh (every 10 minutes)
   useEffect(() => {
     if (!account || !msalInstance) return;
 
@@ -455,7 +451,7 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
   return () => clearInterval(intervalId);
 }, [account, initialized, refreshBackendToken, getStorageItem]);
 
-  // ✅ Login function
+  //  Login function
   const login = useCallback(async () => {
     if (isLoggingIn || isProcessingAuth.current) return;
     if (!msalInstance || !initialized) {
@@ -517,7 +513,7 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
     }
   }, [msalInstance, initialized, router, isLoggingIn]);
 
-  // ✅ Logout function
+  //  Logout function
   const logout = useCallback(async () => {
     if (!msalInstance || !initialized) return;
 
@@ -560,7 +556,7 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
     }
   }, [msalInstance, initialized, router, clearAuth, getStorageItem]);
 
-  // ✅ Context value
+  //  Context value
   const contextValue = {
     account,
     isAuthenticated: !!account && !!getStorageItem("accessToken"),
@@ -574,7 +570,7 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
     refreshBackendToken,
   };
 
-  // ✅ Expose to window for apiClient
+  //  Expose to window for apiClient
   useEffect(() => {
     if (refreshBackendToken) {
       window.__refreshBackendToken = refreshBackendToken;

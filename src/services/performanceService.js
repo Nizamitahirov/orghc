@@ -249,7 +249,7 @@ cancelObjective: async (id, objectiveId, reason) => {
     return response.data;
   },
 
-  // ✅ NEW: Initialize multiple employees at once
+  //  NEW: Initialize multiple employees at once
   initializeBulk: async (employeeIds, performanceYearId) => {
     const response = await api.post(
       '/performance/performance/performances/initialize_bulk/',
@@ -260,7 +260,7 @@ cancelObjective: async (id, objectiveId, reason) => {
     );
     return response.data;
   },
-// ✅ NEW: End-Year Objectives Rating
+//  NEW: End-Year Objectives Rating
   saveEndYearObjectivesDraft: async (id, objectives) => {
     const response = await api.post(
       `/performance/performance/performances/${id}/save_end_year_objectives_draft/`,
@@ -292,7 +292,7 @@ cancelObjective: async (id, objectiveId, reason) => {
     );
     return response.data;
   },
-  // ✅ NEW: Get available years
+  //  NEW: Get available years
   getAvailableYears: async () => {
     const response = await api.get(
       '/performance/performance/performances/available_years/'
@@ -343,7 +343,7 @@ cancelObjective: async (id, objectiveId, reason) => {
   submitObjectives: async (performanceId, objectives) => {
   const response = await api.post(
     `/performance/performance/performances/${performanceId}/submit_objectives/`,
-    { objectives }  // ✅ FIX #1: Include objectives in payload
+    { objectives }  //  FIX #1: Include objectives in payload
   );
   return response.data;
 },

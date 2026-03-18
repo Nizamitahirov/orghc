@@ -55,7 +55,7 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
   const shadowClass = darkMode ? "shadow-md shadow-black/10" : "shadow-sm shadow-gray-200/50";
   const bgAccent = darkMode ? "bg-almet-comet/30" : "bg-almet-mystic/50";
 
-  // ✅ Load data from employeeData prop
+  //  Load data from employeeData prop
   useEffect(() => {
     if (employeeData) {
       // Assets assigned to employee
@@ -97,7 +97,7 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
     }
   };
 
-  // ✅ Accept asset
+  //  Accept asset
   const handleAcceptAsset = async (asset) => {
     setActionLoading(prev => ({ ...prev, [asset.id]: true }));
     try {
@@ -118,7 +118,7 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
     }
   };
 
-  // ✅ Request clarification
+  //  Request clarification
   const handleRequestClarification = async (asset) => {
     if (!actionData.clarification_reason.trim()) {
       alert('⚠️ Please provide a clarification reason');
@@ -144,11 +144,11 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
     }
   };
 
-  // ✅ Approve/Reject transfer
+  //  Approve/Reject transfer
   const handleTransferAction = async (transfer, approved) => {
   setActionLoading(prev => ({ ...prev, [transfer.id]: true }));
   try {
-    // ✅ transferService istifadə et, assetService yox
+    //  transferService istifadə et, assetService yox
     await transferService.employeeApproveTransfer(transfer.id, {
       approved: approved,
       comments: actionData.transfer_approval_comments || (approved ? 'Transfer approved' : 'Transfer rejected')
@@ -193,7 +193,7 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
   return (
     <div className="space-y-4">
       
-      {/* ✅ Pending Transfer Approvals */}
+      {/*  Pending Transfer Approvals */}
       {pendingTransfers.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
@@ -303,7 +303,7 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
         </div>
       )}
 
-      {/* ✅ Assigned Assets */}
+      {/*  Assigned Assets */}
       <div className="flex items-center gap-2">
         <Package size={16} className="text-almet-sapphire" />
         <h3 className={`${textPrimary} font-bold text-sm`}>
@@ -450,7 +450,7 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
         </div>
       )}
 
-      {/* ✅ Action Modal */}
+      {/*  Action Modal */}
       {showActionModal && (selectedAsset || selectedTransfer) && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3">
           <div className={`${bgCard} rounded-lg w-full max-w-md shadow-2xl border ${borderColor}`}>

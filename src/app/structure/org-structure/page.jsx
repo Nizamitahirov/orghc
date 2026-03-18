@@ -15,6 +15,7 @@ import JobDescriptionModal from '@/components/orgchart/JobDescriptionModal';
 import GridView from '@/components/orgchart/OrgChartGridView';
 import { ReactFlowProvider } from 'reactflow';
 import TreeView from '@/components/orgchart/OrgChartTreeView';
+import { exportToPNG, exportToPDF } from '@/utils/orgChartExport';
 
 const OrgChart = () => {
     const { darkMode } = useTheme();
@@ -159,15 +160,15 @@ const OrgChart = () => {
         setExpandedNodes([]);
     }, [clearFilters, setExpandedNodes]);
 
-    // app/org-chart/page.jsx - ✅ FIXED: Normalized company options
+    // app/org-chart/page.jsx -  FIXED: Normalized company options
 
-// ✅ Company options from orgChart data - NORMALIZED for case-insensitivity
+//  Company options from orgChart data - NORMALIZED for case-insensitivity
 const companyOptions = useMemo(() => {
     if (!orgChart || orgChart.length === 0) {
         return [];
     }
     
-    // ✅ FIXED: Normalize company names (case-insensitive grouping)
+    //  FIXED: Normalize company names (case-insensitive grouping)
     const companyCountsMap = new Map(); // Use Map to preserve order and merge case variants
     
     orgChart.forEach(emp => {
@@ -190,7 +191,7 @@ const companyOptions = useMemo(() => {
         }
     });
     
-    // ✅ Log if we found case variants
+    //  Log if we found case variants
     companyCountsMap.forEach((data, key) => {
         if (data.variants.size > 1) {
             console.log(`⚠️ Found case variants for "${key}":`, Array.from(data.variants));
@@ -207,7 +208,7 @@ const companyOptions = useMemo(() => {
         }
     ];
     
-    // ✅ Add individual companies (sorted by count)
+    //  Add individual companies (sorted by count)
     const companyList = Array.from(companyCountsMap.entries())
         .sort((a, b) => b[1].count - a[1].count) // Sort by count descending
         .map(([companyLower, data]) => ({
@@ -215,7 +216,7 @@ const companyOptions = useMemo(() => {
             label: `${data.displayName} (${data.count})`,
             count: data.count,
             isAll: false,
-            normalized: companyLower // ✅ Store normalized version for matching
+            normalized: companyLower //  Store normalized version for matching
         }));
     
     options.push(...companyList);
@@ -226,9 +227,9 @@ const companyOptions = useMemo(() => {
 }, [orgChart]);
 
 
-// app/org-chart/page.jsx - ✅ FIXED: Case-insensitive company filter
+// app/org-chart/page.jsx -  FIXED: Case-insensitive company filter
 
-// ✅ FIXED: Company filtered data - case-insensitive matching
+//  FIXED: Company filtered data - case-insensitive matching
 const companyFilteredOrgChart = useMemo(() => {
     if (!selectedCompany || !fullTree) return [];
     
@@ -238,7 +239,7 @@ const companyFilteredOrgChart = useMemo(() => {
         return fullTree;
     }
     
-    // ✅ Helper function to get business function value
+    //  Helper function to get business function value
     const getBusinessFunction = (item) => {
         if (!item) return null;
         
@@ -249,10 +250,10 @@ const companyFilteredOrgChart = useMemo(() => {
                null;
     };
     
-    // ✅ FIXED: Case-insensitive matching
+    //  FIXED: Case-insensitive matching
     const selectedCompanyLower = String(selectedCompany).toLowerCase().trim();
     
-    // ✅ Filter with case-insensitive business function matching
+    //  Filter with case-insensitive business function matching
     const filtered = fullTree.filter(item => {
         if (!item) return false;
         
@@ -264,7 +265,7 @@ const companyFilteredOrgChart = useMemo(() => {
             return false;
         }
         
-        // ✅ Case-insensitive comparison
+        //  Case-insensitive comparison
         const businessFunctionLower = String(businessFunction).toLowerCase().trim();
         const matches = businessFunctionLower === selectedCompanyLower;
         
@@ -299,7 +300,7 @@ const searchFilteredOrgChart = useMemo(() => {
     const filtered = companyFilteredOrgChart.filter(employee => {
         if (!employee) return false;
 
-        // ✅ Check if this is a vacancy
+        //  Check if this is a vacancy
         const isVacancy = Boolean(
             employee.employee_details?.is_vacancy || 
             employee.is_vacancy || 
@@ -322,7 +323,7 @@ const searchFilteredOrgChart = useMemo(() => {
             employee.position_group_name
         ];
         
-        // ✅ Add vacancy-specific searchable fields
+        //  Add vacancy-specific searchable fields
         if (isVacancy) {
             searchableFields.push(
                 employee.employee_details?.position_id,
@@ -351,7 +352,7 @@ const searchFilteredOrgChart = useMemo(() => {
     return filtered;
 }, [companyFilteredOrgChart, filters.search]);
 
-// ✅ FIXED: Vacant count
+//  FIXED: Vacant count
 const vacantCount = useMemo(() => {
     if (!searchFilteredOrgChart || searchFilteredOrgChart.length === 0) {
         return 0;
@@ -370,7 +371,7 @@ const vacantCount = useMemo(() => {
     return count;
 }, [searchFilteredOrgChart]);
 
-// ✅ FIXED: Summary stats - properly separates employees and vacancies
+//  FIXED: Summary stats - properly separates employees and vacancies
 const companySummary = useMemo(() => {
     if (!searchFilteredOrgChart || searchFilteredOrgChart.length === 0) {
         return {
@@ -383,7 +384,7 @@ const companySummary = useMemo(() => {
         };
     }
 
-    // ✅ Separate employees and vacancies
+    //  Separate employees and vacancies
     const employees = searchFilteredOrgChart.filter(emp => 
         !emp.employee_details?.is_vacancy && 
         !emp.is_vacancy && 
@@ -454,7 +455,7 @@ const companySummary = useMemo(() => {
                 return;
             }
             
-            // ✅ Step 1: Get employee's job description assignments
+            //  Step 1: Get employee's job description assignments
             let assignmentResponse;
             try {
                 assignmentResponse = await jobDescriptionService.getEmployeeJobDescriptions(databaseId);
@@ -466,7 +467,7 @@ const companySummary = useMemo(() => {
                 throw apiError;
             }
             
-            // ✅ Extract job_descriptions array from response
+            //  Extract job_descriptions array from response
             const jobDescriptions = assignmentResponse.job_descriptions || assignmentResponse || [];
             
             if (!jobDescriptions || jobDescriptions.length === 0) {
@@ -474,7 +475,7 @@ const companySummary = useMemo(() => {
                 return;
             }
 
-            // ✅ Step 2: Select the most relevant assignment
+            //  Step 2: Select the most relevant assignment
             let selectedAssignment = jobDescriptions.find(job => job.status === 'APPROVED');
             if (!selectedAssignment) {
                 const sorted = [...jobDescriptions].sort((a, b) => {
@@ -485,20 +486,20 @@ const companySummary = useMemo(() => {
                 selectedAssignment = sorted[0];
             }
 
-            // ✅ Step 3: Get the job_description_id from the assignment
+            //  Step 3: Get the job_description_id from the assignment
             const jobDescriptionId = selectedAssignment.job_description_id || selectedAssignment.job_description;
             
             if (!jobDescriptionId) {
                 return;
             }
 
-            // ✅ Step 4: Fetch full job description detail
+            //  Step 4: Fetch full job description detail
             const detail = await jobDescriptionService.getJobDescription(jobDescriptionId);
             
-            // ✅ Step 5: Fetch all assignments for this job description
+            //  Step 5: Fetch all assignments for this job description
             const assignmentsData = await jobDescriptionService.getJobDescriptionAssignments(jobDescriptionId);
             
-            // ✅ Step 6: Merge everything together
+            //  Step 6: Merge everything together
             const enrichedDetail = {
                 ...detail,
                 // Add assignment info
@@ -544,63 +545,23 @@ const companySummary = useMemo(() => {
             setDetailLoading(false);
         }
     };
-    // Export to PNG using html-to-image
-    const [exportLoading, setExportLoading] = useState(false);
-    
-    const handleExportToPNG = useCallback(async () => {
-        try {
-            setExportLoading(true);
-            
-            // Dynamic import to avoid SSR issues
-            const { toPng } = await import('html-to-image');
-            
-            const container = document.querySelector('.react-flow');
-            
-            if (!container) {
-                alert('Chart not found');
-                return;
-            }
 
-            const dataUrl = await toPng(container, {
-                backgroundColor: darkMode ? '#0f172a' : '#e7ebf1',
-                cacheBust: true,
-                pixelRatio: 2,
-                quality: 1,
-                skipAutoScale: true,
-                filter: (node) => {
-                    // Exclude React Flow UI controls from export
-                    const exclusionClasses = [
-                        'react-flow__controls',
-                        'react-flow__minimap',
-                        'react-flow__attribution',
-                        'react-flow__panel'
-                    ];
-                    
-                    if (node.classList) {
-                        for (const className of exclusionClasses) {
-                            if (node.classList.contains(className)) {
-                                return false;
-                            }
-                        }
-                    }
-                    
-                    return true;
-                }
-            });
+const [exportLoading, setExportLoading] = useState(null); // null | 'png' | 'pdf'
 
-            // Create download link
-            const link = document.createElement('a');
-            link.download = `org-chart-${selectedCompany || 'all'}-${new Date().toISOString().slice(0, 10)}.png`;
-            link.href = dataUrl;
-            link.click();
-            
-        } catch (error) {
-            console.error('Export failed:', error);
-            alert('Export failed. Please ensure you have installed html-to-image package.');
-        } finally {
-            setExportLoading(false);
-        }
-    }, [darkMode, selectedCompany]);
+
+const handleExportToPNG = useCallback(() => {
+    exportToPNG({ darkMode, selectedCompany, setExportLoading });
+}, [darkMode, selectedCompany]);
+
+
+// ─── 4. handleExportToPDF callback əlavə et ───────────────────────────────────
+const handleExportToPDF = useCallback(() => {
+    exportToPDF({ darkMode, selectedCompany, setExportLoading, summary: companySummary });
+}, [darkMode, selectedCompany, companySummary]);
+
+
+
+
 
     // Fullscreen toggle
     const toggleFullscreen = useCallback(async () => {
@@ -755,8 +716,10 @@ const companySummary = useMemo(() => {
                     updateFilter={updateFilter}
                     setViewMode={setViewMode}
                     setShowFilters={setShowFilters}
-                    handleExportToPNG={handleExportToPNG}
-                    exportLoading={exportLoading}
+                     handleExportToPNG={handleExportToPNG}
+    handleExportToPDF={handleExportToPDF}   // ← YENİ
+    exportLoading={exportLoading}    
+                    
                     toggleFullscreen={toggleFullscreen}
                     fetchFullTreeWithVacancies={fetchFullTreeWithVacancies}
                     hasActiveFilters={hasActiveFilters}

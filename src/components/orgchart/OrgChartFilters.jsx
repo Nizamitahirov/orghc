@@ -221,7 +221,7 @@ const OrgChartFilters = ({
                             onChange={(e) => updateFilter('show_top_level_only', e.target.checked)}
                             className="w-4 h-4 text-almet-sapphire rounded focus:ring-almet-sapphire"
                         />
-                        <span className={`text-sm ${textSecondary}`}>Top Level Only</span>
+                        <span className={`text-xs ${textSecondary}`}>Top Level Only</span>
                     </label>
 
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -231,7 +231,7 @@ const OrgChartFilters = ({
                             onChange={(e) => updateFilter('managers_only', e.target.checked)}
                             className="w-4 h-4 text-almet-sapphire rounded focus:ring-almet-sapphire"
                         />
-                        <span className={`text-sm ${textSecondary}`}>Managers Only</span>
+                        <span className={`text-xs ${textSecondary}`}>Managers Only</span>
                     </label>
                 </div>
             </div>

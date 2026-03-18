@@ -92,7 +92,7 @@ getVacationTypesFiltered: async () => {
     }
   },
 
-  // ✅ NEW: Get UK Additional Approver
+  //  NEW: Get UK Additional Approver
   getUKAdditionalApprover: async () => {
     try {
       const response = await vacationApi.get('/vacation/uk-additional-approver/');
@@ -102,7 +102,7 @@ getVacationTypesFiltered: async () => {
     }
   },
 
-  // ✅ NEW: Set UK Additional Approver (Admin only)
+  //  NEW: Set UK Additional Approver (Admin only)
   setUKAdditionalApprover: async (data) => {
     try {
       const response = await vacationApi.put('/vacation/uk-additional-approver/set/', data);
@@ -131,7 +131,7 @@ getVacationTypesFiltered: async () => {
     }
   },
 
-  // ✅ UPDATED: All Vacation Records with Business Function filter
+  //  UPDATED: All Vacation Records with Business Function filter
   getAllVacationRecords: async (params = {}) => {
     try {
       const response = await vacationApi.get('/vacation/all-vacation-records/', { 
@@ -139,7 +139,7 @@ getVacationTypesFiltered: async () => {
           status: params.status || '',
           vacation_type_id: params.vacation_type_id || '',
           department_id: params.department_id || '',
-          business_function_id: params.business_function_id || '',  // ✅ YENİ
+          business_function_id: params.business_function_id || '',  //  YENİ
           start_date: params.start_date || '',
           end_date: params.end_date || '',
           employee_name: params.employee_name || '',
@@ -152,7 +152,7 @@ getVacationTypesFiltered: async () => {
     }
   },
 
-  // ✅ UPDATED: Export All Vacation Records with Business Function filter
+  //  UPDATED: Export All Vacation Records with Business Function filter
   exportAllVacationRecords: async (params = {}) => {
     try {
       const response = await vacationApi.get('/vacation/all-records/export/', { 
@@ -160,7 +160,7 @@ getVacationTypesFiltered: async () => {
           status: params.status || '',
           vacation_type_id: params.vacation_type_id || '',
           department_id: params.department_id || '',
-          business_function_id: params.business_function_id || '',  // ✅ YENİ
+          business_function_id: params.business_function_id || '',  //  YENİ
           start_date: params.start_date || '',
           end_date: params.end_date || '',
           employee_name: params.employee_name || '',
@@ -619,7 +619,7 @@ getVacationTypesFiltered: async () => {
 
   // === BALANCES ===
   
-  // ✅ UPDATED: Get All Balances with Company filter
+  //  UPDATED: Get All Balances with Company filter
     getAllBalances: async (params = {}) => {
     try {
       const queryParams = new URLSearchParams();
@@ -638,7 +638,7 @@ getVacationTypesFiltered: async () => {
     }
   },
 
-  // ✅ DÜZƏLDİLDİ: Export Balances
+  //  DÜZƏLDİLDİ: Export Balances
   exportBalances: async (params = {}) => {
     try {
       const queryParams = new URLSearchParams();

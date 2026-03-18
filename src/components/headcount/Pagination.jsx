@@ -12,7 +12,7 @@ const Pagination = ({
   onPageSizeChange,
   loading = false,
   className = "",
-  // ✅ NEW: Add preserveFilters prop
+  //  NEW: Add preserveFilters prop
   preserveFilters = false
 }) => {
   const { darkMode } = useTheme();
@@ -72,7 +72,7 @@ const Pagination = ({
 
   const pageNumbers = getPageNumbers();
 
-  // ✅ Handle page change with filter preservation
+  //  Handle page change with filter preservation
   const handlePageChange = useCallback((page) => {
     if (page >= 1 && page <= actualTotalPages && page !== currentPage && !loading) {
 
@@ -80,14 +80,14 @@ const Pagination = ({
     }
   }, [actualTotalPages, currentPage, loading, onPageChange, preserveFilters]);
 
-  // ✅ Handle page size change with filter preservation
+  //  Handle page size change with filter preservation
   const handlePageSizeChange = useCallback((newSize) => {
     if (onPageSizeChange && newSize !== pageSize) {
       onPageSizeChange(newSize);
     }
   }, [onPageSizeChange, pageSize, preserveFilters]);
 
-  // ✅ Handle quick jump with filter preservation
+  //  Handle quick jump with filter preservation
   const handleQuickJump = useCallback((e) => {
     if (e.key === 'Enter') {
       const page = parseInt(e.target.value);

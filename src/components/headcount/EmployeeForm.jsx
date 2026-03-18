@@ -28,8 +28,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
   const isEditMode = !!employee;
 
   const { 
-    createEmployee, 
-    updateEmployee, 
+
     loading: employeeLoading, 
     error: employeeError, 
     clearErrors 
@@ -62,6 +61,8 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         position_group_name: employee.position_group_name || "",
         grading_level: employee.grading_level || employee.grade || "",
         start_date: employee.start_date || "",
+        hiring_date:      employee.hiring_date      || "",
+        employment_type:  employee.employment_type?.toString() || "",
         contract_duration: employee.contract_duration || "PERMANENT",
         contract_start_date: employee.contract_start_date || "",
         contract_end_date: employee.contract_end_date || "",
@@ -107,6 +108,8 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
       end_date: "",
       line_manager: "",
       notes: "",
+       hiring_date:      "",
+        employment_type:  "",
       status: "",
       is_visible_in_org_chart: true,
       tag_ids: [],
@@ -127,7 +130,8 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     employeeTags: [],
     lineManagers: [],
     gradingLevels: [],
-    contractConfigs: []
+    contractConfigs: [],
+    employmentTypes: [], 
   });
 
   // Loading states
@@ -141,6 +145,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     lineManagers: false,
     gradingLevels: false,
     contractConfigs: false,
+    employmentTypes: false,
     initialLoad: true
   });
 
@@ -321,7 +326,29 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
       setLoading(prev => ({ ...prev, jobFunctions: false }));
     }
   }, []);
-
+const loadEmploymentTypes = useCallback(async () => {
+    setLoading(prev => ({ ...prev, employmentTypes: true }));
+    try {
+      const response = await apiService.getEmploymentTypes();
+      const data = response?.data?.results ?? response?.data ?? [];
+      setReferenceData(prev => ({
+        ...prev,
+        employmentTypes: (Array.isArray(data) ? data : []).map(item => ({
+          id:          item.id,
+          name:        item.name,
+          code:        item.code,
+          color:       item.color,
+          description: item.description,
+          is_active:   item.is_active,
+        })),
+      }));
+    } catch (err) {
+      console.error('Failed to load employment types:', err);
+      setReferenceData(prev => ({ ...prev, employmentTypes: [] }));
+    } finally {
+      setLoading(prev => ({ ...prev, employmentTypes: false }));
+    }
+  }, []);
   const loadPositionGroups = useCallback(async () => {
     setLoading(prev => ({ ...prev, positionGroups: true }));
     try {
@@ -493,6 +520,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
           loadPositionGroups(),
           loadEmployeeTags(),
           loadLineManagers(),
+           loadEmploymentTypes(), 
           loadContractConfigs()
         ]);
 
@@ -817,7 +845,13 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
       formDataObj.append('job_function', formData.job_function);
       formDataObj.append('position_group', formData.position_group);
       formDataObj.append('contract_duration', formData.contract_duration);
-
+       if (formData.hiring_date) {
+        const formatted = formatDateForAPI(formData.hiring_date);
+        if (formatted) formDataObj.append('hiring_date', formatted);
+      }
+      if (formData.employment_type) {
+        formDataObj.append('employment_type', formData.employment_type);
+      }
       const booleanValue = formData.is_visible_in_org_chart === true || formData.is_visible_in_org_chart === 'true';
       formDataObj.append('is_visible_in_org_chart', booleanValue ? 'True' : 'False');
 
@@ -968,7 +1002,8 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     gradeOptions: referenceData.gradingLevels,
     contractConfigs: referenceData.contractConfigs,
     loadingGradingLevels: loading.gradingLevels,
-    
+    employmentTypes: referenceData.employmentTypes,   // ← əlavə et
+
     lineManagerOptions: referenceData.lineManagers,
     lineManagerSearch,
     setLineManagerSearch: handleLineManagerSearch,

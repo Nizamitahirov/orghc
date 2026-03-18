@@ -1,6 +1,6 @@
 import { useState, memo, useCallback } from 'react';
 import { Target, Plus, Trash2, Save, Send, AlertCircle, CheckCircle, XCircle, Clock, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
-// ✅ CRITICAL: Memoize ObjectiveRow to prevent unnecessary re-renders
+//  CRITICAL: Memoize ObjectiveRow to prevent unnecessary re-renders
 const ObjectiveRow = memo(({ 
   objective, 
   index, 

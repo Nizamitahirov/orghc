@@ -1,282 +1,255 @@
 import React from "react";
-import { Plus, Target, Settings, CheckCircle, AlertTriangle, RefreshCw, Save } from "lucide-react";
+import { Plus, Target, Settings, CheckCircle, AlertTriangle, RefreshCw, Save, DollarSign } from "lucide-react";
+
+const safe = (v, def = 0) => {
+  if (v === null || v === undefined || v === "") return def;
+  const p = parseFloat(v); return isNaN(p) ? def : p;
+};
+const fmt = (v) => (v || 0).toLocaleString();
+
+const currencyBadgeCls = (code) => {
+  const m = {
+    AZN: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
+    USD: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300",
+    EUR: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300",
+    GBP: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300",
+    RUB: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
+    TRY: "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300",
+  };
+  return m[code] || "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300";
+};
+
+/* ─── Reusable field wrapper ─────────────────────────────────────────────── */
+const Field = ({ label, error, children }) => (
+  <div>
+    <label className="block text-[11px] font-medium text-almet-waterloo dark:text-gray-400 mb-1">{label}</label>
+    {children}
+    {error && (
+      <p className="flex items-center gap-1 text-[11px] text-red-500 mt-1">
+        <AlertTriangle size={10} />{error}
+      </p>
+    )}
+  </div>
+);
+
+const inputCls = (err) =>
+  `w-full px-3 py-2 text-xs border rounded-lg bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white
+   placeholder-almet-bali-hai dark:placeholder-gray-500
+   focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30 focus:border-almet-sapphire transition-all ${
+    err ? "border-red-400 dark:border-red-600" : "border-almet-mystic dark:border-gray-600"
+  }`;
+
+/* ─── Section block ──────────────────────────────────────────────────────── */
+const Block = ({ step, title, sub, children }) => (
+  <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic dark:border-gray-700 overflow-hidden">
+    <div className="flex items-center gap-2.5 px-4 py-3 border-b border-almet-mystic dark:border-gray-700 bg-almet-mystic/20 dark:bg-gray-700/20">
+      {step && (
+        <span className="w-5 h-5 rounded-md bg-almet-sapphire text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+          {step}
+        </span>
+      )}
+      <div>
+        <p className="text-xs font-semibold text-almet-cloud-burst dark:text-white">{title}</p>
+        {sub && <p className="text-[10px] text-almet-waterloo dark:text-gray-400">{sub}</p>}
+      </div>
+    </div>
+    <div className="p-4">{children}</div>
+  </div>
+);
 
 const CreateScenarioCard = ({
-  scenarioInputs,
-  newScenarioDisplayData,
-  basePositionName,
-  validationSummary,
-  errors,
-  loading,
-  isCalculating,
-  handleBaseValueChange,
-  handleVerticalChange,
-  handleGlobalHorizontalChange,
-  handleSaveDraft,
-  scenarioName,
-  onScenarioNameChange
+  scenarioInputs, newScenarioDisplayData, basePositionName,
+  validationSummary, errors, loading, isCalculating,
+  handleBaseValueChange, handleVerticalChange, handleGlobalHorizontalChange,
+  handleSaveDraft, handleCurrencyChange, currencies,
+  scenarioName, onScenarioNameChange,
 }) => {
-  const formatCurrency = (value) => {
-    const numValue = value || 0;
-    return numValue.toLocaleString();
-  };
-
-  const safeValue = (value, defaultValue = 0) => {
-    if (value === null || value === undefined || value === '') {
-      return defaultValue;
-    }
-    const parsed = parseFloat(value);
-    return isNaN(parsed) ? defaultValue : parsed;
-  };
+  const cur = scenarioInputs.currency || "AZN";
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-      {/* Header */}
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-800">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-            <Plus size={16} className="text-green-600 dark:text-green-400" />
-          </div>
-          <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-            Create New Scenario
-          </h3>
-          {isCalculating && (
-            <RefreshCw size={14} className="animate-spin text-blue-600 dark:text-blue-400 ml-auto" />
-          )}
-        </div>
-      </div>
-      
-      <div className="p-4 space-y-4">
-        {/* Scenario Name Input */}
-        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-          <label className="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-200 mb-2">
-            <Plus size={12} className="text-blue-600 dark:text-blue-400" />
-            Scenario Name
-          </label>
-          <input
-            type="text"
-            value={scenarioName}
-            onChange={(e) => onScenarioNameChange(e.target.value)}
-            className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all"
-            placeholder="Enter scenario name (e.g., Q1 2025 Adjustment)"
-          />
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-            Leave empty for auto-generated name
-          </p>
-        </div>
+    <div className="space-y-4">
 
-        {/* Base Value Input */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-            <label className="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-200 mb-2">
-              <Target size={12} className="text-blue-600 dark:text-blue-400" />
-              Base Value ({basePositionName})
-            </label>
+      {/* ── Step 1: Basic Info ───────────────────────────────────────────────── */}
+      <Block step="1" title="Basic Information" sub="Name, base value and currency for this scenario">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Field label="Scenario Name">
+            <input
+              type="text"
+              value={scenarioName}
+              onChange={e => onScenarioNameChange(e.target.value)}
+              className={inputCls(false)}
+              placeholder="e.g. Q1 2025 Adjustment"
+            />
+            <p className="text-[10px] text-almet-waterloo dark:text-gray-500 mt-1">Leave empty for auto-generated name</p>
+          </Field>
+
+          <Field label={`Base Value — ${basePositionName || "Reference"}`} error={errors.baseValue1}>
             <input
               type="number"
-              value={scenarioInputs.baseValue1 || ''}
-              onChange={(e) => handleBaseValueChange(e.target.value)}
-              className={`w-full px-4 py-2.5 border rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all ${
-                errors.baseValue1 ? "border-red-400 bg-red-50 dark:bg-red-900/20 dark:border-red-600" : "border-blue-300 dark:border-blue-700"
-              }`}
+              value={scenarioInputs.baseValue1 || ""}
+              onChange={e => handleBaseValueChange(e.target.value)}
+              className={inputCls(!!errors.baseValue1)}
               placeholder="Enter base salary"
             />
-            {errors.baseValue1 && (
-              <p className="text-red-600 dark:text-red-400 text-xs mt-2 flex items-center gap-1">
-                <AlertTriangle size={12} />
-                {errors.baseValue1}
-              </p>
-            )}
-          </div>
+          </Field>
 
-          {/* Save Button */}
-          <div className="flex items-end">
-            <button
-              onClick={handleSaveDraft}
-              disabled={!validationSummary?.canSave || loading.saving}
-              className={`w-full px-5 py-2.5 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
-                validationSummary?.canSave && !loading.saving
-                  ? "bg-blue-600 dark:bg-blue-600 text-white hover:bg-blue-700 dark:hover:bg-blue-700 shadow-sm hover:shadow-md"
-                  : "bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed"
-              }`}
+          <Field label="Currency">
+            <select
+              value={cur}
+              onChange={e => handleCurrencyChange(e.target.value)}
+              className={inputCls(false)}
             >
-              {loading.saving ? (
-                <>
-                  <RefreshCw size={16} className="animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save size={16} />
-                  Save Draft
-                </>
-              )}
-            </button>
-          </div>
+              {(currencies || []).map(({ code, label }) => (
+                <option key={code} value={code}>{code} — {label}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-almet-waterloo dark:text-gray-500 mt-1 flex items-center gap-1">
+              All values will be in
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${currencyBadgeCls(cur)}`}>{cur}</span>
+            </p>
+          </Field>
         </div>
+      </Block>
 
-        {/* Global Horizontal Intervals */}
-        <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
-          <h4 className="text-xs font-medium text-gray-800 dark:text-gray-100 mb-4 flex items-center gap-2">
-            <Settings size={12} className="text-amber-600 dark:text-amber-400" />
-            Global Horizontal Intervals
-          </h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {['LD_to_LQ', 'LQ_to_M', 'M_to_UQ', 'UQ_to_UD'].map((intervalKey) => {
-              const displayName = intervalKey.replace(/_to_/g, '→').replace(/_/g, ' ');
-              const errorKey = `global-horizontal-${intervalKey}`;
-              
-              return (
-                <div key={intervalKey}>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {displayName}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      value={scenarioInputs.globalHorizontalIntervals?.[intervalKey] || ''}
-                      onChange={(e) => handleGlobalHorizontalChange(intervalKey, e.target.value)}
-                      className={`w-full px-3 py-2 text-sm border rounded-lg text-center bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400 focus:border-transparent transition-all ${
-                        errors[errorKey] ? "border-red-400 dark:border-red-600" : "border-amber-300 dark:border-amber-700"
-                      }`}
-                      placeholder="0"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                    />
-                    <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400 font-medium">%</span>
-                  </div>
+      {/* ── Step 2: Horizontal Intervals ─────────────────────────────────────── */}
+      <Block step="2" title="Global Horizontal Intervals" sub="Percentage spread between salary bands within each grade">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { key: "LD_to_LQ", label: "LD → LQ" },
+            { key: "LQ_to_M",  label: "LQ → Median" },
+            { key: "M_to_UQ",  label: "Median → UQ" },
+            { key: "UQ_to_UD", label: "UQ → UD" },
+          ].map(({ key, label }) => {
+            const ek = `global-horizontal-${key}`;
+            return (
+              <Field key={key} label={label} error={errors[ek]}>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={scenarioInputs.globalHorizontalIntervals?.[key] || ""}
+                    onChange={e => handleGlobalHorizontalChange(key, e.target.value)}
+                    className={`${inputCls(!!errors[ek])} pr-7 text-center`}
+                    placeholder="0" min="0" max="100" step="0.1"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-almet-waterloo dark:text-gray-400 pointer-events-none">%</span>
                 </div>
-              );
-            })}
-          </div>
+              </Field>
+            );
+          })}
         </div>
+      </Block>
 
-        {/* Position Table */}
-        {newScenarioDisplayData && (
-          <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-xs font-medium text-gray-800 dark:text-gray-100">
-                Real-time Results
-              </h4>
-              {newScenarioDisplayData.calculationProgress && (
-                <div className="text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 px-3 py-1 rounded-full">
-                  {newScenarioDisplayData.calculationProgress.calculatedPositions}/
-                  {newScenarioDisplayData.calculationProgress.totalPositions}
-                </div>
-              )}
+      {/* ── Step 3: Grade Vertical Inputs + Live Preview ─────────────────────── */}
+      <Block
+        step="3"
+        title="Grade Breakdown"
+        sub="Set vertical % per grade and review the calculated salary values"
+      >
+        <div className="flex items-center justify-between mb-3">
+          {isCalculating && (
+            <div className="flex items-center gap-1.5 text-[11px] text-almet-waterloo dark:text-gray-400">
+              <RefreshCw size={11} className="animate-spin text-almet-sapphire" />
+              Recalculating…
             </div>
-            
-            <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-              <table className="w-full">
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            {newScenarioDisplayData?.calculationProgress && (
+              <span className="text-[10px] bg-almet-mystic dark:bg-gray-700 text-almet-waterloo dark:text-gray-400 px-2 py-1 rounded-md">
+                {newScenarioDisplayData.calculationProgress.calculatedPositions}/
+                {newScenarioDisplayData.calculationProgress.totalPositions} grades
+              </span>
+            )}
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${currencyBadgeCls(cur)}`}>{cur}</span>
+          </div>
+        </div>
+
+        {newScenarioDisplayData ? (
+          <div className="rounded-lg border border-almet-mystic dark:border-gray-700 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
                 <thead>
-                  <tr className="bg-gray-100 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                    <th className="text-left py-2 px-2 text-xs font-medium text-gray-700 dark:text-gray-300">Grade</th>
-                    <th className="text-center py-2 px-2 text-xs font-medium text-gray-700 dark:text-gray-300">Vertical %</th>
-                    <th className="text-center py-2 px-2 text-xs font-medium text-gray-700 dark:text-gray-300">Status</th>
-                    <th className="text-right py-2 px-2 text-xs font-medium text-gray-700 dark:text-gray-300">LD</th>
-                    <th className="text-right py-2 px-2 text-xs font-medium text-gray-700 dark:text-gray-300">LQ</th>
-                    <th className="text-right py-2 px-2 text-xs font-medium text-gray-700 dark:text-gray-300">Median</th>
-                    <th className="text-right py-2 px-2 text-xs font-medium text-gray-700 dark:text-gray-300">UQ</th>
-                    <th className="text-right py-2 px-2 text-xs font-medium text-gray-700 dark:text-gray-300">UD</th>
+                  <tr className="bg-gradient-to-r from-almet-sapphire to-almet-astral text-white">
+                    <th className="px-3 py-2.5 text-left font-medium">Grade</th>
+                    <th className="px-3 py-2.5 text-center font-medium">Vertical %</th>
+                    <th className="px-3 py-2.5 text-center font-medium">Status</th>
+                    {["LD", "LQ", "Median", "UQ", "UD"].map(h => (
+                      <th key={h} className="px-3 py-2.5 text-right font-medium">{h}</th>
+                    ))}
                   </tr>
                 </thead>
-                <tbody>
-                  {newScenarioDisplayData.gradeOrder.map((gradeName, index) => {
-                    const gradeData = newScenarioDisplayData.grades[gradeName] || {};
-                    const isBasePosition = gradeName === basePositionName;
-                    const isTopPosition = index === 0;
-                    const errorKey = `vertical-${gradeName}`;
-                    
-                    const ldValue = isBasePosition && scenarioInputs.baseValue1 > 0 
-                      ? Math.round(parseFloat(scenarioInputs.baseValue1)) 
-                      : safeValue(gradeData.LD);
+                <tbody className="divide-y divide-almet-mystic/50 dark:divide-gray-700/50">
+                  {newScenarioDisplayData.gradeOrder.map((name, idx) => {
+                    const gd     = newScenarioDisplayData.grades[name] || {};
+                    const isBase = name === basePositionName;
+                    const isTop  = idx === 0;
+                    const ek     = `vertical-${name}`;
+                    const ldVal  = isBase && scenarioInputs.baseValue1 > 0
+                      ? Math.round(parseFloat(scenarioInputs.baseValue1))
+                      : safe(gd.LD);
 
                     return (
-                      <tr 
-                        key={gradeName} 
-                        className={`border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors ${
-                          isBasePosition ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
-                        }`}
-                      >
-                        <td className="py-2 px-2 text-xs">
+                      <tr key={name} className={`hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors ${isBase ? "bg-blue-50/40 dark:bg-blue-900/10" : ""}`}>
+                        {/* Grade name */}
+                        <td className="px-3 py-2.5">
                           <div className="flex items-center gap-2">
-                            <div className={`w-2.5 h-2.5 rounded-full ${
-                              isTopPosition ? 'bg-red-500' : isBasePosition ? 'bg-blue-600' : 'bg-gray-400 dark:bg-gray-500'
-                            }`} />
-                            <span className="font-medium text-gray-900 dark:text-white">{gradeName}</span>
-                            {isBasePosition && <Target size={10} className="text-blue-600 dark:text-blue-400" />}
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isTop ? "bg-red-500" : isBase ? "bg-almet-sapphire" : "bg-almet-bali-hai dark:bg-gray-500"}`} />
+                            <span className="font-medium text-almet-cloud-burst dark:text-white">{name}</span>
+                            {isBase && <Target size={9} className="text-almet-sapphire" />}
                           </div>
                         </td>
-                        
-                        <td className="py-2 px-2 text-center">
-                          {!isBasePosition ? (
+
+                        {/* Vertical input */}
+                        <td className="px-3 py-2.5 text-center">
+                          {isBase ? (
+                            <span className="text-almet-waterloo dark:text-gray-400 italic">Base</span>
+                          ) : (
                             <div className="relative inline-block">
                               <input
                                 type="number"
-                                value={gradeData.vertical || ''}
-                                onChange={(e) => handleVerticalChange(gradeName, e.target.value)}
-                                className={`w-16 px-1 py-1 text-xs border rounded text-center bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all ${
-                                  errors[errorKey] ? "border-red-400 dark:border-red-600" : "border-gray-300 dark:border-gray-600"
-                                }`}
-                                placeholder="0"
-                                min="0"
-                                max="100"
-                                step="0.1"
+                                value={gd.vertical || ""}
+                                onChange={e => handleVerticalChange(name, e.target.value)}
+                                className={`w-16 px-2 py-1 text-xs border rounded-md text-center bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white focus:outline-none focus:ring-1 focus:ring-almet-sapphire transition-all ${errors[ek] ? "border-red-400" : "border-almet-mystic dark:border-gray-600"}`}
+                                placeholder="0" min="0" max="100" step="0.1"
                               />
-                              <span className="absolute right-0 top-1/2 transform -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400">%</span>
+                              <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[10px] text-almet-waterloo pointer-events-none">%</span>
                             </div>
-                          ) : (
-                            <span className="text-xs text-gray-500 dark:text-gray-400 italic">Base</span>
                           )}
                         </td>
-                        
-                        <td className="py-2 px-2 text-center">
-                          {gradeData.isCalculated ? (
-                            <CheckCircle size={10} className="text-green-600 dark:text-green-400 mx-auto" />
-                          ) : isBasePosition && scenarioInputs.baseValue1 > 0 ? (
-                            <Target size={10} className="text-blue-600 dark:text-blue-400 mx-auto" />
-                          ) : (
-                            <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full mx-auto"></div>
-                          )}
+
+                        {/* Status */}
+                        <td className="px-3 py-2.5 text-center">
+                          {gd.isCalculated
+                            ? <CheckCircle size={12} className="text-emerald-500 mx-auto" />
+                            : isBase && scenarioInputs.baseValue1 > 0
+                              ? <Target size={12} className="text-almet-sapphire mx-auto" />
+                              : <span className="w-2 h-2 bg-almet-bali-hai dark:bg-gray-500 rounded-full inline-block" />
+                          }
                         </td>
-                        
-                        {/* Calculated Values */}
-                        <td className="py-2 px-2 text-xs text-right font-mono">
-                          {ldValue > 0 ? (
-                            <span className={`font-medium ${
-                              isBasePosition ? "text-blue-700 dark:text-blue-400" : 
-                              gradeData.isCalculated ? "text-green-700 dark:text-green-400" : "text-gray-600 dark:text-gray-400"
-                            }`}>
-                              {formatCurrency(ldValue)}
-                              {isBasePosition && scenarioInputs.baseValue1 > 0 && !gradeData.isCalculated && (
-                                <span className="ml-1 text-xs text-blue-600 dark:text-blue-400">(Input)</span>
+
+                        {/* LD LQ M UQ UD values */}
+                        {["LD", "LQ", "M", "UQ", "UD"].map(lv => {
+                          const val = lv === "LD" ? ldVal : safe(gd[lv]);
+                          return (
+                            <td key={lv} className="px-3 py-2.5 text-right font-mono">
+                              {val > 0 ? (
+                                <span className={`${
+                                  isBase
+                                    ? "text-almet-sapphire font-semibold"
+                                    : gd.isCalculated
+                                      ? "text-emerald-600 dark:text-emerald-400"
+                                      : "text-almet-waterloo dark:text-gray-400"
+                                }`}>
+                                  {fmt(val)}
+                                  {lv === "LD" && isBase && scenarioInputs.baseValue1 > 0 && !gd.isCalculated && (
+                                    <span className="ml-1 text-[9px] text-almet-sapphire">(input)</span>
+                                  )}
+                                </span>
+                              ) : (
+                                <span className="text-almet-bali-hai dark:text-gray-500">—</span>
                               )}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400 dark:text-gray-500">-</span>
-                          )}
-                        </td>
-                        <td className="py-2 px-2 text-xs text-right font-mono">
-                          <span className={`font-medium ${gradeData.LQ && gradeData.LQ !== "" ? "text-green-700 dark:text-green-400" : "text-gray-400 dark:text-gray-500"}`}>
-                            {gradeData.LQ && gradeData.LQ !== "" ? formatCurrency(gradeData.LQ) : "-"}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-xs text-right font-mono">
-                          <span className={`font-semibold ${gradeData.M && gradeData.M !== "" ? "text-green-700 dark:text-green-400" : "text-gray-400 dark:text-gray-500"}`}>
-                            {gradeData.M && gradeData.M !== "" ? formatCurrency(gradeData.M) : "-"}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-xs text-right font-mono">
-                          <span className={`font-medium ${gradeData.UQ && gradeData.UQ !== "" ? "text-green-700 dark:text-green-400" : "text-gray-400 dark:text-gray-500"}`}>
-                            {gradeData.UQ && gradeData.UQ !== "" ? formatCurrency(gradeData.UQ) : "-"}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-xs text-right font-mono">
-                          <span className={`font-medium ${gradeData.UD && gradeData.UD !== "" ? "text-green-700 dark:text-green-400" : "text-gray-400 dark:text-gray-500"}`}>
-                            {gradeData.UD && gradeData.UD !== "" ? formatCurrency(gradeData.UD) : "-"}
-                          </span>
-                        </td>
+                            </td>
+                          );
+                        })}
                       </tr>
                     );
                   })}
@@ -284,8 +257,30 @@ const CreateScenarioCard = ({
               </table>
             </div>
           </div>
+        ) : (
+          <div className="text-center py-8 text-[11px] text-almet-waterloo dark:text-gray-500">
+            Enter a base value above to see the grade breakdown
+          </div>
         )}
-      </div>
+
+        {/* Save button */}
+        <div className="flex justify-end mt-4 pt-4 border-t border-almet-mystic dark:border-gray-700">
+          <button
+            onClick={handleSaveDraft}
+            disabled={!validationSummary?.canSave || loading.saving}
+            className={`flex items-center gap-2 px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
+              validationSummary?.canSave && !loading.saving
+                ? "bg-almet-sapphire text-white hover:bg-almet-astral shadow-sm"
+                : "bg-almet-mystic dark:bg-gray-700 text-almet-bali-hai dark:text-gray-500 cursor-not-allowed"
+            }`}
+          >
+            {loading.saving
+              ? <><RefreshCw size={13} className="animate-spin" />Saving…</>
+              : <><Save size={13} />Save Draft</>
+            }
+          </button>
+        </div>
+      </Block>
     </div>
   );
 };

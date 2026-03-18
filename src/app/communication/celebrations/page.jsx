@@ -50,7 +50,7 @@ export default function CelebrationsPage() {
   const [celebrationWishes, setCelebrationWishes] = useState([]);
   const [formLoading, setFormLoading] = useState(false);
   
-  // ✅ Access control state
+  //  Access control state
   const [userAccess, setUserAccess] = useState(null);
   const [accessLoading, setAccessLoading] = useState(true);
 
@@ -79,7 +79,7 @@ export default function CelebrationsPage() {
     loadCelebratedItems();
   }, []);
 
-  // ✅ Load user access
+  //  Load user access
   const loadUserAccess = async () => {
     try {
       setAccessLoading(true);
@@ -149,7 +149,7 @@ export default function CelebrationsPage() {
   };
 
   const openCreateModal = () => {
-    // ✅ Check access before opening
+    //  Check access before opening
     if (!userAccess?.can_create) {
       showWarning('You do not have permission to create celebrations');
       return;
@@ -160,7 +160,6 @@ export default function CelebrationsPage() {
   };
 
   const openEditModal = (celebration) => {
-    // ✅ Check access before editing
     if (!userAccess?.can_create) {
       showWarning('You do not have permission to edit celebrations');
       return;
@@ -376,7 +375,7 @@ export default function CelebrationsPage() {
       showWarning('Cannot delete auto-generated celebrations (birthdays and work anniversaries)');
       return;
     }
-    // ✅ Check access before deleting
+    //  Check access before deleting
     if (!userAccess?.can_create) {
       showWarning('You do not have permission to delete celebrations');
       return;
@@ -427,7 +426,7 @@ export default function CelebrationsPage() {
                 Celebrate milestones and achievements together
               </p>
             </div>
-            {/* ✅ Only show Create button if user has permission */}
+            {/*  Only show Create button if user has permission */}
             {userAccess?.can_create && (
               <button
                 onClick={openCreateModal}
@@ -617,7 +616,7 @@ export default function CelebrationsPage() {
                       </div>
                     </div>
 
-                    {/* ✅ Only show edit/delete if user has permission AND celebration is not auto */}
+                    {/*  Only show edit/delete if user has permission AND celebration is not auto */}
                     {!item.is_auto && userAccess?.can_create && (
                       <div className="absolute top-56 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
@@ -1019,7 +1018,7 @@ export default function CelebrationsPage() {
                   <X size={20} className={darkMode ? 'text-gray-400' : 'text-gray-600'} />
                 </button>
 
-                {/* ✅ Edit and Delete Buttons - only if user has permission */}
+                {/*  Edit and Delete Buttons - only if user has permission */}
                 {!selectedCelebration.is_auto && userAccess?.can_create && (
                   <div className="absolute top-4 left-4 flex gap-2">
                     <button

@@ -4,7 +4,7 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-// ✅ Token Manager
+//  Token Manager
 const TokenManager = {
   getAccessToken: () => typeof window !== 'undefined' ? localStorage.getItem("accessToken") : null,
   getRefreshToken: () => typeof window !== 'undefined' ? localStorage.getItem("refreshToken") : null,
@@ -27,7 +27,7 @@ const api = axios.create({
   timeout: 30000,
 });
 
-// ✅ Request Interceptor
+//  Request Interceptor
 api.interceptors.request.use(
   (config) => {
     const token = TokenManager.getAccessToken();
@@ -41,7 +41,7 @@ api.interceptors.request.use(
   }
 );
 
-// ✅ Response Interceptor (401 xətası üçün)
+//  Response Interceptor (401 xətası üçün)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -61,7 +61,7 @@ api.interceptors.response.use(
 
 const celebrationService = {
   
-  // ✅ Get all celebrations (manual + auto generated)
+  //  Get all celebrations (manual + auto generated)
   getAllCelebrations: async () => {
     try {
       const response = await api.get('/celebrations/all_celebrations/');
@@ -72,7 +72,7 @@ const celebrationService = {
     }
   },
 
-  // ✅ Get celebration statistics
+  //  Get celebration statistics
   getStatistics: async () => {
     try {
       const response = await api.get('/celebrations/statistics/');
@@ -83,7 +83,7 @@ const celebrationService = {
     }
   },
 
-  // ✅ Create new celebration (manual only - company events, achievements, other)
+  //  Create new celebration (manual only - company events, achievements, other)
   createCelebration: async (celebrationData) => {
     try {
       const formData = new FormData();
@@ -114,7 +114,7 @@ const celebrationService = {
     }
   },
 
-  // ✅ Update celebration
+  //  Update celebration
   updateCelebration: async (id, celebrationData) => {
     try {
       const formData = new FormData();
@@ -145,7 +145,7 @@ const celebrationService = {
     }
   },
 
-  // ✅ Delete celebration
+  //  Delete celebration
   deleteCelebration: async (id) => {
     try {
       const response = await api.delete(`/celebrations/${id}/`);
@@ -156,7 +156,7 @@ const celebrationService = {
     }
   },
 
-  // ✅ Remove image from celebration
+  //  Remove image from celebration
   removeImage: async (celebrationId, imageId) => {
     try {
       const response = await api.delete(`/celebrations/${celebrationId}/remove_image/`, {
@@ -169,7 +169,7 @@ const celebrationService = {
     }
   },
 
-  // ✅ Add wish to manual celebration
+  //  Add wish to manual celebration
   addWish: async (celebrationId, message) => {
     try {
       const response = await api.post(`/celebrations/${celebrationId}/add_wish/`, {
@@ -182,7 +182,7 @@ const celebrationService = {
     }
   },
 
-  // ✅ Add wish to auto celebration (birthday or work anniversary)
+  //  Add wish to auto celebration (birthday or work anniversary)
   addAutoWish: async (employeeId, celebrationType, message) => {
     try {
       const response = await api.post('/celebrations/add_auto_wish/', {
@@ -197,7 +197,7 @@ const celebrationService = {
     }
   },
 
-  // ✅ Get specific celebration details
+  //  Get specific celebration details
   getCelebrationById: async (id) => {
     try {
       const response = await api.get(`/celebrations/${id}/`);
@@ -208,7 +208,7 @@ const celebrationService = {
     }
   },
 
-  // ✅ Get wishes for a celebration
+  //  Get wishes for a celebration
   getCelebrationWishes: async (celebrationId) => {
     try {
       const response = await api.get(`/celebrations/${celebrationId}/`);
@@ -219,7 +219,7 @@ const celebrationService = {
     }
   },
 
-  // ✅ Get wishes for auto celebration (birthday or work anniversary)
+  //  Get wishes for auto celebration (birthday or work anniversary)
   getAutoCelebrationWishes: async (employeeId, celebrationType) => {
     try {
       const response = await api.get('/celebrations/get_auto_wishes/', {

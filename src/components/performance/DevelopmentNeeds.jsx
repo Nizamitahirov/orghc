@@ -1,7 +1,7 @@
 import { useState, memo, useCallback } from 'react';
 import { BookOpen, Plus, Trash2, Send, ChevronDown, ChevronUp } from 'lucide-react';
 
-// ✅ MEMOIZED Development Need Row
+//  MEMOIZED Development Need Row
 const DevelopmentNeedRow = memo(({ 
   need, 
   index, 

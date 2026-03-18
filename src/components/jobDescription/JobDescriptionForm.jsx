@@ -1,11 +1,9 @@
-// components/jobDescription/JobDescriptionForm.jsx - COMPLETE with Auto-Select Fix
 import React, { useState, useEffect } from 'react';
 import { 
   User, 
   Building, 
   Briefcase, 
   Save, 
-  X, 
   AlertCircle,
   UserCheck,
   CheckCircle,
@@ -31,7 +29,6 @@ const JobDescriptionForm = ({
   availableCompetencies = [],
   selectedPositionGroup = '',
   matchingEmployees = [],
-  actionLoading = false,
   onFormDataChange = () => {},
   onSkillGroupChange = () => {},
   onBehavioralGroupChange = () => {},
@@ -43,24 +40,17 @@ const JobDescriptionForm = ({
 }) => {
   const [activeTab, setActiveTab] = useState('position');
   const [validationErrors, setValidationErrors] = useState({});
-  
-  // Employee selection and assignment state
   const [showEmployeeSelectionModal, setShowEmployeeSelectionModal] = useState(false);
   const [assignmentPreview, setAssignmentPreview] = useState(null);
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
   const [eligibleEmployees, setEligibleEmployees] = useState([]);
   const [jobCriteria, setJobCriteria] = useState({});
-  
-  // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Track if editing job was in pending/approved state
   const [wasInApprovalProcess, setWasInApprovalProcess] = useState(false);
 
   const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
   const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
   const textSecondary = darkMode ? "text-almet-bali-hai" : "text-gray-700";
-  const textMuted = darkMode ? "text-gray-400" : "text-almet-waterloo";
   const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
   const bgAccent = darkMode ? "bg-almet-comet" : "bg-gray-50";
 
@@ -85,7 +75,6 @@ const JobDescriptionForm = ({
     }
   ];
 
-  // Check if editing job was in approval process
   useEffect(() => {
     if (editingJob) {
       const approvalStatuses = ['PENDING_LINE_MANAGER', 'PENDING_EMPLOYEE', 'APPROVED'];
@@ -96,9 +85,7 @@ const JobDescriptionForm = ({
   const handleAssignmentPreviewUpdate = (previewData) => {
     setAssignmentPreview(previewData);
     
-    // Don't reset in edit mode
     if (editingJob) {
-
       return;
     }
     
@@ -121,7 +108,6 @@ const JobDescriptionForm = ({
       }
     }
     
-    // 🔥 AUTO-SELECT ALL for manual_selection_required
     if (previewData && previewData.strategy === 'manual_selection_required') {
       const records = previewData.records || previewData.employees || [];
       const criteria = previewData.criteria || {};
@@ -129,16 +115,10 @@ const JobDescriptionForm = ({
       setEligibleEmployees(records);
       setJobCriteria(criteria);
       
-      // Auto-select all matching records
       const allRecordIds = records.map(record => record.id);
       setSelectedEmployeeIds(allRecordIds);
-      
-
     }
   };
-
-  
-
 
 const handleEmployeeSelection = (employeeIds, employeeData) => {
     if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
@@ -288,14 +268,11 @@ const handleEmployeeSelection = (employeeIds, employeeData) => {
   };
 
 
-
-// Helper for case-insensitive string comparison
 const matchesIgnoreCase = (str1, str2) => {
   if (!str1 || !str2) return false;
   return str1.toLowerCase().trim() === str2.toLowerCase().trim();
 };
 
-// Helper to extract ID safely
 const extractId = (employee, ...possibleFields) => {
   for (const field of possibleFields) {
     const value = employee[field];
@@ -328,11 +305,9 @@ const getBusinessFunctionId = (name) => {
   return null;
 };
 
-// 🔥 CASE-INSENSITIVE: Department ID
 const getDepartmentId = (name) => {
   if (!name || !dropdownData.employees) return null;
   
-  // Try with business function constraint first
   if (formData.business_function) {
     const employee = dropdownData.employees.find(emp => 
       matchesIgnoreCase(emp.business_function_name, formData.business_function) &&
@@ -348,7 +323,6 @@ const getDepartmentId = (name) => {
     }
   }
   
-  // Fallback: any employee with this department
   const anyMatch = dropdownData.employees.find(emp => 
     matchesIgnoreCase(emp.department_name, name)
   );
@@ -365,7 +339,6 @@ const getDepartmentId = (name) => {
   return null;
 };
 
-// 🔥 CASE-INSENSITIVE: Unit ID
 const getUnitId = (name) => {
   if (!name) return null;
   
@@ -401,7 +374,6 @@ const getUnitId = (name) => {
   return null;
 };
 
-// 🔥 CASE-INSENSITIVE: Job Function ID
 const getJobFunctionId = (name) => {
   if (!name || !dropdownData.employees) return null;
   
@@ -437,7 +409,6 @@ const getJobFunctionId = (name) => {
   return null;
 };
 
-// 🔥 CASE-INSENSITIVE: Position Group ID
 const getPositionGroupId = (name) => {
   if (!name || !dropdownData.employees) return null;
   
@@ -496,14 +467,12 @@ const handleSubmit = async (e) => {
   try {
     setIsSubmitting(true);
 
-    // 🔥 Get IDs with case-insensitive lookup
     const businessFunctionId = getBusinessFunctionId(formData.business_function);
     const departmentId = getDepartmentId(formData.department);
     const jobFunctionId = getJobFunctionId(formData.job_function);
     const positionGroupId = getPositionGroupId(formData.position_group);
     const unitId = formData.unit ? getUnitId(formData.unit) : null;
 
-    // 🔥 Validate all IDs
     const missingIds = [];
     if (!businessFunctionId || isNaN(businessFunctionId)) {
       missingIds.push(`Company "${formData.business_function}"`);
@@ -527,7 +496,6 @@ const handleSubmit = async (e) => {
       return;
     }
 
-    // Build API payload
     const apiData = {
       job_title: formData.job_title.trim(),
       job_purpose: formData.job_purpose.trim(),
@@ -536,21 +504,17 @@ const handleSubmit = async (e) => {
       job_function: parseInt(jobFunctionId),
       position_group: parseInt(positionGroupId),
       
-      // Grading levels
       ...(formData.grading_levels && Array.isArray(formData.grading_levels) && formData.grading_levels.length > 0 && {
         grading_levels: formData.grading_levels.map(level => level.trim()).filter(Boolean)
       }),
       
-      // Unit (optional)
       ...(unitId && !isNaN(unitId) && { unit: parseInt(unitId) }),
       
       sections: [],
       
-      // 🔥 TECHNICAL SKILLS - FIXED
       required_skills_data: (formData.required_skills_data || [])
         .filter(skillId => skillId && String(skillId).trim() !== '')
         .map(skillId => {
-          // Remove any prefix (like "skill_" or group info)
           const cleanId = String(skillId).split('_').pop();
           const numericId = parseInt(cleanId);
           
@@ -565,13 +529,11 @@ const handleSubmit = async (e) => {
             is_mandatory: true
           };
         })
-        .filter(Boolean), // Remove nulls
+        .filter(Boolean), 
       
-      // 🔥 BEHAVIORAL COMPETENCIES - FIXED (for non-leadership)
       behavioral_competencies_data: (formData.behavioral_competencies_data || [])
         .filter(compId => compId && String(compId).trim() !== '')
         .map(compId => {
-          // Remove any prefix
           const cleanId = String(compId).split('_').pop();
           const numericId = parseInt(cleanId);
           
@@ -588,24 +550,20 @@ const handleSubmit = async (e) => {
         })
         .filter(Boolean),
       
-      // 🔥 LEADERSHIP COMPETENCIES - NEW (for leadership positions)
+      
       leadership_competencies_data: (formData.leadership_competencies_data || [])
         .filter(itemId => itemId && String(itemId).trim() !== '')
         .map(itemId => {
-          // Remove any prefix
-          const cleanId = String(itemId).split('_').pop();
+        
+          const parts  = String(itemId).split('_');
+          const cleanId = parts[parts.length - 1];   
           const numericId = parseInt(cleanId);
-          
+      
           if (isNaN(numericId)) {
             console.warn('⚠️ Invalid leadership competency ID:', itemId);
             return null;
           }
-          
-          return {
-            leadership_item_id: numericId,
-            proficiency_level: "INTERMEDIATE",
-            is_mandatory: true
-          };
+          return { leadership_item_id: numericId };  
         })
         .filter(Boolean),
       
@@ -685,7 +643,6 @@ const handleSubmit = async (e) => {
       }
     });
 
-    // Submit to API
     if (editingJob) {
       if (wasInApprovalProcess) {
         apiData.reset_approval_status = true;
@@ -794,13 +751,11 @@ const handleSubmit = async (e) => {
       prefix = 'ben';
     }
 
-    // 🔥 Parse unique IDs (format: prefix_parentId_childId or prefix_parentId)
     const parseUniqueId = (uniqueId) => {
       const str = String(uniqueId);
       const parts = str.split('_');
       
       if (parts[0] === prefix) {
-        // New format: prefix_parentId_childId or prefix_parentId
         if (parts.length === 3) {
           return { parentId: parseInt(parts[1]), childId: parseInt(parts[2]) };
         } else if (parts.length === 2) {
@@ -808,7 +763,6 @@ const handleSubmit = async (e) => {
         }
       }
       
-      // Fallback: try to parse as raw number
       const rawId = parseInt(str);
       if (!isNaN(rawId)) {
         return { parentId: null, childId: null, rawId: rawId };
@@ -826,21 +780,18 @@ const handleSubmit = async (e) => {
       if (!parsed) return;
       
       if (parsed.childId !== null) {
-        // This is a child selection
         parentIds.add(parsed.parentId);
         if (!childIdsByParent[parsed.parentId]) {
           childIdsByParent[parsed.parentId] = [];
         }
         childIdsByParent[parsed.parentId].push(parsed.childId);
       } else if (parsed.parentId !== null) {
-        // This is a parent selection (no children)
         parentIds.add(parsed.parentId);
         explicitlySelectedParents.add(parsed.parentId);
         if (!childIdsByParent[parsed.parentId]) {
           childIdsByParent[parsed.parentId] = [];
         }
       } else if (parsed.rawId !== null) {
-        // Fallback: old format, try to find in data
         let foundAsChild = false;
         
         for (const parentItem of dataSource) {
@@ -1125,7 +1076,6 @@ const handleSubmit = async (e) => {
           </div>
 
           <div className="p-4">
-            {/* Last Tab Instructions */}
             {isLastTab() && !editingJob && (
               <div className="p-3 bg-almet-mystic dark:bg-almet-cloud-burst/20 border border-almet-bali-hai/30 dark:border-almet-comet rounded-lg">
                 <div className="flex items-center gap-2">
@@ -1203,7 +1153,6 @@ const handleSubmit = async (e) => {
             )}
           </div>
 
-          {/* Step-by-Step Navigation */}
           <div className="p-4 border-t border-gray-200 dark:border-almet-comet bg-gray-50 dark:bg-almet-comet">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2 text-xs text-gray-500">

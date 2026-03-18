@@ -123,7 +123,7 @@ export default function ExitInterviewModal({ interview, onClose, onSuccess }) {
       let questionsArray = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [data];
       setQuestions(questionsArray);
       
-      // ✅ FIX: Initialize responses with proper structure
+      //  FIX: Initialize responses with proper structure
       const initialResponses = {};
       questionsArray.forEach(q => {
         initialResponses[q.id] = {
@@ -179,7 +179,7 @@ export default function ExitInterviewModal({ interview, onClose, onSuccess }) {
     try {
       setSubmitting(true);
       
-      // ✅ Validate required questions
+      //  Validate required questions
       const requiredQuestions = questions.filter(q => q.is_required);
       for (const q of requiredQuestions) {
         const response = responses[q.id];
@@ -210,7 +210,7 @@ export default function ExitInterviewModal({ interview, onClose, onSuccess }) {
         }
       }
 
-      // ✅ Prepare payload - ensure all fields are present
+      //  Prepare payload - ensure all fields are present
       const responsesArray = Object.values(responses).map(r => ({
         question: r.question,
         rating_value: r.rating_value || null,
@@ -220,7 +220,7 @@ export default function ExitInterviewModal({ interview, onClose, onSuccess }) {
 
    
 
-      // ✅ Submit to backend
+      //  Submit to backend
       const result = await resignationExitService.exitInterview.submitResponses(
         interview.id,
         responsesArray

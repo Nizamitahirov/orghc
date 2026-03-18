@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Award, Users } from 'lucide-react';
 import HierarchicalMultiSelect from '../common/HierarchicalMultiSelect';
+import BulkListEditor from '../common/BulkListEditor';
 
 const JobResponsibilitiesTab = ({
   formData,
@@ -317,30 +318,9 @@ useEffect(() => {
 
 
 
-
-  // Handle array field changes
-  const handleArrayFieldChange = (fieldName, index, value) => {
-    onFormDataChange(prev => ({
-      ...prev,
-      [fieldName]: prev[fieldName].map((item, i) => i === index ? value : item)
-    }));
-  };
-
-  const addArrayItem = (fieldName) => {
-    onFormDataChange(prev => ({
-      ...prev,
-      [fieldName]: [...prev[fieldName], '']
-    }));
-  };
-
-  const removeArrayItem = (fieldName, index) => {
-    if (formData[fieldName].length > 1) {
-      onFormDataChange(prev => ({
-        ...prev,
-        [fieldName]: prev[fieldName].filter((_, i) => i !== index)
-      }));
-    }
-  };
+const handleSectionChange = (fieldName, newItems) => {
+  onFormDataChange(prev => ({ ...prev, [fieldName]: newItems }));
+};
 
   const handleSkillsChange = (selectedIds) => {
     onFormDataChange(prev => ({
@@ -370,51 +350,22 @@ useEffect(() => {
     <div className="space-y-6">
       {/* Dynamic Sections */}
       {[
-        { fieldName: 'criticalDuties', title: 'Critical Duties', required: true },
-        { fieldName: 'positionMainKpis', title: 'Position Main KPIs', required: true },
-        { fieldName: 'jobDuties', title: 'Job Duties', required: true },
-        { fieldName: 'requirements', title: 'Requirements', required: true }
-      ].map(({ fieldName, title, required }) => (
-        <div key={fieldName}>
-          <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-            {title} {required && <span className="text-red-500">*</span>}
-          </label>
-          {formData[fieldName].map((item, index) => (
-            <div key={index} className="flex items-start gap-2 mb-2">
-              <textarea
-                value={item}
-                onChange={(e) => handleArrayFieldChange(fieldName, index, e.target.value)}
-                className={`flex-1 px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire text-sm ${
-                  validationErrors[fieldName] ? 'border-red-500' : ''
-                }`}
-                rows="2"
-                placeholder={`Enter ${title.toLowerCase()}...`}
-                required={required && index === 0}
-              />
-              {formData[fieldName].length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeArrayItem(fieldName, index)}
-                  className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => addArrayItem(fieldName)}
-            className="text-almet-sapphire hover:text-almet-astral font-medium text-sm flex items-center gap-1"
-          >
-            <Plus size={14} />
-            Add {title.slice(0, -1)}
-          </button>
-          {validationErrors[fieldName] && (
-            <p className="text-red-500 text-xs mt-1">{validationErrors[fieldName]}</p>
-          )}
-        </div>
-      ))}
+  { fieldName: 'criticalDuties',  title: 'Critical Duties',         required: true },
+  { fieldName: 'positionMainKpis',title: 'Position Main KPIs',      required: true },
+  { fieldName: 'jobDuties',       title: 'Job Duties',              required: true },
+  { fieldName: 'requirements',    title: 'Requirements',            required: true },
+].map(({ fieldName, title, required }) => (
+  <BulkListEditor
+    key={fieldName}
+    fieldName={fieldName}
+    title={title}
+    required={required}
+    items={formData[fieldName] || ['']}
+    onChange={handleSectionChange}
+    error={validationErrors[fieldName]}
+    darkMode={darkMode}
+  />
+))}
 
       {/* Technical Skills */}
      <div>

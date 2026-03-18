@@ -1,7 +1,7 @@
 import { Users, Target, FileText, Award, TrendingUp } from 'lucide-react';
 
 export default function FixedStatCards({ employees, darkMode }) {
-  // ✅ Calculate statistics based on actual data
+  //  Calculate statistics based on actual data
   const getCompletedCount = () => {
     if (!employees || employees.length === 0) return 0;
 
@@ -11,7 +11,7 @@ export default function FixedStatCards({ employees, darkMode }) {
       const objPct = parseFloat(emp.objectives_percentage);
       const compPct = parseFloat(emp.competencies_percentage);
 
-      // ✅ COMPLETED = both percentages exist and > 0
+      //  COMPLETED = both percentages exist and > 0
       const isCompleted = !isNaN(objPct) && objPct > 0 && 
                          !isNaN(compPct) && compPct > 0;
 

@@ -1,245 +1,284 @@
-import React, { useState } from "react";
-import { X, TrendingUp, TrendingDown, Minus, DollarSign, Users, AlertCircle, BarChart3 } from "lucide-react";
-import Pagination from '../common/Pagination';
+import React, { useState, useMemo } from "react";
+import {
+  X, TrendingUp, TrendingDown, DollarSign, Users,
+  AlertCircle, BarChart3, AlertTriangle, Download,
+} from "lucide-react";
+import Pagination from "@/components/common/Pagination";
 
-const ComparisonModal = ({ isOpen, onClose, comparisonData, scenarios }) => {
-  const [activeSection, setActiveSection] = useState('total_cost');
-  
-  if (!isOpen || !comparisonData) return null;
-  
-  const formatCurrency = (value) => {
-    return Math.round(value || 0).toLocaleString();
+/* ─── Helpers ─────────────────────────────────────────────────────────────── */
+const fmt    = (v) => Math.round(parseFloat(v) || 0).toLocaleString();
+const fmtPct = (v, d = 1) => `${(parseFloat(v) || 0).toFixed(d)}%`;
+
+const currencyBadgeCls = (code) => {
+  const m = {
+    AZN: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
+    USD: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300",
+    EUR: "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300",
+    GBP: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300",
+    RUB: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
+    TRY: "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300",
   };
-  
-  const formatPercentage = (value) => {
-    return `${(value || 0).toFixed(1)}%`;
-  };
-  
-  const getScenarioName = (scenarioId) => {
-    if (scenarioId === 'current') return 'Current';
-    const scenario = scenarios.find(s => s.id === scenarioId);
-    return scenario?.name || 'Unknown';
-  };
-  
-  const sections = [
-    { id: 'total_cost', name: 'Total Cost', icon: DollarSign },
-    { id: 'headcount', name: 'Employee Analysis', icon: Users },
-    { id: 'underpaid_overpaid', name: 'Salary Differences', icon: AlertCircle },
-    { id: 'percentage_comparison', name: 'Percentage Comparison', icon: BarChart3 }
-  ];
-  
+  return m[code] || "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300";
+};
+
+const exportCSV = (rows, filename) => {
+  if (!rows?.length) return;
+  const headers = Object.keys(rows[0]);
+  const csv = [headers.join(","), ...rows.map(r => headers.map(h => JSON.stringify(r[h] ?? "")).join(","))].join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = filename;
+  a.click();
+};
+
+/* ─── Shared table shell ──────────────────────────────────────────────────── */
+const TableShell = ({ title, onExport, children }) => (
+  <div className="rounded-xl border border-almet-mystic dark:border-gray-700 overflow-hidden">
+    <div className="flex items-center justify-between px-4 py-2.5 border-b border-almet-mystic dark:border-gray-700 bg-almet-mystic/20 dark:bg-gray-700/20">
+      <span className="text-xs font-semibold text-almet-cloud-burst dark:text-white">{title}</span>
+      {onExport && (
+        <button onClick={onExport}
+          className="flex items-center gap-1 text-[11px] text-almet-waterloo dark:text-gray-400 hover:text-almet-sapphire transition-colors">
+          <Download size={11} />CSV
+        </button>
+      )}
+    </div>
+    <div className="overflow-x-auto">{children}</div>
+  </div>
+);
+
+const Th = ({ children, right }) => (
+  <th className={`px-3 py-2.5 text-[10px] font-semibold text-white/80 uppercase tracking-wide ${right ? "text-right" : "text-left"}`}>
+    {children}
+  </th>
+);
+
+const EmptySection = () => (
+  <div className="text-center py-12 text-xs text-almet-waterloo dark:text-gray-400">No data available</div>
+);
+
+/* ─── Cross-currency banner ───────────────────────────────────────────────── */
+const CrossCurrencyBanner = ({ comparisonData, scenarios }) => {
+  if (!comparisonData?.cross_currency_note) return null;
+  const unique = [...new Set(scenarios.map(s => s.currency).filter(Boolean))];
+  if (unique.length <= 1) return null;
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-7xl max-h-[90vh] overflow-hidden shadow-2xl">
-        
-        {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-almet-sapphire to-almet-astral px-6 py-4 border-b border-blue-300">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-lg font-semibold text-white">
-                Scenario Comparison
-              </h2>
-              <p className="text-xs text-blue-100 mt-0.5">
-                Detailed analysis of {scenarios.length} scenarios
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-blue-100 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
-            >
-              <X size={20} />
-            </button>
-          </div>
-          
-          {/* Section Tabs */}
-          <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
-            {sections.map(section => (
-              <button
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
-                  activeSection === section.id
-                    ? 'bg-white text-almet-sapphire shadow-md'
-                    : 'bg-white/10 text-white hover:bg-white/20'
-                }`}
-              >
-                <section.icon size={14} />
-                {section.name}
-              </button>
-            ))}
-          </div>
-        </div>
-        
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)] bg-gray-50">
-          {activeSection === 'total_cost' && (
-            <TotalCostSection 
-              data={comparisonData.total_cost_comparison}
-              getScenarioName={getScenarioName}
-              formatCurrency={formatCurrency}
-            />
-          )}
-          
-          {activeSection === 'headcount' && (
-            <EmployeeAnalysisSection 
-              data={comparisonData.employee_analysis}
-              getScenarioName={getScenarioName}
-            />
-          )}
-          
-          {activeSection === 'underpaid_overpaid' && (
-            <UnderpaidOverpaidSection 
-              data={comparisonData.underpaid_overpaid_lists}
-              getScenarioName={getScenarioName}
-              formatCurrency={formatCurrency}
-              formatPercentage={formatPercentage}
-            />
-          )}
-          
-          {activeSection === 'percentage_comparison' && (
-            <PercentageComparisonSection 
-              data={comparisonData.scenarios_comparison}
-              getScenarioName={getScenarioName}
-              formatPercentage={formatPercentage}
-              formatCurrency={formatCurrency}
-            />
-          )}
-        </div>
+    <div className="mx-5 mt-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl flex items-start gap-2.5">
+      <AlertTriangle size={13} className="text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+      <div>
+        <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-200 mb-0.5">
+          Multiple currencies: {unique.join(" · ")}
+        </p>
+        <p className="text-[10px] text-amber-700 dark:text-amber-300">{comparisonData.cross_currency_note}</p>
       </div>
     </div>
   );
 };
 
-// Total Cost Section
-const TotalCostSection = ({ data, getScenarioName, formatCurrency }) => {
-  if (!data) return <div className="text-sm text-gray-500">No data available</div>;
-  
-  const positions = Object.keys(data.positions || {});
-  const scenarioNames = Object.keys(data.positions[positions[0]]?.scenarios || {});
-  
+/* ─── SECTION 1: Employee Analysis ───────────────────────────────────────── */
+const EmployeeAnalysisSection = ({ data }) => {
+  if (!data) return <EmptySection />;
+  const positions  = Object.keys(data);
+  const [selPos, setSelPos] = useState(positions[0]);
+  const posData    = data[selPos] || {};
+  const grades     = Object.keys(posData.current_grading || {});
+  const scNames    = Object.keys(posData.scenarios || {});
+
+  const exportRows = grades.flatMap(g => {
+    const cur = posData.current_grading[g] || {};
+    return [{
+      Position: selPos, Grade: g,
+      "Current Count": cur.count || 0, "Current Over": cur.over || 0, "Current Under": cur.under || 0,
+      ...Object.fromEntries(scNames.flatMap(sn => {
+        const sd = posData.scenarios[sn]?.data?.[g] || {};
+        return [[`${sn} Over`, sd.over || 0], [`${sn} Under`, sd.under || 0]];
+      })),
+    }];
+  });
+
+  const badge = (v, cls) => v > 0
+    ? <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${cls}`}>{v}</span>
+    : <span className="text-almet-bali-hai dark:text-gray-600">—</span>;
+
   return (
     <div className="space-y-4">
-      
-      {/* Totals Card */}
-      <div className="bg-white rounded-lg p-4 border border-gray-200 shadow-sm">
-        <h4 className="text-sm font-semibold text-gray-700 mb-3">Total Cost Summary</h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-3 border border-green-200">
-            <div className="text-xs text-gray-600 mb-1">Current Status</div>
-            <div className="text-base font-bold text-green-700">
-              {formatCurrency(data.totals.current)}
-            </div>
-          </div>
-          {scenarioNames.map(scenarioName => {
-            const diff = data.totals.scenarios[scenarioName] - data.totals.current;
-            return (
-              <div key={scenarioName} className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-3 border border-blue-200">
-                <div className="text-xs text-gray-600 mb-1">{scenarioName}</div>
-                <div className="text-base font-bold text-almet-sapphire">
-                  {formatCurrency(data.totals.scenarios[scenarioName])}
-                </div>
-                <div className={`text-xs mt-1 font-medium ${diff > 0 ? 'text-red-600' : diff < 0 ? 'text-green-600' : 'text-gray-500'}`}>
-                  {diff > 0 ? '+' : ''}{formatCurrency(diff)}
-                </div>
-              </div>
-            );
-          })}
+      {/* Position tabs */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex gap-1.5 flex-wrap">
+          {positions.map(p => (
+            <button key={p} onClick={() => setSelPos(p)}
+              className={`px-3 py-1.5 text-[11px] font-medium rounded-lg transition-all ${
+                selPos === p ? "bg-almet-sapphire text-white shadow-sm" : "bg-almet-mystic/50 dark:bg-gray-700 text-almet-waterloo dark:text-gray-300 hover:bg-almet-mystic dark:hover:bg-gray-600"
+              }`}>
+              {p}
+              <span className="ml-1.5 text-[9px] opacity-70">({data[p]?.total_employees || 0})</span>
+            </button>
+          ))}
         </div>
+        <button onClick={() => exportCSV(exportRows, `employee_analysis_${selPos}.csv`)}
+          className="flex items-center gap-1 text-[11px] text-almet-waterloo dark:text-gray-400 hover:text-almet-sapphire transition-colors">
+          <Download size={11} />Export CSV
+        </button>
       </div>
-      
-      {/* Position Breakdown */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead className="bg-gradient-to-r from-almet-sapphire to-almet-steel-blue text-white">
-              <tr>
-                <th className="px-3 py-2 text-left font-medium">Position</th>
-                <th className="px-3 py-2 text-right font-medium">Current</th>
-                {scenarioNames.map(name => (
-                  <th key={name} className="px-3 py-2 text-right font-medium">{name}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {positions.map((position, idx) => (
-                <tr key={position} className={`hover:bg-blue-50 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                  <td className="px-3 py-2 font-medium text-gray-700">{position}</td>
-                  <td className="px-3 py-2 text-right font-mono text-green-700">
-                    {formatCurrency(data.positions[position].current)}
-                  </td>
-                  {scenarioNames.map(scenarioName => {
-                    const scenarioValue = data.positions[position].scenarios[scenarioName];
-                    const currentValue = data.positions[position].current;
-                    const diff = scenarioValue - currentValue;
-                    
+
+      <TableShell title="Employee Count by Grade">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-gradient-to-r from-almet-sapphire to-almet-astral">
+              <Th>Grade</Th>
+              <Th>Count</Th>
+              <Th>Over Grade</Th>
+              <Th>At Grade</Th>
+              <Th>Under Grade</Th>
+              {scNames.map(sn => (
+                <React.Fragment key={sn}>
+                  <Th>{sn} — Over</Th>
+                  <Th>{sn} — Under</Th>
+                </React.Fragment>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-almet-mystic/50 dark:divide-gray-700/50">
+            {grades.map((g, idx) => {
+              const cur = posData.current_grading[g] || {};
+              return (
+                <tr key={g} className={`hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors ${idx % 2 === 0 ? "" : "bg-almet-mystic/10 dark:bg-gray-700/10"}`}>
+                  <td className="px-3 py-2 font-medium text-almet-cloud-burst dark:text-white">{g}</td>
+                  <td className="px-3 py-2 font-semibold text-almet-cloud-burst dark:text-white">{cur.count || 0}</td>
+                  <td className="px-3 py-2">{badge(cur.over,  "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400")}</td>
+                  <td className="px-3 py-2">{badge(cur.at,   "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400")}</td>
+                  <td className="px-3 py-2">{badge(cur.under,"bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400")}</td>
+                  {scNames.map(sn => {
+                    const sd = posData.scenarios[sn];
+                    const sg = sd?.data?.[g] || {};
+                    const na = sd?.comparable === false;
                     return (
-                      <td key={scenarioName} className="px-3 py-2 text-right">
-                        <div className="font-mono text-almet-sapphire">{formatCurrency(scenarioValue)}</div>
-                        <div className={`text-[10px] font-medium ${diff > 0 ? 'text-red-600' : diff < 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                          {diff > 0 ? '+' : ''}{formatCurrency(diff)}
-                        </div>
-                      </td>
+                      <React.Fragment key={sn}>
+                        <td className="px-3 py-2">{na ? <span className="text-amber-500 text-[10px]">N/A</span> : badge(sg.over,  "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400")}</td>
+                        <td className="px-3 py-2">{na ? <span className="text-amber-500 text-[10px]">N/A</span> : badge(sg.under,"bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400")}</td>
+                      </React.Fragment>
                     );
                   })}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              );
+            })}
+          </tbody>
+        </table>
+      </TableShell>
+
+      <div className="p-3.5 bg-almet-sapphire/5 dark:bg-almet-sapphire/10 border border-almet-sapphire/20 rounded-xl text-[11px] text-almet-cloud-burst dark:text-gray-300 leading-relaxed">
+        This section shows how many employees are above or below the grade salary range — for both the current structure and each comparison scenario.
       </div>
     </div>
   );
 };
 
-// Employee Analysis Section
-const EmployeeAnalysisSection = ({ data, getScenarioName }) => {
-  if (!data) return <div className="text-sm text-gray-500">No data available</div>;
-  
-  const positions = Object.keys(data);
-  
+/* ─── SECTION 2: Total Cost ───────────────────────────────────────────────── */
+const TotalCostSection = ({ data }) => {
+  if (!data) return <EmptySection />;
+  const currencies = Object.keys(data.by_currency || {});
+
   return (
-    <div className="space-y-4">
-      {positions.map(position => {
-        const positionData = data[position];
-        const currentGrades = Object.keys(positionData.current_grading);
-        const scenarioNames = Object.keys(positionData.scenarios);
-        
+    <div className="space-y-6">
+      {currencies.map(cur => {
+        const byCur    = data.by_currency[cur] || {};
+        const totals   = data.totals?.[cur]    || {};
+        const positions = Object.keys(byCur);
+        const scNames  = positions.length ? Object.keys(byCur[positions[0]]?.scenarios || {}) : [];
+
+        const exportRows = [
+          ...positions.map(pos => ({
+            Currency: cur, Position: pos, "Grade Cost": byCur[pos]?.current || 0,
+            ...Object.fromEntries(scNames.map(sn => [sn, byCur[pos]?.scenarios?.[sn] || 0])),
+          })),
+          { Currency: cur, Position: "TOTAL", "Grade Cost": totals.current || 0,
+            ...Object.fromEntries(scNames.map(sn => [sn, totals.scenarios?.[sn] || 0])) },
+        ];
+
         return (
-          <div key={position} className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
-            <h4 className="text-sm font-semibold text-gray-700 mb-3">
-              {position} <span className="text-gray-500 font-normal">({positionData.total_employees} employees)</span>
-            </h4>
-            
-            <div className="overflow-x-auto">
+          <div key={cur} className="space-y-3">
+            {currencies.length > 1 && (
+              <div className="flex items-center gap-3">
+                <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${currencyBadgeCls(cur)}`}>{cur}</span>
+                <hr className="flex-1 border-almet-mystic dark:border-gray-700" />
+              </div>
+            )}
+
+            {/* Summary cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="p-3.5 rounded-xl border bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800">
+                <p className="text-[10px] text-almet-waterloo dark:text-gray-400 mb-1">Grade-Based Cost</p>
+                <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">{fmt(totals.current)} <span className="text-[10px] font-normal">{cur}</span></p>
+              </div>
+              {totals.real_current != null && (
+                <div className="p-3.5 rounded-xl border bg-teal-50 dark:bg-teal-900/10 border-teal-200 dark:border-teal-800">
+                  <p className="text-[10px] text-almet-waterloo dark:text-gray-400 mb-1">Real Current Cost</p>
+                  <p className="text-sm font-bold text-teal-700 dark:text-teal-400">{fmt(totals.real_current)} <span className="text-[10px] font-normal">{cur}</span></p>
+                </div>
+              )}
+              {scNames.map(sn => {
+                const diff = (totals.scenarios?.[sn] || 0) - (totals.current || 0);
+                return (
+                  <div key={sn} className="p-3.5 rounded-xl border bg-almet-sapphire/5 dark:bg-almet-sapphire/10 border-almet-sapphire/20">
+                    <p className="text-[10px] text-almet-waterloo dark:text-gray-400 mb-1 truncate">{sn}</p>
+                    <p className="text-sm font-bold text-almet-sapphire">{fmt(totals.scenarios?.[sn])} <span className="text-[10px] font-normal">{cur}</span></p>
+                    <p className={`text-[10px] font-semibold mt-0.5 ${diff > 0 ? "text-red-600" : diff < 0 ? "text-emerald-600" : "text-almet-bali-hai"}`}>
+                      {diff > 0 ? "+" : ""}{fmt(diff)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Position breakdown */}
+            <TableShell title={`Cost Breakdown ${currencies.length > 1 ? `(${cur})` : ""}`} onExport={() => exportCSV(exportRows, `cost_${cur}.csv`)}>
               <table className="w-full text-xs">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600">Grade</th>
-                    <th className="px-3 py-2 text-center font-medium text-gray-600">Current</th>
-                    {scenarioNames.map(name => (
-                      <th key={name} className="px-3 py-2 text-center font-medium text-gray-600">{name}</th>
-                    ))}
+                <thead>
+                  <tr className="bg-gradient-to-r from-almet-sapphire to-almet-astral">
+                    <Th>Position</Th>
+                    <Th right>Grade Cost</Th>
+                    {totals.real_current != null && <Th right>Real Cost</Th>}
+                    {scNames.map(n => <Th key={n} right>{n}</Th>)}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {currentGrades.map(grade => (
-                    <tr key={grade} className="hover:bg-blue-50 transition-colors">
-                      <td className="px-3 py-2 font-medium text-gray-700">{grade}</td>
-                      <td className="px-3 py-2">
-                        <GradeDistributionCell data={positionData.current_grading[grade]} />
-                      </td>
-                      {scenarioNames.map(scenarioName => (
-                        <td key={scenarioName} className="px-3 py-2">
-                          <GradeDistributionCell 
-                            data={positionData.scenarios[scenarioName][grade] || { count: 0, over: 0, at: 0, under: 0 }} 
-                          />
-                        </td>
-                      ))}
+                <tbody className="divide-y divide-almet-mystic/50 dark:divide-gray-700/50">
+                  {positions.map((pos, idx) => (
+                    <tr key={pos} className={`hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors ${idx % 2 === 0 ? "" : "bg-almet-mystic/10 dark:bg-gray-700/10"}`}>
+                      <td className="px-3 py-2 font-medium text-almet-cloud-burst dark:text-white">{pos}</td>
+                      <td className="px-3 py-2 text-right font-mono text-almet-waterloo dark:text-gray-300">{fmt(byCur[pos]?.current)}</td>
+                      {totals.real_current != null && <td className="px-3 py-2 text-right font-mono text-teal-600 dark:text-teal-400">{fmt(byCur[pos]?.real_current)}</td>}
+                      {scNames.map(sn => {
+                        const sv   = byCur[pos]?.scenarios?.[sn] || 0;
+                        const diff = sv - (byCur[pos]?.current || 0);
+                        return (
+                          <td key={sn} className="px-3 py-2 text-right">
+                            <p className="font-mono text-almet-sapphire">{fmt(sv)}</p>
+                            <p className={`text-[10px] font-medium ${diff > 0 ? "text-red-500" : diff < 0 ? "text-emerald-500" : "text-almet-bali-hai"}`}>
+                              {diff > 0 ? "+" : ""}{fmt(diff)}
+                            </p>
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
+                  {/* Total row */}
+                  <tr className="bg-almet-mystic/30 dark:bg-gray-700/30 border-t-2 border-almet-mystic dark:border-gray-600 font-semibold">
+                    <td className="px-3 py-2.5 text-almet-cloud-burst dark:text-white">Total</td>
+                    <td className="px-3 py-2.5 text-right font-mono text-almet-cloud-burst dark:text-white">{fmt(totals.current)}</td>
+                    {totals.real_current != null && <td className="px-3 py-2.5 text-right font-mono text-teal-600 dark:text-teal-400">{fmt(totals.real_current)}</td>}
+                    {scNames.map(sn => {
+                      const diff = (totals.scenarios?.[sn] || 0) - (totals.current || 0);
+                      return (
+                        <td key={sn} className="px-3 py-2.5 text-right">
+                          <p className={`font-mono font-bold ${diff > 0 ? "text-red-600" : "text-emerald-600"}`}>{fmt(totals.scenarios?.[sn])}</p>
+                          <p className={`text-[10px] ${diff > 0 ? "text-red-500" : "text-emerald-500"}`}>{diff > 0 ? "+" : ""}{fmt(diff)}</p>
+                        </td>
+                      );
+                    })}
+                  </tr>
                 </tbody>
               </table>
-            </div>
+            </TableShell>
           </div>
         );
       })}
@@ -247,249 +286,308 @@ const EmployeeAnalysisSection = ({ data, getScenarioName }) => {
   );
 };
 
-// Grade Distribution Cell
-const GradeDistributionCell = ({ data }) => {
-  if (!data || data.count === 0) {
-    return <div className="text-center text-gray-300">—</div>;
-  }
-  
-  return (
-    <div className="flex items-center justify-center gap-1.5">
-      <span className="font-semibold text-gray-700">{data.count}</span>
-      <div className="flex gap-1">
-        {data.over > 0 && (
-          <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-medium">
-            ↑{data.over}
-          </span>
-        )}
-        {data.at > 0 && (
-          <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded text-[10px] font-medium">
-            ={data.at}
-          </span>
-        )}
-        {data.under > 0 && (
-          <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded text-[10px] font-medium">
-            ↓{data.under}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-};
+/* ─── SECTION 3: Underpaid / Overpaid ────────────────────────────────────── */
+const UnderpaidOverpaidSection = ({ data }) => {
+  if (!data) return <EmptySection />;
+  const scNames = Object.keys(data);
+  const [selSc,    setSelSc]    = useState(scNames[0]);
+  const [activeTab, setActiveTab] = useState("underpaid");
+  const [curPage,  setCurPage]  = useState(1);
+  const PER_PAGE = 10;
 
-// Underpaid/Overpaid Section
-const UnderpaidOverpaidSection = ({ data, getScenarioName, formatCurrency, formatPercentage }) => {
-  if (!data) return <div className="text-sm text-gray-500">No data available</div>;
-  
-  const scenarioNames = Object.keys(data);
-  const [selectedScenario, setSelectedScenario] = useState(scenarioNames[0]);
-  const [activeTab, setActiveTab] = useState('underpaid');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-  
-  const scenarioData = data[selectedScenario] || { underpaid: [], overpaid: [] };
-  const activeList = activeTab === 'underpaid' ? scenarioData.underpaid : scenarioData.overpaid;
-  
-  const totalPages = Math.ceil(activeList.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedList = activeList.slice(startIndex, startIndex + itemsPerPage);
-  
+  const sd         = data[selSc] || { underpaid: [], overpaid: [] };
+  const activeList = activeTab === "underpaid" ? sd.underpaid : sd.overpaid;
+  const totalPages = Math.ceil(activeList.length / PER_PAGE);
+  const start      = (curPage - 1) * PER_PAGE;
+  const paginated  = activeList.slice(start, start + PER_PAGE);
+
+  const exportRows = activeList.map(e => ({
+    "Employee": e.employee_name, "ID": e.employee_id, "Position": e.position,
+    "Grade": e.grading_level, "Current Salary": e.current_salary,
+    "Scenario Salary": e.scenario_salary, "Diff": e.difference, "Diff %": e.difference_percent,
+    "Department": e.department || "", "Start Date": e.start_date || "",
+  }));
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-        <div className="flex gap-2">
-          <button
-            onClick={() => { setActiveTab('underpaid'); setCurrentPage(1); }}
-            className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${
-              activeTab === 'underpaid'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300'
-            }`}
-          >
-            Underpaid ({scenarioData.underpaid.length})
-          </button>
-          <button
-            onClick={() => { setActiveTab('overpaid'); setCurrentPage(1); }}
-            className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${
-              activeTab === 'overpaid'
-                ? 'bg-red-600 text-white shadow-md'
-                : 'bg-white text-gray-600 border border-gray-200 hover:border-red-300'
-            }`}
-          >
-            Overpaid ({scenarioData.overpaid.length})
+      {sd.comparable === false && (
+        <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl">
+          <AlertTriangle size={13} className="text-amber-600 mt-0.5 flex-shrink-0" />
+          <p className="text-[11px] text-amber-700 dark:text-amber-300">{sd.note}</p>
+        </div>
+      )}
+
+      {/* Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+        <div className="flex gap-1.5">
+          {[
+            { id: "underpaid", label: "Underpaid", count: sd.underpaid?.length || 0, activeCls: "bg-almet-sapphire text-white" },
+            { id: "overpaid",  label: "Overpaid",  count: sd.overpaid?.length  || 0, activeCls: "bg-red-600 text-white"        },
+          ].map(({ id, label, count, activeCls }) => (
+            <button key={id} onClick={() => { setActiveTab(id); setCurPage(1); }}
+              className={`flex items-center gap-1.5 px-3.5 py-2 text-[11px] font-medium rounded-lg transition-all ${
+                activeTab === id ? activeCls : "bg-almet-mystic/50 dark:bg-gray-700 text-almet-waterloo dark:text-gray-300 hover:bg-almet-mystic dark:hover:bg-gray-600"
+              }`}>
+              <span className="w-1.5 h-1.5 rounded-full bg-current inline-block" />
+              {label} ({count})
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2 sm:ml-auto">
+          <select value={selSc} onChange={e => { setSelSc(e.target.value); setCurPage(1); }}
+            className="text-xs px-3 py-2 border border-almet-mystic dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30">
+            {scNames.map(n => <option key={n} value={n}>{n}{data[n]?.currency ? ` (${data[n].currency})` : ""}</option>)}
+          </select>
+          <button onClick={() => exportCSV(exportRows, `${activeTab}_${selSc}.csv`)}
+            className="flex items-center gap-1.5 px-3 py-2 text-[11px] border border-almet-mystic dark:border-gray-600 rounded-lg text-almet-waterloo dark:text-gray-300 hover:bg-almet-mystic/40 dark:hover:bg-gray-700 transition-colors">
+            <Download size={11} />CSV
           </button>
         </div>
-        
-        <select
-          value={selectedScenario}
-          onChange={(e) => { setSelectedScenario(e.target.value); setCurrentPage(1); }}
-          className="px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
-        >
-          {scenarioNames.map(name => (
-            <option key={name} value={name}>{name}</option>
-          ))}
-        </select>
       </div>
-      
-      {/* Employee Table */}
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+
+      {/* Table */}
+      {sd.comparable !== false && (
+        <TableShell title={`${activeTab === "underpaid" ? "Underpaid" : "Overpaid"} Employees`}>
           <table className="w-full text-xs">
-            <thead className="bg-gradient-to-r from-almet-sapphire to-almet-steel-blue text-white">
-              <tr>
-                <th className="px-3 py-2 text-left font-medium">Employee</th>
-                <th className="px-3 py-2 text-left font-medium">Position</th>
-                <th className="px-3 py-2 text-left font-medium">Grade</th>
-                <th className="px-3 py-2 text-right font-medium">Current Salary</th>
-                <th className="px-3 py-2 text-right font-medium">Scenario Salary</th>
-                <th className="px-3 py-2 text-right font-medium">Difference</th>
+            <thead>
+              <tr className="bg-gradient-to-r from-almet-sapphire to-almet-astral">
+                <Th>Employee</Th>
+                <Th>Position</Th>
+                <Th>Department</Th>
+                <Th>Start Date</Th>
+                <Th right>Current Salary</Th>
+                <Th right>Grade Salary <span className="text-[9px] opacity-70">({sd.currency || ""})</span></Th>
+                <Th right>Scenario Salary</Th>
+                <Th right>Market Avg</Th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {paginatedList.length > 0 ? (
-                paginatedList.map((emp, idx) => (
-                  <tr key={emp.employee_id} className={`hover:bg-blue-50 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                    <td className="px-3 py-2">
-                      <div className="font-medium text-gray-700">{emp.employee_name}</div>
-                      <div className="text-[10px] text-gray-500">{emp.employee_id}</div>
-                    </td>
-                    <td className="px-3 py-2 text-gray-600">{emp.position}</td>
-                    <td className="px-3 py-2 font-mono text-gray-700">{emp.grading_level}</td>
-                    <td className="px-3 py-2 text-right font-mono text-green-700">
-                      {formatCurrency(emp.current_salary)}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-almet-sapphire">
-                      {formatCurrency(emp.scenario_salary)}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <div className={`font-mono font-semibold ${
-                        emp.difference > 0 ? 'text-red-600' : 'text-green-600'
-                      }`}>
-                        {emp.difference > 0 ? '+' : ''}{formatCurrency(emp.difference)}
-                      </div>
-                      <div className={`text-[10px] ${
-                        emp.difference_percent > 0 ? 'text-red-500' : 'text-green-500'
-                      }`}>
-                        ({emp.difference_percent > 0 ? '+' : ''}{formatPercentage(emp.difference_percent)})
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="px-3 py-8 text-center text-gray-500">
-                    No {activeTab} employees found
+            <tbody className="divide-y divide-almet-mystic/50 dark:divide-gray-700/50">
+              {paginated.length > 0 ? paginated.map((emp, idx) => (
+                <tr key={emp.employee_id || idx} className={`hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors ${idx % 2 === 0 ? "" : "bg-almet-mystic/10 dark:bg-gray-700/10"}`}>
+                  <td className="px-3 py-2.5">
+                    <p className="font-medium text-almet-cloud-burst dark:text-white">{emp.employee_name}</p>
+                    <p className="text-[10px] text-almet-waterloo dark:text-gray-400">{emp.employee_id}</p>
                   </td>
+                  <td className="px-3 py-2.5 text-almet-waterloo dark:text-gray-300">{emp.position}</td>
+                  <td className="px-3 py-2.5 text-almet-waterloo dark:text-gray-400">{emp.department || "—"}</td>
+                  <td className="px-3 py-2.5 text-almet-waterloo dark:text-gray-400">{emp.start_date || "—"}</td>
+                  <td className="px-3 py-2.5 text-right font-mono text-almet-cloud-burst dark:text-white">{emp.current_salary != null ? fmt(emp.current_salary) : "—"}</td>
+                  <td className="px-3 py-2.5 text-right font-mono text-emerald-700 dark:text-emerald-400">{emp.current_grade_salary != null ? fmt(emp.current_grade_salary) : "—"}</td>
+                  <td className="px-3 py-2.5 text-right font-mono text-almet-sapphire">{fmt(emp.scenario_salary)}</td>
+                  <td className="px-3 py-2.5 text-right font-mono text-purple-600 dark:text-purple-400">{emp.market_avg_salary != null ? fmt(emp.market_avg_salary) : "—"}</td>
                 </tr>
+              )) : (
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-almet-waterloo dark:text-gray-400">No {activeTab} employees found</td></tr>
               )}
             </tbody>
           </table>
+          {totalPages > 1 && (
+            <div className="border-t border-almet-mystic dark:border-gray-700 px-4 py-3">
+              <Pagination currentPage={curPage} totalPages={totalPages} totalItems={activeList.length} itemsPerPage={PER_PAGE} onPageChange={setCurPage} />
+            </div>
+          )}
+        </TableShell>
+      )}
+    </div>
+  );
+};
+
+/* ─── SECTION 4: Scenarios % Comparison ──────────────────────────────────── */
+const PercentageComparisonSection = ({ data }) => {
+  if (!data) return <EmptySection />;
+  const positions = Object.keys(data);
+  const [selPos,  setSelPos]  = useState(positions[0]);
+  const posData   = data[selPos] || {};
+  const scNames   = Object.keys(posData.scenarios || {});
+  const levels    = ["LD", "LQ", "M", "UQ", "UD"];
+
+  const totalRow = useMemo(() => {
+    const totals = {};
+    scNames.forEach(sn => {
+      let sum = 0, cnt = 0;
+      levels.forEach(lv => {
+        const pct = posData.scenarios[sn]?.data?.[lv]?.diff_percent;
+        if (pct != null) { sum += pct; cnt++; }
+      });
+      totals[sn] = cnt > 0 ? sum / cnt : null;
+    });
+    return totals;
+  }, [posData, scNames]); // eslint-disable-line
+
+  const exportRows = levels.map(lv => ({
+    Level: lv,
+    ...Object.fromEntries(scNames.flatMap(sn => {
+      const sc = posData.scenarios[sn];
+      return [
+        [`${sn} Diff Int`, fmtPct(sc?.data?.[lv]?.diff_percent)],
+        [`${sn} Diff Mkt`, fmtPct(sc?.data?.[lv]?.market_diff_percent)],
+      ];
+    })),
+  }));
+
+  const pctCell = (pct, noComp) => {
+    if (noComp) return <span className="text-amber-500 text-[10px]">N/A</span>;
+    if (pct == null) return <span className="text-almet-bali-hai dark:text-gray-600">—</span>;
+    const isNeg = pct < -0.5, isPos = pct > 0.5;
+    return (
+      <span className={`font-semibold text-[11px] ${isNeg ? "text-red-600 dark:text-red-400" : isPos ? "text-emerald-600 dark:text-emerald-400" : "text-almet-waterloo dark:text-gray-400"}`}>
+        {isPos ? "+" : ""}{fmtPct(pct)}
+      </span>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Position tabs */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex gap-1.5 flex-wrap">
+          {positions.map(p => (
+            <button key={p} onClick={() => setSelPos(p)}
+              className={`px-3 py-1.5 text-[11px] font-medium rounded-lg transition-all ${
+                selPos === p ? "bg-almet-sapphire text-white shadow-sm" : "bg-almet-mystic/50 dark:bg-gray-700 text-almet-waterloo dark:text-gray-300 hover:bg-almet-mystic dark:hover:bg-gray-600"
+              }`}>
+              {p}
+            </button>
+          ))}
         </div>
-        
-        {totalPages > 1 && (
-          <div className="border-t border-gray-200 px-4 py-3 bg-gray-50">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              totalItems={activeList.length}
-              itemsPerPage={itemsPerPage}
-              onPageChange={setCurrentPage}
-            />
-          </div>
+        <div className="flex items-center gap-2">
+          {posData.current_currency && (
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${currencyBadgeCls(posData.current_currency)}`}>
+              {posData.current_currency}
+            </span>
+          )}
+          <button onClick={() => exportCSV(exportRows, `pct_comparison_${selPos}.csv`)}
+            className="flex items-center gap-1 text-[11px] text-almet-waterloo dark:text-gray-400 hover:text-almet-sapphire transition-colors">
+            <Download size={11} />CSV
+          </button>
+        </div>
+      </div>
+
+      <TableShell title="Scenarios vs Current — % Difference">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-gradient-to-r from-almet-sapphire to-almet-astral">
+              <Th>Salary Band</Th>
+              {scNames.map(sn => (
+                <React.Fragment key={sn}>
+                  <Th right>Diff Internal</Th>
+                  <Th right>Diff Market</Th>
+                </React.Fragment>
+              ))}
+            </tr>
+            {scNames.length > 1 && (
+              <tr className="bg-almet-sapphire/80 border-b border-white/10">
+                <th className="px-3 py-1.5 text-left text-[10px] text-white/70">Position</th>
+                {scNames.map(sn => (
+                  <th key={sn} colSpan={2} className="px-3 py-1.5 text-center text-[10px] text-white/90 font-semibold border-l border-white/10">
+                    {sn}
+                  </th>
+                ))}
+              </tr>
+            )}
+          </thead>
+          <tbody className="divide-y divide-almet-mystic/50 dark:divide-gray-700/50">
+            {levels.map((lv, idx) => (
+              <tr key={lv} className={`hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors ${idx % 2 === 0 ? "" : "bg-almet-mystic/10 dark:bg-gray-700/10"}`}>
+                <td className="px-3 py-2.5 font-semibold text-almet-cloud-burst dark:text-white">
+                  {lv === "M" ? "Median (M)" : lv === "LD" ? "Lower Decile (LD)" : lv === "LQ" ? "Lower Quartile (LQ)" : lv === "UQ" ? "Upper Quartile (UQ)" : "Upper Decile (UD)"}
+                </td>
+                {scNames.map(sn => {
+                  const sc   = posData.scenarios[sn];
+                  const lvd  = sc?.data?.[lv];
+                  const noC  = sc?.comparable === false;
+                  return (
+                    <React.Fragment key={sn}>
+                      <td className="px-3 py-2.5 text-right">{pctCell(lvd?.diff_percent, noC)}</td>
+                      <td className="px-3 py-2.5 text-right">{pctCell(lvd?.market_diff_percent, noC)}</td>
+                    </React.Fragment>
+                  );
+                })}
+              </tr>
+            ))}
+            {/* Total row */}
+            <tr className="bg-almet-mystic/30 dark:bg-gray-700/30 border-t-2 border-almet-mystic dark:border-gray-600 font-semibold">
+              <td className="px-3 py-2.5 text-almet-cloud-burst dark:text-white">Average</td>
+              {scNames.map(sn => {
+                const avg = totalRow[sn];
+                const isNeg = avg != null && avg < -0.5, isPos = avg != null && avg > 0.5;
+                return (
+                  <React.Fragment key={sn}>
+                    <td className="px-3 py-2.5 text-right">
+                      <span className={`font-bold text-[11px] ${isNeg ? "text-red-600" : isPos ? "text-emerald-600" : "text-almet-waterloo"}`}>
+                        {avg != null ? `${isPos ? "+" : ""}${fmtPct(avg)}` : "—"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right text-almet-bali-hai dark:text-gray-600">—</td>
+                  </React.Fragment>
+                );
+              })}
+            </tr>
+          </tbody>
+        </table>
+      </TableShell>
+
+      <div className="flex flex-wrap gap-4 text-[10px] text-almet-waterloo dark:text-gray-400">
+        <span className="flex items-center gap-1"><TrendingDown size={10} className="text-red-500" /> Negative % = scenario salary is lower (cost saving)</span>
+        <span className="flex items-center gap-1"><TrendingUp   size={10} className="text-emerald-500" /> Positive % = scenario salary is higher</span>
+        {scNames.some(sn => posData.scenarios[sn]?.comparable === false) && (
+          <span className="flex items-center gap-1"><AlertTriangle size={10} className="text-amber-500" /> N/A = different currencies, cannot compare</span>
         )}
       </div>
     </div>
   );
 };
 
-// Percentage Comparison Section
-const PercentageComparisonSection = ({ data, getScenarioName, formatPercentage, formatCurrency }) => {
-  if (!data) return <div className="text-sm text-gray-500">No data available</div>;
-  
-  const positions = Object.keys(data);
-  const [selectedPosition, setSelectedPosition] = useState(positions[0]);
-  
-  const positionData = data[selectedPosition];
-  const scenarioNames = Object.keys(positionData.scenarios);
-  const levels = ['LD', 'LQ', 'M', 'UQ', 'UD'];
-  
+/* ─── Main Modal ──────────────────────────────────────────────────────────── */
+const ComparisonModal = ({ isOpen, onClose, comparisonData, scenarios }) => {
+  const [activeSection, setActiveSection] = useState("employee_analysis");
+  if (!isOpen || !comparisonData) return null;
+
+  const sections = [
+    { id: "employee_analysis",     name: "Employee Analysis",  icon: Users      },
+    { id: "total_cost",            name: "Total Cost",         icon: DollarSign },
+    { id: "underpaid_overpaid",    name: "Salary Differences", icon: AlertCircle },
+    { id: "percentage_comparison", name: "% Comparison",       icon: BarChart3  },
+  ];
+
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-sm font-semibold text-gray-700">
-          Percentage change vs Current
-        </h3>
-        
-        <select
-          value={selectedPosition}
-          onChange={(e) => setSelectedPosition(e.target.value)}
-          className="px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white text-gray-700 focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
-        >
-          {positions.map(pos => (
-            <option key={pos} value={pos}>{pos}</option>
-          ))}
-        </select>
-      </div>
-      
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead className="bg-gradient-to-r from-almet-sapphire to-almet-steel-blue text-white">
-              <tr>
-                <th className="px-3 py-2 text-left font-medium">Level</th>
-                <th className="px-3 py-2 text-right font-medium">Current</th>
-                {scenarioNames.map(name => (
-                  <React.Fragment key={name}>
-                    <th className="px-3 py-2 text-right font-medium">{name}</th>
-                    <th className="px-3 py-2 text-right font-medium">% Diff</th>
-                  </React.Fragment>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {levels.map((level, idx) => (
-                <tr key={level} className={`hover:bg-blue-50 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                  <td className="px-3 py-2 font-medium text-gray-700">{level}</td>
-                  <td className="px-3 py-2 text-right font-mono text-green-700">
-                    {formatCurrency(positionData.current[level])}
-                  </td>
-                  {scenarioNames.map(scenarioName => {
-                    const scenarioData = positionData.scenarios[scenarioName][level];
-                    const diffPercent = scenarioData.diff_percent;
-                    
-                    return (
-                      <React.Fragment key={scenarioName}>
-                        <td className="px-3 py-2 text-right font-mono text-almet-sapphire">
-                          {formatCurrency(scenarioData.value)}
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            {diffPercent > 0.1 ? (
-                              <TrendingUp size={12} className="text-red-500" />
-                            ) : diffPercent < -0.1 ? (
-                              <TrendingDown size={12} className="text-green-500" />
-                            ) : (
-                              <Minus size={12} className="text-gray-400" />
-                            )}
-                            <span className={`font-semibold ${
-                              diffPercent > 0.1 ? 'text-red-600' :
-                              diffPercent < -0.1 ? 'text-green-600' :
-                              'text-gray-500'
-                            }`}>
-                              {diffPercent > 0 ? '+' : ''}{formatPercentage(diffPercent)}
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-gray-500 mt-0.5">
-                            {diffPercent > 0 ? '+' : ''}{formatCurrency(scenarioData.diff_amount)}
-                          </div>
-                        </td>
-                      </React.Fragment>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-7xl max-h-[90vh] flex flex-col border border-almet-mystic dark:border-gray-700 shadow-2xl">
+
+        {/* Header */}
+        <div className="flex-shrink-0 bg-gradient-to-r from-almet-sapphire to-almet-astral rounded-t-2xl px-5 py-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-sm font-bold text-white">Scenario Comparison</h2>
+              <p className="text-[10px] text-white/70 mt-0.5">{scenarios.length} scenarios — detailed analysis</p>
+            </div>
+            <button onClick={onClose}
+              className="p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+          {/* Section tabs */}
+          <div className="flex gap-1 p-1 bg-white/10 rounded-xl w-fit">
+            {sections.map(s => (
+              <button key={s.id} onClick={() => setActiveSection(s.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium rounded-lg transition-all whitespace-nowrap ${
+                  activeSection === s.id ? "bg-white text-almet-sapphire shadow-sm" : "text-white/80 hover:bg-white/10"
+                }`}>
+                <s.icon size={12} />
+                {s.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <CrossCurrencyBanner comparisonData={comparisonData} scenarios={scenarios} />
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-5 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-b-2xl">
+          {activeSection === "employee_analysis"     && <EmployeeAnalysisSection      data={comparisonData.employee_analysis}        />}
+          {activeSection === "total_cost"            && <TotalCostSection             data={comparisonData.total_cost_comparison}    />}
+          {activeSection === "underpaid_overpaid"    && <UnderpaidOverpaidSection     data={comparisonData.underpaid_overpaid_lists} />}
+          {activeSection === "percentage_comparison" && <PercentageComparisonSection  data={comparisonData.scenarios_comparison}     />}
         </div>
       </div>
     </div>

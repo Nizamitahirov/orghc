@@ -75,7 +75,7 @@ export const resignationService = {
     return response.data;
   },
 
-  // ✅ Admin: Delete resignation
+  //  Admin: Delete resignation
   deleteResignation: async (id) => {
     const response = await api.delete(`/resignations/${id}/`);
     return response.data;
@@ -92,7 +92,7 @@ export const exitInterviewService = {
       const params = section ? { section } : {};
       const response = await api.get('/exit-interview-questions/', { params });
       
-      // ✅ Handle both direct array and paginated response
+      //  Handle both direct array and paginated response
       if (Array.isArray(response.data)) {
         return response.data;
       } else if (response.data && Array.isArray(response.data.results)) {
@@ -168,7 +168,7 @@ export const exitInterviewService = {
     }
   },
 
-  // ✅ Admin: Delete exit interview
+  //  Admin: Delete exit interview
   deleteExitInterview: async (id) => {
     const response = await api.delete(`/exit-interviews/${id}/`);
     return response.data;
@@ -205,7 +205,7 @@ export const contractRenewalService = {
     return response.data;
   },
 
-  // ✅ Admin: Delete contract renewal
+  //  Admin: Delete contract renewal
   deleteContractRenewal: async (id) => {
     const response = await api.delete(`/contract-renewals/${id}/`);
     return response.data;
@@ -221,7 +221,7 @@ export const probationReviewService = {
     try {
       let url = '/probation-review-questions/';
       
-      // ✅ Add review_type filter if provided
+      //  Add review_type filter if provided
       if (reviewType) {
         url += `?review_type=${reviewType}`;
       }
@@ -230,7 +230,7 @@ export const probationReviewService = {
       const response = await api.get(url);
     
       
-      // ✅ Handle both direct array and paginated response
+      //  Handle both direct array and paginated response
       if (Array.isArray(response.data)) {
         return response.data;
       } else if (response.data && Array.isArray(response.data.results)) {
@@ -283,7 +283,7 @@ export const probationReviewService = {
     return response.data;
   },
 
-  // ✅ Admin: Delete probation review
+  //  Admin: Delete probation review
   deleteProbationReview: async (id) => {
     const response = await api.delete(`/probation-reviews/${id}/`);
     return response.data;

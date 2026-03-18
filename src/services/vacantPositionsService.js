@@ -506,18 +506,14 @@ class ArchiveEmployeesService {
     }
   }
 
-  /**
-   * Bulk soft delete employees with vacancy creation
-   */
-  async bulkSoftDeleteEmployees(employeeIds, reason = null) {
+   async bulkSoftDeleteEmployees(employeeIds, reason = null, termination_date = null) {
     try {
       const requestData = {
         employee_ids: Array.isArray(employeeIds) ? employeeIds : [employeeIds]
       };
 
-      if (reason) {
-        requestData.reason = reason;
-      }
+      if (reason)            requestData.reason            = reason;
+      if (termination_date)  requestData.termination_date  = termination_date;  // ← YENİ
 
       const response = await vacantApi.post('/employees/bulk-soft-delete-with-vacancies/', requestData);
       
@@ -535,16 +531,15 @@ class ArchiveEmployeesService {
   /**
    * Bulk hard delete employees with archives (NO VACANCY CREATION)
    */
-  async bulkHardDeleteEmployees(employeeIds, notes = null, confirmHardDelete = true) {
+  async bulkHardDeleteEmployees(employeeIds, notes = null, confirmHardDelete = true, termination_date = null) {
     try {
       const requestData = {
         employee_ids: Array.isArray(employeeIds) ? employeeIds : [employeeIds],
         confirm_hard_delete: confirmHardDelete
       };
 
-      if (notes) {
-        requestData.notes = notes;
-      }
+      if (notes)             requestData.notes             = notes;
+      if (termination_date)  requestData.termination_date  = termination_date;  // ← YENİ
 
       const response = await vacantApi.post('/employees/bulk-hard-delete-with-archives/', requestData);
       

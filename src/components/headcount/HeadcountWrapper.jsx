@@ -23,7 +23,7 @@ import { useRouter } from "next/navigation";
 import HeadcountTable from "./HeadcountTable";
 import HeadcountAccessControl from "@/components/headcount/HeadcountAccessControl";
 
-// ✅ Storage Keys for State Persistence
+//  Storage Keys for State Persistence
 const STORAGE_KEYS = {
   SELECTED_VIEW: 'headcount_selected_view',
   SELECTED_COMPANY: 'headcount_selected_company',
@@ -63,7 +63,7 @@ const HeadcountWrapper = () => {
   const { darkMode } = useTheme();
   const router = useRouter();
   
-  // ✅ Initialize state from localStorage
+  //  Initialize state from localStorage
   const [selectedView, setSelectedView] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem(STORAGE_KEYS.SELECTED_VIEW) || 'dashboard';
@@ -96,14 +96,14 @@ const HeadcountWrapper = () => {
     fetchStatistics();
   }, [fetchStatistics]);
 
-  // ✅ Persist selectedView to localStorage
+  //  Persist selectedView to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(STORAGE_KEYS.SELECTED_VIEW, selectedView);
     }
   }, [selectedView]);
 
-  // ✅ Persist selectedCompany to localStorage
+  //  Persist selectedCompany to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       if (selectedCompany) {

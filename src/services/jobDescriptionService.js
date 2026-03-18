@@ -165,8 +165,10 @@ class JobDescriptionService {
       
       sections: Array.isArray(data.sections) ? data.sections : [],
       required_skills_data: Array.isArray(data.required_skills_data) ? data.required_skills_data : [],
-      behavioral_competencies_data: Array.isArray(data.behavioral_competencies_data) ? data.behavioral_competencies_data : []
-    };
+      behavioral_competencies_data: Array.isArray(data.behavioral_competencies_data) ? data.behavioral_competencies_data : [],
+      leadership_competencies_data: Array.isArray(data.leadership_competencies_data) ? data.leadership_competencies_data : [],  // ← YENİ
+
+    };  
     
     if (data.unit && parseInt(data.unit)) {
       cleaned.unit = parseInt(data.unit);
@@ -182,7 +184,12 @@ class JobDescriptionService {
     cleaned.required_skills_data = cleaned.required_skills_data.map(skill => ({
       skill_id: parseInt(skill.skill_id),
     })).filter(skill => skill.skill_id && !isNaN(skill.skill_id));
-    
+    cleaned.leadership_competencies_data = cleaned.leadership_competencies_data
+      .map(item => ({
+        leadership_item_id: parseInt(item.leadership_item_id),
+      }))
+      .filter(item => item.leadership_item_id && !isNaN(item.leadership_item_id));
+
     cleaned.behavioral_competencies_data = cleaned.behavioral_competencies_data.map(comp => ({
       competency_id: parseInt(comp.competency_id),
     })).filter(comp => comp.competency_id && !isNaN(comp.competency_id));

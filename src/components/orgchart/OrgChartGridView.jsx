@@ -34,7 +34,7 @@ const cleanEmployeeData = (employee) => {
         avatar: employee.avatar,
         status_color: employee.status_color,
         vacant: isVacancy,
-        is_vacancy: isVacancy,  // ✅ Flatten for easier access
+        is_vacancy: isVacancy,  //  Flatten for easier access
         record_type: employee.record_type || (isVacancy ? 'vacancy' : 'employee'),
         employee_details: employee.employee_details
     };

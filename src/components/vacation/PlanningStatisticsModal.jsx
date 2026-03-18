@@ -41,34 +41,34 @@ export default function PlanningStatisticsModal({
   const fetchStatistics = async () => {
     setLoading(true);
     try {
-      // ✅ Get both balances and schedules
+      //  Get both balances and schedules
       const [balanceResponse, scheduleResponse] = await Promise.all([
         VacationService.getAllBalances({ year: new Date().getFullYear() }),
         VacationService.getScheduleTabs()
       ]);
       
       if (balanceResponse?.balances) {
-        // ✅ Get all schedules (upcoming includes PENDING + SCHEDULED)
+        //  Get all schedules (upcoming includes PENDING + SCHEDULED)
         const allSchedules = scheduleResponse?.upcoming || [];
         
-        // ✅ Calculate statistics with pending schedules included
+        //  Calculate statistics with pending schedules included
         const stats = balanceResponse.balances.map(balance => {
           // Find this employee's schedules
           const employeeSchedules = allSchedules.filter(
             s => s.employee_name === balance.employee_name
           );
           
-          // ✅ Calculate pending days
+          //  Calculate pending days
           const pendingDays = employeeSchedules
             .filter(s => s.status === 'PENDING_MANAGER')
             .reduce((sum, s) => sum + (parseFloat(s.number_of_days) || 0), 0);
           
-          // ✅ Total planned = used + scheduled + pending
+          //  Total planned = used + scheduled + pending
           const totalPlanned = parseFloat(balance.used_days) + 
                               parseFloat(balance.scheduled_days) + 
                               pendingDays;
 
-          // ✅ Should plan = total_balance - total planned
+          //  Should plan = total_balance - total planned
           const shouldPlan = Math.max(0, parseFloat(balance.total_balance) - totalPlanned);
           
           const planningRate = balance.total_balance > 0 
@@ -87,7 +87,7 @@ export default function PlanningStatisticsModal({
           };
         });
         
-        // ✅ Filter: Only show employees with schedules
+        //  Filter: Only show employees with schedules
         const filteredStats = stats.filter(s => s.has_schedules);
         
         // Sort by should_plan DESC (most urgent first)
@@ -273,21 +273,21 @@ export default function PlanningStatisticsModal({
                       {stat.department_name}
                     </td>
                     
-                    {/* ✅ Used Days */}
+                    {/*  Used Days */}
                     <td className="px-4 py-3">
                       <span className="text-sm font-semibold text-orange-600 dark:text-orange-400">
                         {parseFloat(stat.used_days).toFixed(1)}
                       </span>
                     </td>
                     
-                    {/* ✅ Scheduled Days */}
+                    {/*  Scheduled Days */}
                     <td className="px-4 py-3">
                       <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                         {parseFloat(stat.scheduled_days).toFixed(1)}
                       </span>
                     </td>
                     
-                    {/* ✅ Pending Days */}
+                    {/*  Pending Days */}
                     <td className="px-4 py-3">
                       <span className={`text-sm font-semibold ${
                         stat.pending_days > 0 
@@ -298,7 +298,7 @@ export default function PlanningStatisticsModal({
                       </span>
                     </td>
                     
-                    {/* ✅ Total Planned */}
+                    {/*  Total Planned */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-bold text-almet-cloud-burst dark:text-white">
@@ -309,7 +309,7 @@ export default function PlanningStatisticsModal({
                         </span>
                       </div>
                     </td>
-                    {/* ✅ Must Plan */}
+                    {/*  Must Plan */}
                     <td className="px-4 py-3">
                       <span className={`text-sm font-bold ${
                         stat.should_plan > 0 

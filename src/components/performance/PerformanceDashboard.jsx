@@ -18,9 +18,10 @@ export default function PerformanceDashboard({
   performanceYearId,
   canInitialize,
   darkMode,
-  surveyStatus,   
-currentPeriod, 
-  onViewMySurvey, 
+  surveyStatus,
+  currentPeriod,
+  onViewMySurvey,
+  endYearCompleted,
 }) {
   const getSavedTab = () => {
     if (typeof window === 'undefined') return 'overview';
@@ -31,32 +32,30 @@ currentPeriod,
     localStorage.setItem('performance_active_tab', activeTab);
   }, [activeTab]);
 
-  const isManager  = permissions?.is_manager  || false;
-  const isAdmin    = permissions?.is_admin     || false;
-  const canSeeAll  = permissions?.can_view_all || false;
+  const isManager = permissions?.is_manager  || false;
+  const isAdmin   = permissions?.is_admin    || false;
+  const canSeeAll = permissions?.can_view_all || false;
 
   const visibleEmployees = employees || [];
   const teamMembers = visibleEmployees.filter(e => e.id !== permissions?.employee?.id);
   const selfOnly    = visibleEmployees.filter(e => e.id === permissions?.employee?.id);
 
-  // ── Access banner ──
   const accessBanner = (() => {
     if (canSeeAll || isAdmin)
-      return { type: 'success', icon: Award,  title: 'Admin Access', msg: `Viewing all ${visibleEmployees.length} employees` };
+      return { type: 'success', icon: Award, title: 'Admin Access', msg: `Viewing all ${visibleEmployees.length} employees` };
     if (isManager)
-      return { type: 'info',    icon: Users,  title: 'Manager View', msg: `Your performance + ${teamMembers.length} direct report(s)` };
-    return   { type: 'warning', icon: Lock,   title: 'Personal View', msg: 'You can only view your own performance' };
+      return { type: 'info', icon: Users, title: 'Manager View', msg: `Your performance + ${teamMembers.length} direct report(s)` };
+    return { type: 'warning', icon: Lock, title: 'Personal View', msg: 'You can only view your own performance' };
   })();
 
   const bannerColors = {
     success: darkMode ? 'bg-emerald-900/20 border-emerald-800/30 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800',
-    info:    darkMode ? 'bg-sky-900/20 border-sky-800/30 text-sky-300'          : 'bg-sky-50 border-sky-200 text-sky-800',
+    info:    darkMode ? 'bg-sky-900/20 border-sky-800/30 text-sky-300'             : 'bg-sky-50 border-sky-200 text-sky-800',
     warning: darkMode ? 'bg-amber-900/20 border-amber-800/30 text-amber-300'       : 'bg-amber-50 border-amber-200 text-amber-800',
   };
 
-  // ── Tabs ──
   const tabs = [
-    { id: 'overview',       label: 'Overview',        icon: Target },
+    { id: 'overview', label: 'Overview', icon: Target },
     ...(isManager || isAdmin ? [
       { id: 'my-performance', label: 'My Performance', icon: User  },
       { id: 'team',           label: 'My Team',        icon: Users },
@@ -65,25 +64,26 @@ currentPeriod,
       { id: 'team', label: 'My Performance', icon: User },
     ]),
   ];
-const TimelineItem = ({ label, data, color, isLast }) => (
+
+  const TimelineItem = ({ label, data, color, isLast }) => (
     <div className="flex gap-3">
-        <div className="flex flex-col items-center">
-            <div className={`w-3 h-3 rounded-full ${color} ring-4 ${darkMode ? 'ring-almet-cloud-burst' : 'ring-white'}`} />
-            {!isLast && <div className={`w-0.5 h-full ${darkMode ? 'bg-almet-comet' : 'bg-gray-200'} mt-1`} />}
+      <div className="flex flex-col items-center">
+        <div className={`w-3 h-3 rounded-full ${color} ring-4 ${darkMode ? 'ring-almet-cloud-burst' : 'ring-white'}`} />
+        {!isLast && <div className={`w-0.5 h-full ${darkMode ? 'bg-almet-comet' : 'bg-gray-200'} mt-1`} />}
+      </div>
+      <div className="flex-1 pb-6">
+        <h4 className={`text-sm font-semibold mb-2 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+          {label}
+        </h4>
+        <div className={`${darkMode ? 'bg-almet-san-juan' : 'bg-almet-mystic'} rounded-lg p-2`}>
+          <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-1">Period</div>
+          <div className={`text-xs font-medium ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+            {data.start} → {data.end}
+          </div>
         </div>
-        <div className="flex-1 pb-6">
-            <h4 className={`text-sm font-semibold mb-2 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-                {label}
-            </h4>
-            <div className={`${darkMode ? 'bg-almet-san-juan' : 'bg-almet-mystic'} rounded-lg p-2`}>
-                <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-1">Period</div>
-                <div className={`text-xs font-medium ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-                    {data.start} → {data.end}
-                </div>
-            </div>
-        </div>
+      </div>
     </div>
-);
+  );
 
   return (
     <div className="space-y-4">
@@ -96,15 +96,16 @@ const TimelineItem = ({ label, data, color, isLast }) => (
           <span className="text-xs">{accessBanner.msg}</span>
         </div>
       </div>
-{permissions?.employee && (
-        <SurveyBanner
-          surveyStatus={surveyStatus}
-          currentPeriod={currentPeriod}   // ← add
-          permissions={permissions}
-          onOpen={onViewMySurvey}
-          darkMode={darkMode}
-        />
-      )}
+
+      <SurveyBanner
+        surveyStatus={surveyStatus}
+        currentPeriod={currentPeriod}
+        permissions={permissions}
+        onOpen={onViewMySurvey}
+        darkMode={darkMode}
+        endYearCompleted={endYearCompleted}
+      />
+
       {/* Tab bar */}
       <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border shadow-sm p-3`}>
         <div className="flex gap-2">
@@ -140,7 +141,6 @@ const TimelineItem = ({ label, data, color, isLast }) => (
               <FixedStatCards employees={visibleEmployees} darkMode={darkMode} />
             )}
 
-            {/* Welcome card for plain employees */}
             {!isManager && !isAdmin && !canSeeAll && (
               <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-8 text-center`}>
                 <User className="w-12 h-12 mx-auto mb-3 text-almet-sapphire/40" />
@@ -174,26 +174,10 @@ const TimelineItem = ({ label, data, color, isLast }) => (
                     </p>
                   </div>
                 </div>
-                
                 <div>
-                  <TimelineItem
-                    label="Goal Setting"
-                    data={dashboardStats.timeline.goal_setting}
-                    color="bg-almet-sapphire"
-                    isLast={false}
-                  />
-                  <TimelineItem
-                    label="Mid-Year Review"
-                    data={dashboardStats.timeline.mid_year}
-                    color="bg-orange-500"
-                    isLast={false}
-                  />
-                  <TimelineItem
-                    label="End-Year Review"
-                    data={dashboardStats.timeline.end_year}
-                    color="bg-purple-500"
-                    isLast={true}
-                  />
+                  <TimelineItem label="Goal Setting"    data={dashboardStats.timeline.goal_setting} color="bg-almet-sapphire" isLast={false} />
+                  <TimelineItem label="Mid-Year Review" data={dashboardStats.timeline.mid_year}     color="bg-orange-500"    isLast={false} />
+                  <TimelineItem label="End-Year Review" data={dashboardStats.timeline.end_year}     color="bg-purple-500"    isLast={true}  />
                 </div>
               </div>
             )}

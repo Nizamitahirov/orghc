@@ -1,4 +1,4 @@
-// app/requests/vacation/vacation-settings/page.jsx - ✅ COMPLETE WITH CONFIRMATION MODALS
+// app/requests/vacation/vacation-settings/page.jsx -  COMPLETE WITH CONFIRMATION MODALS
 "use client";
 import { useState, useEffect } from 'react';
 import { 
@@ -20,18 +20,18 @@ export default function VacationSettingsPage() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('calendar');
   
-  // ✅ Dual Production Calendar States
+  //  Dual Production Calendar States
   const [azHolidays, setAzHolidays] = useState([]);
   const [ukHolidays, setUkHolidays] = useState([]);
   const [newAzHoliday, setNewAzHoliday] = useState({ date: '', name: '' });
   const [newUkHoliday, setNewUkHoliday] = useState({ date: '', name: '' });
   
-  // ✅ UK Additional Approver State
+  //  UK Additional Approver State
   const [ukApprover, setUkApprover] = useState(null);
   const [selectedApprover, setSelectedApprover] = useState(null);
   const [employees, setEmployees] = useState([]);
   
-  // ✅ Vacation Types State
+  //  Vacation Types State
   const [vacationTypes, setVacationTypes] = useState([]);
   const [showTypeModal, setShowTypeModal] = useState(false);
   const [editingType, setEditingType] = useState(null);
@@ -43,7 +43,7 @@ export default function VacationSettingsPage() {
   });
   const [selectedAzDates, setSelectedAzDates] = useState([]);
 const [selectedUkDates, setSelectedUkDates] = useState([]);
-  // ✅ Balances State
+  //  Balances State
   const [balanceFile, setBalanceFile] = useState(null);
   const [balanceUploadLoading, setBalanceUploadLoading] = useState(false);
   const [resetYear, setResetYear] = useState(new Date().getFullYear());
@@ -52,8 +52,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
   const [generalSettings, setGeneralSettings] = useState({
     allow_negative_balance: false,
     max_schedule_edits: 3,
-    notification_days_before: 7,
-    notification_frequency: 2
+
   });
   
   // HR Representative
@@ -61,7 +60,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
   const [defaultHR, setDefaultHR] = useState(null);
   const [selectedHR, setSelectedHR] = useState(null);
 
-  // ✅ CONFIRMATION MODAL STATE
+  //  CONFIRMATION MODAL STATE
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [confirmMessage, setConfirmMessage] = useState('');
@@ -113,7 +112,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
     }
   };
 
-  // ✅ CONFIRMATION MODAL HELPERS
+  //  CONFIRMATION MODAL HELPERS
   const openConfirmModal = (title, message, type, action) => {
     setConfirmTitle(title);
     setConfirmMessage(message);
@@ -136,7 +135,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
     closeConfirmModal();
   };
 
-  // ✅ Vacation Types Handlers
+  //  Vacation Types Handlers
   const fetchVacationTypes = async () => {
     try {
       const data = await VacationService.getVacationTypes();
@@ -178,10 +177,10 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
       try {
         if (editingType) {
           await VacationService.updateVacationType(editingType.id, typeForm);
-          showSuccess('✅ Vacation type updated successfully');
+          showSuccess(' Vacation type updated successfully');
         } else {
           await VacationService.createVacationType(typeForm);
-          showSuccess('✅ Vacation type created successfully');
+          showSuccess(' Vacation type created successfully');
         }
         setShowTypeModal(false);
         setEditingType(null);
@@ -212,7 +211,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
       setLoading(true);
       try {
         await VacationService.deleteVacationType(typeId);
-        showSuccess(`✅ "${typeName}" deleted successfully`);
+        showSuccess(` "${typeName}" deleted successfully`);
         fetchVacationTypes();
       } catch (error) {
         console.error('Delete type error:', error);
@@ -230,12 +229,12 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
     );
   };
 
-  // ✅ Balances Handlers - WITH CONFIRMATION
+  //  Balances Handlers - WITH CONFIRMATION
   const handleDownloadTemplate = async () => {
     try {
       const blob = await VacationService.downloadBalanceTemplate();
       VacationHelpers.downloadBlobFile(blob, 'vacation_balances_template.xlsx');
-      showSuccess('✅ Template downloaded successfully');
+      showSuccess(' Template downloaded successfully');
     } catch (error) {
       console.error('Download template error:', error);
       showError('❌ Failed to download template');
@@ -250,7 +249,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
         return;
       }
       setBalanceFile(file);
-      showSuccess(`✅ File selected: ${file.name}`);
+      showSuccess(` File selected: ${file.name}`);
     }
   };
 
@@ -267,7 +266,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
         formData.append('file', balanceFile);
         
         const result = await VacationService.bulkUploadBalances(formData);
-        showSuccess(`✅ Successfully uploaded ${result.created_count} balances`);
+        showSuccess(` Successfully uploaded ${result.created_count} balances`);
         setBalanceFile(null);
       } catch (error) {
         console.error('Upload error:', error);
@@ -290,7 +289,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
       setLoading(true);
       try {
         await VacationService.resetBalances({ year: resetYear });
-        showSuccess(`✅ Balances reset successfully for year ${resetYear}`);
+        showSuccess(` Balances reset successfully for year ${resetYear}`);
       } catch (error) {
         console.error('Reset error:', error);
         showError(error.response?.data?.error || '❌ Failed to reset balances');
@@ -307,7 +306,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
     );
   };
 
-  // Azerbaijan/UK Holiday Handlers - ✅ ALLOW MULTIPLE ON SAME DATE
+  // Azerbaijan/UK Holiday Handlers -  ALLOW MULTIPLE ON SAME DATE
   const handleAddAzHoliday = () => {
     if (!newAzHoliday.date || !newAzHoliday.name) {
       showError('❌ Date and name are required');
@@ -316,13 +315,13 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
     
     setAzHolidays([...azHolidays, newAzHoliday].sort((a, b) => a.date.localeCompare(b.date)));
     setNewAzHoliday({ date: '', name: '' });
-    showSuccess('✅ Holiday added successfully');
+    showSuccess(' Holiday added successfully');
   };
 
   const handleRemoveAzHoliday = (index, holidayName) => {
     const action = () => {
       setAzHolidays(azHolidays.filter((_, i) => i !== index));
-      showSuccess(`✅ "${holidayName}" removed`);
+      showSuccess(` "${holidayName}" removed`);
     };
 
     openConfirmModal(
@@ -341,13 +340,13 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
     
     setUkHolidays([...ukHolidays, newUkHoliday].sort((a, b) => a.date.localeCompare(b.date)));
     setNewUkHoliday({ date: '', name: '' });
-    showSuccess('✅ Holiday added successfully');
+    showSuccess(' Holiday added successfully');
   };
 
   const handleRemoveUkHoliday = (index, holidayName) => {
     const action = () => {
       setUkHolidays(ukHolidays.filter((_, i) => i !== index));
-      showSuccess(`✅ "${holidayName}" removed`);
+      showSuccess(` "${holidayName}" removed`);
     };
 
     openConfirmModal(
@@ -366,7 +365,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
           non_working_days_az: azHolidays,
           non_working_days_uk: ukHolidays
         });
-        showSuccess('✅ Production calendars updated successfully');
+        showSuccess(' Production calendars updated successfully');
       } catch (error) {
         console.error('Calendar save error:', error);
         showError(error.response?.data?.error || '❌ Failed to save calendars');
@@ -395,7 +394,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
         await VacationService.setUKAdditionalApprover({
           uk_additional_approver_id: selectedApprover
         });
-        showSuccess('✅ UK Additional Approver updated successfully');
+        showSuccess(' UK Additional Approver updated successfully');
         await fetchAllSettings();
       } catch (error) {
         console.error('UK Approver save error:', error);
@@ -418,7 +417,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
       setLoading(true);
       try {
         await VacationService.updateGeneralSettings(generalSettings);
-        showSuccess('✅ General settings updated successfully');
+        showSuccess(' General settings updated successfully');
       } catch (error) {
         console.error('General settings save error:', error);
         showError(error.response?.data?.error || '❌ Failed to save general settings');
@@ -447,7 +446,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
         await VacationService.updateDefaultHRRepresentative({
           default_hr_representative_id: selectedHR
         });
-        showSuccess('✅ HR representative updated successfully');
+        showSuccess(' HR representative updated successfully');
         await fetchAllSettings();
       } catch (error) {
         console.error('HR save error:', error);
@@ -532,7 +531,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
   </div>
 
   <div className="space-y-3 mb-4">
-    {/* ✅ Multiple Date Picker */}
+    {/*  Multiple Date Picker */}
     <div>
       <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
         Select Dates (Click to add/remove)
@@ -555,7 +554,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
       />
     </div>
 
-    {/* ✅ Selected Dates Display */}
+    {/*  Selected Dates Display */}
     {selectedAzDates.length > 0 && (
       <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
         <p className="text-xs font-medium text-green-800 dark:text-green-300 mb-2">
@@ -596,7 +595,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
           return;
         }
         
-        // ✅ Add all selected dates with same name
+        //  Add all selected dates with same name
         const newHolidays = selectedAzDates.map(date => ({
           date,
           name: newAzHoliday.name
@@ -605,7 +604,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
         setAzHolidays([...azHolidays, ...newHolidays].sort((a, b) => a.date.localeCompare(b.date)));
         setNewAzHoliday({ date: '', name: '' });
         setSelectedAzDates([]);
-        showSuccess(`✅ Added ${newHolidays.length} holidays`);
+        showSuccess(` Added ${newHolidays.length} holidays`);
       }}
       disabled={selectedAzDates.length === 0 || !newAzHoliday.name}
       className="w-full px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
@@ -649,7 +648,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
   </div>
 
   <div className="space-y-3 mb-4">
-    {/* ✅ Multiple Date Picker */}
+    {/*  Multiple Date Picker */}
     <div>
       <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
         Select Dates (Click to add/remove)
@@ -672,7 +671,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
       />
     </div>
 
-    {/* ✅ Selected Dates Display */}
+    {/*  Selected Dates Display */}
     {selectedUkDates.length > 0 && (
       <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
         <p className="text-xs font-medium text-red-800 dark:text-red-300 mb-2">
@@ -713,7 +712,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
           return;
         }
         
-        // ✅ Add all selected dates with same name
+        //  Add all selected dates with same name
         const newHolidays = selectedUkDates.map(date => ({
           date,
           name: newUkHoliday.name
@@ -722,7 +721,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
         setUkHolidays([...ukHolidays, ...newHolidays].sort((a, b) => a.date.localeCompare(b.date)));
         setNewUkHoliday({ date: '', name: '' });
         setSelectedUkDates([]);
-        showSuccess(`✅ Added ${newHolidays.length} holidays`);
+        showSuccess(` Added ${newHolidays.length} holidays`);
       }}
       disabled={selectedUkDates.length === 0 || !newUkHoliday.name}
       className="w-full px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
@@ -1100,39 +1099,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
                 />
               </div>
 
-              <div className="p-4 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
-                <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
-                  Notification Days Before
-                </label>
-                <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-3">
-                  Days before vacation starts to send reminder notifications.
-                </p>
-                <input
-                  type="number"
-                  min="1"
-                  max="30"
-                  value={generalSettings.notification_days_before}
-                  onChange={(e) => setGeneralSettings(prev => ({...prev, notification_days_before: parseInt(e.target.value)}))}
-                  className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-
-              <div className="p-4 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
-                <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
-                  Notification Frequency (days)
-                </label>
-                <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-3">
-                  How often to send repeat notifications.
-                </p>
-                <input
-                  type="number"
-                  min="1"
-                  max="7"
-                  value={generalSettings.notification_frequency}
-                  onChange={(e) => setGeneralSettings(prev => ({...prev, notification_frequency: parseInt(e.target.value)}))}
-                  className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                />
-              </div>
+             
             </div>
 
             <div className="flex justify-end mt-6">
@@ -1210,7 +1177,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
         )}
       </div>
 
-      {/* ✅ VACATION TYPE MODAL */}
+      {/*  VACATION TYPE MODAL */}
       {showTypeModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full border border-almet-mystic/50 dark:border-almet-comet">
@@ -1324,7 +1291,7 @@ const [selectedUkDates, setSelectedUkDates] = useState([]);
     </div>
   )}
 
-  {/* ✅ CONFIRMATION MODAL */}
+  {/*  CONFIRMATION MODAL */}
   {showConfirmModal && (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full border border-almet-mystic/50 dark:border-almet-comet">

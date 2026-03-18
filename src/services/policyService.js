@@ -4,7 +4,7 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-// ✅ Token Manager (performanceService.js kimi)
+//  Token Manager (performanceService.js kimi)
 const TokenManager = {
   getAccessToken: () => typeof window !== 'undefined' ? localStorage.getItem("accessToken") : null,
   getRefreshToken: () => typeof window !== 'undefined' ? localStorage.getItem("refreshToken") : null,
@@ -27,7 +27,7 @@ const api = axios.create({
   timeout: 30000,
 });
 
-// ✅ Request Interceptor
+//  Request Interceptor
 api.interceptors.request.use(
   (config) => {
     const token = TokenManager.getAccessToken();
@@ -41,7 +41,7 @@ api.interceptors.request.use(
   }
 );
 
-// ✅ Response Interceptor (401 xətası üçün)
+//  Response Interceptor (401 xətası üçün)
 api.interceptors.response.use(
   (response) => response,
   (error) => {

@@ -241,22 +241,21 @@ const ProfileCard = ({ account, userDetails, darkMode }) => {
   };
 
   const getBusinessFunction = () => {
-    if (!userDetails) return null;
-    if (userDetails.employee.business_function_detail?.name) {
-      return userDetails.employee.business_function_detail.name;
-    }
-    if (userDetails.employee.business_function_detail?.code) {
-      return userDetails.employee.business_function_detail.code;
-    }
-    return null;
-  };
+  if (!userDetails?.employee) return null;
+ 
+  if (userDetails.employee.business_function_detail?.code) {
+    return userDetails.employee.business_function_detail.code;
+  }
+  return null;
+};
 
   const businessFunction = getBusinessFunction();
   const isUKBusinessFunction = businessFunction?.toUpperCase() === 'UK';
   const isProfileActive = pathname.includes('/structure/employee/') && 
                           employeeId && 
                           pathname.includes(employeeId);
-
+console.log(userDetails)
+console.log(isUKBusinessFunction)
   return (
     <div className="bg-white dark:bg-almet-cloud-burst rounded-2xl overflow-hidden shadow-lg border border-almet-mystic dark:border-almet-san-juan">
       <div className="h-20 bg-gradient-to-br from-almet-sapphire via-almet-astral to-almet-steel-blue"></div>
@@ -498,9 +497,9 @@ const NewsCarousel = ({ news, darkMode, onClick }) => {
             <h2 className="text-xl font-bold text-white mb-2 leading-tight">
               {currentNews?.title || 'Innovation Lab Grant for 2026'}
             </h2>
-            <p className="text-white/90 text-xs mb-3 line-clamp-2">
+            {/* <p className="text-white/90 text-xs mb-3 line-clamp-2">
               {currentNews?.excerpt || 'Propose your breakthrough ideas and win funding for internal implementation.'}
-            </p>
+            </p> */}
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-white/80 flex items-center gap-2">
                 <Calendar className="h-3 w-3" />
@@ -557,7 +556,12 @@ const ActionCard = ({ icon: Icon, title, description, buttonText, onClick, color
       bg: "bg-purple-500/10 dark:bg-purple-400/10",
       icon: "text-purple-600 dark:text-purple-400",
       button: "bg-purple-500/10 dark:bg-purple-400/10 hover:bg-purple-600 hover:text-white dark:hover:bg-purple-500 text-purple-600 dark:text-purple-400"
-    }
+    },
+    teal: {
+    bg: "bg-teal-500/10 dark:bg-teal-400/10",
+    icon: "text-teal-600 dark:text-teal-400",
+    button: "bg-teal-500/10 dark:bg-teal-400/10 hover:bg-teal-600 hover:text-white dark:hover:bg-teal-500 text-teal-600 dark:text-teal-400"
+  }
   };
   const styles = colorClasses[color];
 
@@ -994,7 +998,13 @@ export default function PersonalArea() {
           </div>
 
           <div className="lg:col-span-3 space-y-5">
-   
+   <ActionCard
+  icon={Laptop}
+  title="IT Support"
+description="Technical issue? Submit your request directly to the IT team."  buttonText="Submit Request"
+  onClick={() => window.open('https://it.myalmet.com/#login', '_blank')}
+  color="teal"
+/>
             <ActionCard
               icon={Bell} 
               title="My Voice"
@@ -1011,6 +1021,9 @@ export default function PersonalArea() {
               onClick={() => setShowBoardLetterModal(true)}
               color="purple"
             />
+
+            
+
           </div>
         </div>
 

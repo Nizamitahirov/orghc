@@ -6,7 +6,6 @@ import { useToast } from "../common/Toast";
 import { useEmployees } from "../../hooks/useEmployees";
 import { useVacantPositions } from "../../hooks/useVacantPositions";
 import { useReferenceData } from "../../hooks/useReferenceData";
-import { useDispatch } from "react-redux";
 import VacantPositionsTable from "./VacantPositionsTable";
 import ArchiveEmployeesTable from "./ArchiveEmployeesTable";
 import { archiveEmployeesService } from '../../services/vacantPositionsService';
@@ -41,9 +40,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     selectedEmployees,
     fetchEmployees,
     fetchStatistics,
-    refreshAll,
     toggleEmployeeSelection,
-    selectAllEmployees,
     clearSelection,
     setSelectedEmployees,
     clearFilters,
@@ -102,7 +99,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   const [defaultSortingApplied, setDefaultSortingApplied] = useState(false);
   const [isWrapperFilterApplied, setIsWrapperFilterApplied] = useState(false);
 
-  // ✅ NEW: Refs to lock business_function filter
+  //  NEW: Refs to lock business_function filter
   const lockedBusinessFunction = useRef(null);
   const initialized = useRef(false);
   const lastFetchTime = useRef(0);
@@ -117,7 +114,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     }
   }, [loading.exporting]);
 
-  // ✅ CRITICAL: Local filters store IDs (not names)
+  //  CRITICAL: Local filters store IDs (not names)
   const [localFilters, setLocalFilters] = useState({
     search: "",
     employee_search: [],
@@ -125,7 +122,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     job_title_search: "",
     status: [],
     department: [],
-    business_function: [], // ✅ Stores IDs like [1, 2, 3]
+    business_function: [], //  Stores IDs like [1, 2, 3]
     position_group: [],
     tags: [],
     grading_level: [],
@@ -300,7 +297,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       page_size: pagination.pageSize || 25
     };
 
-    // ✅ CRITICAL: USE THE LOCKED VALUE FROM REF - NEVER CHANGES
+    //  CRITICAL: USE THE LOCKED VALUE FROM REF - NEVER CHANGES
     if (lockedBusinessFunction.current !== null) {
       params.business_function = String(lockedBusinessFunction.current);
  
@@ -396,7 +393,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       abortControllerRef.current.abort();
     }
     
-    // ✅ CRITICAL: If locked, params MUST have business_function
+    //  CRITICAL: If locked, params MUST have business_function
     if (lockedBusinessFunction.current !== null && !params.business_function) {
       console.error('❌ BLOCKED: Lock exists but no business_function in params!');
       console.error('Locked value:', lockedBusinessFunction.current);
@@ -433,7 +430,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     }, delay);
   }, [fetchEmployees]);
 
-  // ✅ WRAPPER FILTER EFFECT - Set business_function ID AND LOCK IT
+  //  WRAPPER FILTER EFFECT - Set business_function ID AND LOCK IT
   useEffect(() => {
     if (!businessFunctions || businessFunctions.length === 0) {
       return;
@@ -447,7 +444,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         
   
         
-        // ✅ LOCK IT IN REF - THIS NEVER CHANGES
+        //  LOCK IT IN REF - THIS NEVER CHANGES
         lockedBusinessFunction.current = bfId;
         
         setLocalFilters(prev => {
@@ -484,7 +481,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     }
   }, [businessFunctionFilter, businessFunctions]);
 
-  // ✅ INITIALIZATION EFFECT
+  //  INITIALIZATION EFFECT
   useEffect(() => {
     const initializeData = async () => {
       if (initialized.current) {
@@ -495,7 +492,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         return;
       }
       
-      // ✅ CRITICAL: If wrapper filter exists, wait for lock to be set
+      //  CRITICAL: If wrapper filter exists, wait for lock to be set
       if (businessFunctionFilter) {
         if (lockedBusinessFunction.current === null) {
           return;
@@ -535,13 +532,13 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     showError
   ]);
 
-  // ✅ DATA FETCHING EFFECT - Check the lock
+  //  DATA FETCHING EFFECT - Check the lock
   useEffect(() => {
     if (!initialized.current) {
       return;
     }
 
-    // ✅ CRITICAL: If lock exists, business_function MUST be in params
+    //  CRITICAL: If lock exists, business_function MUST be in params
     if (lockedBusinessFunction.current !== null) {
       const params = buildApiParams();
       if (!params.business_function) {
@@ -789,186 +786,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     }
   }, [getSortDirection, addSort, removeSort, setSorting]);
 
-  const handleBulkAction = useCallback(async (action, options = {}) => {
-    setIsActionMenuOpen(false);
-
-    if (selectedEmployees.length === 0 && !['export', 'downloadTemplate', 'bulkImport', 'refresh'].includes(action)) {
-      showWarning("Please select employees first!");
-      return;
-    }
-
-    try {
-      let result;
-      
-      switch (action) {
-        case "refresh":
-          await refreshAllData(true);
-          break;
-
-        case "export":
-          setIsExportModalOpen(true);
-          break;
-
-        case "bulkImport":
-          setIsBulkUploadOpen(true);
-          break;
-
-        case "downloadTemplate":
-          try {
-            result = await downloadEmployeeTemplate();
-            showSuccess('Template downloaded successfully!');
-          } catch (error) {
-            console.error('Template download failed:', error);
-            showError('Template download failed: ' + error.message);
-          }
-          break;
-
-        case "softDelete":
-          const softDeleteMessage = `Are you sure you want to soft delete ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}?\n\nThis will:\n- Mark employees as inactive\n- Create vacant positions for their roles\n- Allow future restoration`;
-          
-          if (confirm(softDeleteMessage)) {
-            try {
-              result = await archiveEmployeesService.bulkSoftDeleteEmployees(selectedEmployees);
-              clearSelection();
-              await refreshAllData(true);
-              showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} soft deleted successfully`);
-            } catch (error) {
-              console.error('Soft delete failed:', error);
-              showError(`Soft delete failed: ${error.message}`);
-            }
-          }
-          break;
-
-        case "hardDelete":
-          const hardDeleteMessage = `⚠️ WARNING: PERMANENT DELETION\n\nAre you sure you want to permanently delete ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}?\n\nThis will:\n- Permanently remove employees from the system\n- Create archive records for audit purposes\n- CANNOT be undone\n\nType "DELETE" to confirm this permanent action.`;
-          
-          const confirmation = prompt(hardDeleteMessage);
-          
-          if (confirmation === "DELETE") {
-            try {
-              const notes = "hard delete";
-              showWarning('Processing permanent deletion...');
-              
-              result = await archiveEmployeesService.bulkHardDeleteEmployees(
-                selectedEmployees, 
-                notes, 
-                true
-              );
-              
-              clearSelection();
-              await refreshAllData(true);
-              showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} permanently deleted`);
-              
-            } catch (error) {
-              console.error('Hard delete failed:', error);
-              showError(`Hard delete failed: ${error.message}`);
-            }
-          } else if (confirmation !== null) {
-            showWarning('Hard delete cancelled. You must type "DELETE" exactly to confirm permanent deletion.');
-          }
-          break;
-
-        case "showInOrgChart":
-          try {
-            await showInOrgChart(selectedEmployees);
-            clearSelection();
-            await refreshAllData(true);
-            showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} now visible in org chart!`);
-          } catch (error) {
-            console.error('Show in org chart failed:', error);
-            showError('Show in org chart failed: ' + error.message);
-          }
-          break;
-
-        case "hideFromOrgChart":
-          try {
-            await hideFromOrgChart(selectedEmployees);
-            clearSelection();
-            await refreshAllData(true);
-            showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} hidden from org chart!`);
-          } catch (error) {
-            console.error('Hide from org chart failed:', error);
-            showError('Hide from org chart failed: ' + error.message);
-          }
-          break;
-
-        case "bulkAddTags":
-          try {
-            const payload = {
-              employee_ids: options.employee_ids || selectedEmployees,
-              tag_id: options.tag_id
-            };
-            
-           
-            result = await bulkAddTags(payload.employee_ids, payload.tag_id);
-            clearSelection();
-            await refreshAllData(true);
-            showSuccess(`Tags added to ${payload.employee_ids.length} employee${payload.employee_ids.length !== 1 ? 's' : ''}!`);
-          } catch (error) {
-            console.error('Tag addition failed:', error);
-            showError('Tag addition failed: ' + error.message);
-          }
-          break;
-
-        case "bulkRemoveTags":
-          try {
-            const payload = {
-              employee_ids: options.employee_ids || selectedEmployees,
-              tag_id: options.tag_id
-            };
-            
-            result = await bulkRemoveTags(payload.employee_ids, payload.tag_id);
-            clearSelection();
-            await refreshAllData(true);
-            showSuccess(`Tags removed from ${payload.employee_ids.length} employee${payload.employee_ids.length !== 1 ? 's' : ''}!`);
-          } catch (error) {
-            showError('Tag removal failed: ' + error.message);
-          }
-          break;
-
-        case "bulkAssignLineManager":
-          try {
-            const payload = {
-              employee_ids: options.employee_ids || selectedEmployees,
-              line_manager_id: options.line_manager_id
-            };
-
-            result = await bulkAssignLineManager(payload.employee_ids, payload.line_manager_id);
-            clearSelection();
-            await refreshAllData(true);
-            
-            const managerName = result?.line_manager_info?.name || 'Line Manager';
-            showSuccess(`Line manager assigned to ${payload.employee_ids.length} employees!`);
-          } catch (error) {
-            console.error('Line manager assignment failed:', error);
-            showError('Line manager assignment failed: ' + error.message);
-          }
-          break;
-
-      
-        default:
-          console.warn('Unknown bulk action:', action);
-      }
-    } catch (error) {
-      console.error(`Bulk action ${action} failed:`, error);
-      showError(`${action} failed. Error: ${error.message}`);
-    }
-  }, [
-    selectedEmployees,
-    clearSelection,
-    refreshAllData,
-    bulkAddTags,
-    bulkRemoveTags,
-    bulkAssignLineManager,
-
-    downloadEmployeeTemplate,
-    showInOrgChart,
-    hideFromOrgChart,
-    showInfo,
-    showSuccess,
-    showError,
-    showWarning
-  ]);
+ 
 
   const handleToggleActionMenu = useCallback(() => {
     setIsActionMenuOpen(prev => !prev);
@@ -1018,7 +836,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         ? "filtered"
         : "all";
       
-      showSuccess(`✅ ${exportTypeLabel} employees exported.`);
+      showSuccess(` ${exportTypeLabel} employees exported.`);
       
       return response;
 
@@ -1165,45 +983,73 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
           await handleVisibilityChange(employeeId, newVisibility);
           break;
 
-        case "softDelete":
-          const employeeName = employee?.name || employee?.employee_name || `Employee ${employeeId}`;
-          
-          if (confirm(`Soft delete ${employeeName}?\n\nThis will create a vacant position and allow future restoration.`)) {
+        case "softDelete": {
+          const employeeName =
+            employee?.name || employee?.employee_name || `Employee ${employeeId}`;
+
+          if (confirm(
+            `Soft delete ${employeeName}?\n\nThis will create a vacant position and allow future restoration.`
+          )) {
             try {
-              const reason = prompt("Please provide a reason for soft deletion (optional):");
-              
-              await archiveEmployeesService.bulkSoftDeleteEmployees([employeeId], reason);
+              const reason = prompt(
+                "Please provide a reason for soft deletion (optional):"
+              );
+              const terminationDateInput = prompt(
+                "Enter termination date (YYYY-MM-DD) or leave blank for today:"
+              );
+              const termination_date =
+                terminationDateInput?.trim() || undefined;
+
+              await archiveEmployeesService.bulkSoftDeleteEmployees(
+                [employeeId],
+                reason,
+                termination_date     // ← YENİ
+              );
               await refreshAllData(true);
               showSuccess(`${employeeName} soft deleted successfully`);
-              
             } catch (error) {
               console.error('Individual soft delete failed:', error);
               showError(`Failed to soft delete ${employeeName}: ${error.message}`);
             }
           }
           break;
-
+        }
+        
         case "delete":
-        case "hardDelete":
-          const empName = employee?.name || employee?.employee_name || `Employee ${employeeId}`;
-          const confirmation = prompt(`⚠️ WARNING: PERMANENT DELETION\n\nType "DELETE" to permanently delete ${empName}:`);
-          
-          if (confirmation === "DELETE") {
+        case "hardDelete": {
+          const empName =
+            employee?.name || employee?.employee_name || `Employee ${employeeId}`;
+          const hardConfirm = prompt(
+            `⚠️ WARNING: PERMANENT DELETION\n\nType "DELETE" to permanently delete ${empName}:`
+          );
+
+          if (hardConfirm === "DELETE") {
             try {
-              const notes = prompt("Please provide notes for this deletion (optional but recommended):");
-              
-              await archiveEmployeesService.bulkHardDeleteEmployees([employeeId], notes, true);
+              const notes = prompt(
+                "Please provide notes for this deletion (optional but recommended):"
+              );
+              const terminationDateInput = prompt(
+                "Enter termination date (YYYY-MM-DD) or leave blank for today:"
+              );
+              const termination_date =
+                terminationDateInput?.trim() || undefined;
+
+              await archiveEmployeesService.bulkHardDeleteEmployees(
+                [employeeId],
+                notes,
+                true,
+                termination_date     // ← YENİ
+              );
               await refreshAllData(true);
               showSuccess(`${empName} permanently deleted`);
-              
             } catch (error) {
               showError(`Failed to delete ${empName}: ${error.message}`);
             }
-          } else if (confirmation !== null) {
+          } else if (hardConfirm !== null) {
             showWarning('Deletion cancelled. You must type "DELETE" exactly to confirm.');
           }
           break;
-
+        }
         case "viewTeam":
           showInfo(`Team view for ${employee?.name || employeeId} - Feature coming soon!`);
           break;

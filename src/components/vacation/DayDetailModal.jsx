@@ -37,7 +37,7 @@ export const DayDetailModal = ({ isOpen, onClose, date, holidays, vacations }) =
     );
   };
 
-  // ✅ NEW: Get type badge (Request vs Schedule)
+  //  NEW: Get type badge (Request vs Schedule)
   const getTypeBadge = (type) => {
     if (type === 'request') {
       return (
@@ -162,7 +162,7 @@ export const DayDetailModal = ({ isOpen, onClose, date, holidays, vacations }) =
                           </div>
                         </div>
                         
-                        {/* ✅ Status & Type Badges */}
+                        {/*  Status & Type Badges */}
                         <div className="flex items-center gap-2">
                           {getTypeBadge(vacation.type)}
                           {getStatusBadge(vacation.status_code)}
@@ -230,7 +230,7 @@ export const DayDetailModal = ({ isOpen, onClose, date, holidays, vacations }) =
                         </div>
                       </div>
 
-                      {/* Request ID - ✅ NEW */}
+                      {/* Request ID -  NEW */}
                       {vacation.request_id && (
                         <div className="mt-2">
                           <span className="text-xs text-almet-waterloo dark:text-gray-400">

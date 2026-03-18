@@ -137,60 +137,58 @@ export default function EmployeeDetailPerformance({
   };
 
   const getEmployeeActions = (record) => {
-    
-    if (!isOwnProfile && !currentUser.is_admin) return [];
+  if (!isOwnProfile && !currentUser.is_admin) return [];
+  if (!record?.workflow) return [];   // ← guard added
 
-    const actions = [];
-    const period = record.current_period;
-    const status = record.approval_status;
+  const actions = [];
+  const period = record.current_period;
+  const status = record.approval_status;
 
+  const canApproveObjectives =
+    record.workflow.objectives?.employee_approved === false &&
+    status === 'PENDING_EMPLOYEE_APPROVAL' &&
+    period === 'GOAL_SETTING';
 
-    const canApproveObjectives =
-      record.workflow.objectives.employee_approved === false &&
-      status === 'PENDING_EMPLOYEE_APPROVAL' &&
-      period === 'GOAL_SETTING';
+  if (canApproveObjectives) {
+    actions.push({
+      type: 'approve_objectives',
+      label: 'Approve My Objectives',
+      icon: CheckSquare,
+      description: 'Your manager has set your objectives. Review and approve them.',
+      urgency: 'high',
+      onClick: () =>
+        openApproval(
+          record,
+          'approve_objectives',
+          'Approve Objectives',
+          'Confirm that you have reviewed and agree with the objectives set by your manager.'
+        ),
+    });
+  }
 
+  const canApproveFinal =
+    record.workflow.end_year?.is_complete === true &&
+    record.workflow.final?.employee_approved === false;
 
-    if (canApproveObjectives ) {
-      actions.push({
-        type: 'approve_objectives',
-        label: 'Approve My Objectives',
-        icon: CheckSquare,
-        description: 'Your manager has set your objectives. Review and approve them.',
-        urgency: 'high',
-        onClick: () =>
-          openApproval(
-            record,
-            'approve_objectives',
-            'Approve Objectives',
-            'Confirm that you have reviewed and agree with the objectives set by your manager.'
-          ),
-      });
-    }
+  if (canApproveFinal) {
+    actions.push({
+      type: 'approve_final',
+      label: 'Approve Final Results',
+      icon: CheckCircle,
+      description: 'Your end-year performance review is ready. Please review and approve your results.',
+      urgency: 'high',
+      onClick: () =>
+        openApproval(
+          record,
+          'approve_final',
+          'Approve Final Performance',
+          'Confirm that you have reviewed your final performance results.'
+        ),
+    });
+  }
 
-    const canApproveFinal =
-    record.workflow.end_year.is_complete === true &&
-    record.workflow.final.employee_approved === false;
-
-    if (canApproveFinal) {
-      actions.push({
-        type: 'approve_final',
-        label: 'Approve Final Results',
-        icon: CheckCircle,
-        description: 'Your end-year performance review is ready. Please review and approve your results.',
-        urgency: 'high',
-        onClick: () =>
-          openApproval(
-            record,
-            'approve_final',
-            'Approve Final Performance',
-            'Confirm that you have reviewed your final performance results.'
-          ),
-      });
-    }
-
-    return actions;
-  };
+  return actions;
+};
 
   const getPeriodLabel = (p) => PERIOD_LABELS[p] || p;
   const getPeriodColor = (p) =>

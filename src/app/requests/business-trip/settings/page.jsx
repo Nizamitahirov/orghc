@@ -14,13 +14,10 @@ export default function BusinessTripSettingsPage() {
   const router = useRouter();
   
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState('hr');
   const [userPermissions, setUserPermissions] = useState({ is_admin: false, permissions: [] });
   
-  // General Settings
-  const [generalSettings, setGeneralSettings] = useState({
-    notification_days_before: 7
-  });
+
   
   // HR Representatives
   const [hrRepresentatives, setHrRepresentatives] = useState([]);
@@ -56,7 +53,7 @@ export default function BusinessTripSettingsPage() {
     try {
       await Promise.all([
         fetchUserPermissions(),
-        fetchGeneralSettings(),
+     
         fetchHRRepresentatives(),
         fetchFinanceApprovers(),
         fetchTravelTypes(),
@@ -86,14 +83,6 @@ export default function BusinessTripSettingsPage() {
     }
   };
 
-  const fetchGeneralSettings = async () => {
-    try {
-      const data = await BusinessTripService.getGeneralSettings();
-      setGeneralSettings(data);
-    } catch (error) {
-      console.error('General settings fetch error:', error);
-    }
-  };
 
   const fetchHRRepresentatives = async () => {
     try {
@@ -148,19 +137,6 @@ export default function BusinessTripSettingsPage() {
     }
   };
 
-  // === GENERAL SETTINGS ===
-  const handleSaveGeneralSettings = async () => {
-    setLoading(true);
-    try {
-      await BusinessTripService.updateGeneralSettings(generalSettings);
-      showSuccess('General settings updated successfully');
-    } catch (error) {
-      console.error('Update error:', error);
-      showError('Failed to update settings');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // === HR REPRESENTATIVE ===
   const handleUpdateHR = async () => {
@@ -405,7 +381,7 @@ export default function BusinessTripSettingsPage() {
         <div className="mb-5 border-b border-almet-mystic dark:border-almet-comet">
           <div className="flex space-x-8 overflow-x-auto">
             {[
-              { key: 'general', label: 'General', icon: Settings },
+     
               { key: 'hr', label: 'HR Representative', icon: Users },
               { key: 'finance', label: 'Finance Approver', icon: Briefcase },
               { key: 'travel', label: 'Travel Types', icon: Plane },
@@ -428,53 +404,7 @@ export default function BusinessTripSettingsPage() {
           </div>
         </div>
 
-        {/* General Settings */}
-        {activeTab === 'general' && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
-            <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4">
-              <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white flex items-center gap-2">
-                <Settings className="w-4 h-4 text-almet-sapphire" />
-                General Settings
-              </h2>
-            </div>
-            
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-                  Notification Days Before Trip
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="30"
-                  value={generalSettings.notification_days_before}
-                  onChange={(e) => setGeneralSettings({ ...generalSettings, notification_days_before: parseInt(e.target.value) })}
-                  className="w-full md:w-64 px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white"
-                />
-                <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                  System will send notifications this many days before trip starts
-                </p>
-              </div>
-
-              <div className="flex justify-end pt-4 border-t border-almet-mystic/30 dark:border-almet-comet/30">
-                <button
-                  onClick={handleSaveGeneralSettings}
-                  disabled={loading}
-                  className="px-5 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-2 disabled:opacity-50 shadow-md"
-                >
-                  {loading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      Save Settings
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+       
 
         {/* HR Representative */}
         {activeTab === 'hr' && (

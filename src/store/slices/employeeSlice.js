@@ -615,7 +615,7 @@ const employeeSlice = createSlice({
   
   }
   
-  // ✅ Reset pagination when filter changes
+  //  Reset pagination when filter changes
   state.pagination.page = 1;
 
 },

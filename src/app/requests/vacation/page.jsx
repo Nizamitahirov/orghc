@@ -27,8 +27,7 @@ import VacationStats from '@/components/vacation/VacationStats';
 import VacationRequestForm from '@/components/vacation/VacationRequestForm';
 
 import ApprovalSection from '@/components/vacation/ApprovalSection';
-import MyRecordsTable from '@/components/vacation/MyRecordsTable';
-import AllRecordsTable from '@/components/vacation/AllRecordsTable';
+import VacationRecordsTable from '@/components/vacation/VacationRecordsTable';
 import EditScheduleModal from '@/components/vacation/EditScheduleModal';
 import jobDescriptionService from '@/services/jobDescriptionService';
 import MySchedulesTab from '@/components/vacation/MySchedulesTab';
@@ -42,7 +41,6 @@ export default function VacationRequestsPage() {
   const [activeTab, setActiveTab] = useState('request');
   const [activeSection, setActiveSection] = useState('immediate');
   const [requester, setRequester] = useState('for_me');
-  const [schedulesTab, setSchedulesTab] = useState('upcoming');
   const [loading, setLoading] = useState(false);
   const [accessLoading, setAccessLoading] = useState(true);
   
@@ -73,11 +71,9 @@ export default function VacationRequestsPage() {
   const [vacationSettings, setVacationSettings] = useState({
     allow_negative_balance: false,
     max_schedule_edits: 3,
-    notification_days_before: 7,
-    notification_frequency: 2
+   
   });
-  
-  // Modal states
+
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [showAttachmentsModal, setShowAttachmentsModal] = useState(false);
@@ -136,7 +132,7 @@ export default function VacationRequestsPage() {
     employee_manual: null,
     hr_representative_id: null,
     line_manager: '',
-    // ✅ Half day fields
+    //  Half day fields
     is_half_day: false,
     half_day_start_time: '',
     half_day_end_time: ''
@@ -345,7 +341,7 @@ const fetchScheduleTabs = async () => {
       const data = await VacationService.calculateWorkingDays({ 
         start_date: startDate, 
         end_date: endDate,
-        business_function_code: businessFunctionCode // ✅ NEW
+        business_function_code: businessFunctionCode //  NEW
       });
       return data.working_days || 0;
     } catch (error) {
@@ -363,7 +359,7 @@ const fetchScheduleTabs = async () => {
     return;
   }
 
-  // ✅ Half day validation with time format check
+  //  Half day validation with time format check
   if (formData.is_half_day) {
     // Check if times are provided
     if (!formData.half_day_start_time || !formData.half_day_end_time) {
@@ -371,7 +367,7 @@ const fetchScheduleTabs = async () => {
       return;
     }
     
-    // ✅ Validate time format (HH:MM)
+    //  Validate time format (HH:MM)
     const timeRegex = /^([0-1][0-9]|2[0-3]):([0-5][0-9])$/;
     
     if (!timeRegex.test(formData.half_day_start_time)) {
@@ -384,7 +380,7 @@ const fetchScheduleTabs = async () => {
       return;
     }
     
-    // ✅ Check if start time < end time
+    //  Check if start time < end time
     const [startHour, startMin] = formData.half_day_start_time.split(':').map(Number);
     const [endHour, endMin] = formData.half_day_end_time.split(':').map(Number);
     
@@ -396,14 +392,14 @@ const fetchScheduleTabs = async () => {
       return;
     }
     
-    // ✅ Check minimum duration (optional - at least 2 hours)
+    //  Check minimum duration (optional - at least 2 hours)
     const durationMinutes = endMinutes - startMinutes;
     if (durationMinutes < 120) {
       showError('Half day must be at least 2 hours duration');
       return;
     }
     
-    // ✅ CRITICAL: Set end_date same as start_date for half day
+    //  CRITICAL: Set end_date same as start_date for half day
     if (formData.start_date !== formData.end_date) {
       setFormData(prev => ({
         ...prev,
@@ -412,7 +408,7 @@ const fetchScheduleTabs = async () => {
     }
   }
 
-  // ✅ Balance check with half day support
+  //  Balance check with half day support
   if (!vacationSettings.allow_negative_balance && balances) {
     const requestDays = formData.is_half_day ? 0.5 : formData.numberOfDays;
     if (requestDays > balances.remaining_balance) {
@@ -429,7 +425,7 @@ const fetchScheduleTabs = async () => {
       start_date: formData.start_date,
       end_date: formData.is_half_day ? formData.start_date : formData.end_date,
       comment: formData.comment,
-      // ✅ Half day fields - send as HH:MM format
+      //  Half day fields - send as HH:MM format
       is_half_day: formData.is_half_day || false,
       half_day_start_time: formData.is_half_day ? formData.half_day_start_time : null,
       half_day_end_time: formData.is_half_day ? formData.half_day_end_time : null
@@ -471,7 +467,7 @@ const fetchScheduleTabs = async () => {
         await fetchDashboard();
       }
 
-      // ✅ Reset form including half day fields
+      //  Reset form including half day fields
       setFormData(prev => ({ 
         ...prev, 
         start_date: '', 
@@ -508,7 +504,7 @@ const handleSaveEdit = async () => {
     return;
   }
 
-  // ✅ Validate dates
+  //  Validate dates
   if (!editingSchedule.start_date || !editingSchedule.end_date) {
     showError('Start date and end date are required');
     return;
@@ -739,30 +735,26 @@ const handleSaveEdit = async () => {
     handleEmployeeSearch();
   }, []);
 
- // VacationRequestsPage.jsx-də bu useEffect-i tapın və düzəldin:
-
+ 
 useEffect(() => {
-
-  
   if (activeTab === 'approval' && (userAccess.is_manager || userAccess.is_admin)) {
     fetchPendingRequests();
     fetchApprovalHistory();
-  } else if (activeTab === 'all') {
-    fetchMyAllRecords();
-  } else if (activeTab === 'records' && (userAccess.can_view_all || userAccess.is_manager)) {
-    fetchAllVacationRecords();
+  } else if (activeTab === 'vacation-records') {         
+    fetchMyAllRecords();                                  
+    if (userAccess.can_view_all || userAccess.is_manager) {
+      fetchAllVacationRecords();                          
+    }
   } else if (activeTab === 'schedules') {
-
     fetchScheduleTabs();
   } else if (activeSection === 'scheduling') {
     fetchScheduleTabs();
   }
 }, [activeTab, activeSection, userAccess]);
-
   useEffect(() => {
     const updateWorkingDays = async () => {
       if (formData.start_date && formData.end_date) {
-        // ✅ For half day, set to 0.5 directly
+        //  For half day, set to 0.5 directly
         if (formData.is_half_day) {
           const endDate = new Date(formData.start_date);
           endDate.setDate(endDate.getDate() + 1);
@@ -772,7 +764,7 @@ useEffect(() => {
             dateOfReturn: endDate.toISOString().split('T')[0] 
           }));
         } else {
-          // ✅ Calculate with business function code
+          //  Calculate with business function code
           let businessFunctionCode = null;
           if (formData.businessFunction) {
             businessFunctionCode = formData.businessFunction.toUpperCase().includes('UK') ? 'UK' : null;
@@ -852,42 +844,25 @@ useEffect(() => {
     );
   }
 
-  const getAvailableTabs = () => {
-  const tabs = [
-    { key: 'request', label: 'Request', icon: FileText },
-  ];
   
-  tabs.push({ key: 'planning', label: 'Planning Vacation', icon: Calendar });
-  // Approval tab only for managers and admins
+const getAvailableTabs = () => {
+  const tabs = [
+    { key: 'request',          label: 'New Request',       icon: FileText  },
+    { key: 'planning',         label: 'Planning',          icon: CalendarIcon },
+  ];
+
   if (userAccess.is_manager || userAccess.is_admin) {
     tabs.push({ key: 'approval', label: 'Approval', icon: CheckCircle });
   }
 
-  // ✅ NEW: My Schedules - hər kəs görür
-  tabs.push({ key: 'schedules', label: 'My Schedules', icon: Calendar });
-
-  // My Records - Everyone
-  tabs.push({ key: 'all', label: 'My Records', icon: FileText });
-
-  // All Records - Managers see team, Admins see all
-  if (userAccess.can_view_all || userAccess.is_manager) {
-    tabs.push({ 
-      key: 'records', 
-      label: userAccess.is_admin ? 'All Records' : 'Team Records', 
-      icon: Users 
-    });
-  }
-
-  // Calendar - Everyone
-  tabs.push({ key: 'calendar', label: 'Calendar', icon: Calendar });
-
-  // Balances - Everyone
-  tabs.push({ key: 'balances', label: 'Balances', icon: TrendingUp });
-
-  // ✅ Planning Vacation - Everyone
+  tabs.push({ key: 'schedules',        label: 'My Schedules',      icon: Calendar  });
+  tabs.push({ key: 'vacation-records', label: 'Vacation Records',  icon: FileText  }); // ✅ YENİ — vahid tab
+  tabs.push({ key: 'calendar',         label: 'Calendar',          icon: Calendar  });
+  tabs.push({ key: 'balances',         label: 'Balances',          icon: TrendingUp });
 
   return tabs;
 };
+
 
   return (
     <DashboardLayout>
@@ -978,7 +953,7 @@ useEffect(() => {
 
 
 
-    {/* ✅ Yalnız request form */}
+    {/*  Yalnız request form */}
     <VacationRequestForm
       formData={formData}
       setFormData={setFormData}
@@ -1011,8 +986,8 @@ useEffect(() => {
     canEditSchedule={canEditSchedule}
     maxScheduleEdits={vacationSettings.max_schedule_edits}
     handleViewScheduleDetail={handleViewScheduleDetail}
-    showSuccess={showSuccess} // ✅ ADD
-    showError={showError}     // ✅ ADD
+    showSuccess={showSuccess} //  ADD
+    showError={showError}     //  ADD
   />
 )}
 
@@ -1027,18 +1002,7 @@ useEffect(() => {
           />
         )}
 
-        {activeTab === 'all' && (
-          <MyRecordsTable
-            myAllRecords={myAllRecords}
-            handleExportMyVacations={handleExportMyVacations}
-            handleViewDetails={handleViewDetails}
-            handleViewAttachments={handleViewAttachments}
-            handleViewScheduleDetail={handleViewScheduleDetail}
-            handleEditSchedule={handleEditSchedule}
-            handleRegisterSchedule={handleRegisterSchedule}
-            userAccess={userAccess}
-          />
-        )}
+       
 {activeTab === 'planning' && (
   <PlanningVacationTab
     darkMode={darkMode}
@@ -1050,26 +1014,29 @@ useEffect(() => {
     showError={showError}
   />
 )}
-        {activeTab === 'records' && (userAccess.can_view_all || userAccess.is_manager) && (
-          <AllRecordsTable
-            allVacationRecords={allVacationRecords}
-            filters={filters}
-            setFilters={setFilters}
-            showFilters={showFilters}
-            setShowFilters={setShowFilters}
-            businessFunctions={businessFunctions}
-            departments={departments}
-            darkMode={darkMode}
-            handleExportAllRecords={handleExportAllRecords}
-            fetchAllVacationRecords={fetchAllVacationRecords}
-            handleViewDetails={handleViewDetails}
-            handleViewAttachments={handleViewAttachments}
-            handleViewScheduleDetail={handleViewScheduleDetail}
-            handleEditSchedule={handleEditSchedule}
-            handleRegisterSchedule={handleRegisterSchedule}
-            userAccess={userAccess}
-          />
-        )}
+      
+{activeTab === 'vacation-records' && (
+  <VacationRecordsTable
+    // employee data
+    myAllRecords={myAllRecords}
+    handleExportMyVacations={handleExportMyVacations}
+
+    // admin/manager data
+    allVacationRecords={allVacationRecords}
+    fetchAllVacationRecords={fetchAllVacationRecords}
+    handleExportAllRecords={handleExportAllRecords}
+    adminFilters={filters}
+    setAdminFilters={setFilters}
+    businessFunctions={businessFunctions}
+    departments={departments}
+
+    // ortaq
+    handleViewDetails={handleViewDetails}
+    handleViewAttachments={handleViewAttachments}
+    userAccess={userAccess}
+    darkMode={darkMode}
+  />
+)}
 
         {activeTab === 'calendar' && (
           <VacationCalendar
@@ -1082,6 +1049,7 @@ useEffect(() => {
 
         {activeTab === 'balances' && (
           <BalancesTabContent 
+           businessFunctions={businessFunctions}
             userPermissions={userAccess}
             darkMode={darkMode}
             showSuccess={showSuccess}

@@ -236,7 +236,7 @@ const handleBusinessFunctionClick = async (group) => {
     // 🔥 Option 1: Use cached data from group
     if (group.jobs && group.jobs.length > 0) {
       setSelectedBusinessFunction(group);
-      setBusinessFunctionJobs(group.jobs);  // ✅ Use cached data
+      setBusinessFunctionJobs(group.jobs);  //  Use cached data
       setTotalBusinessFunctionJobs(group.jobs.length);
       setViewMode('details');
       setSearchTerm('');

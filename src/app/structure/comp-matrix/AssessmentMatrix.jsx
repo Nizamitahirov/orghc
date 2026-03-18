@@ -58,7 +58,7 @@ const AssessmentMatrixInner = ({ onNavigateToManagement }) => {
     }
   }, [activeView]);
 
-  // ✅ Fetch user permissions on mount
+  //  Fetch user permissions on mount
   useEffect(() => {
     fetchUserPermissions();
   }, []);
@@ -67,7 +67,7 @@ const AssessmentMatrixInner = ({ onNavigateToManagement }) => {
     setLoading(true);
     setError(null);
     try {
-      // ✅ Real API call
+      //  Real API call
       const permissionsResponse = await assessmentApi.employeeCore.getUserPermissions();
       setUserPermissions(permissionsResponse);
       
@@ -84,7 +84,7 @@ const AssessmentMatrixInner = ({ onNavigateToManagement }) => {
 
   const fetchDashboardData = async () => {
     try {
-      // ✅ Real API calls - Backend already filters based on permissions
+      //  Real API calls - Backend already filters based on permissions
       const [behavioralRes, coreRes, leadershipRes] = await Promise.all([
         assessmentApi.employeeBehavioral.getAll(),
         assessmentApi.employeeCore.getAll(),
@@ -121,7 +121,7 @@ const AssessmentMatrixInner = ({ onNavigateToManagement }) => {
   const textSecondary = darkMode ? 'text-almet-santas-gray' : 'text-almet-waterloo';
   const borderColor = darkMode ? 'border-almet-comet' : 'border-almet-bali-hai/30';
 
-  // ✅ Permission check helper functions
+  //  Permission check helper functions
   const canAccessManagement = () => {
     return userPermissions?.is_admin === true;
   };
@@ -400,7 +400,7 @@ const PageHeader = () => (
                       variant="outline"
                       size="sm"
                     />
-                {/* ✅ Admin-only buttons */}
+                {/*  Admin-only buttons */}
                 {canAccessManagement() ? (
                   <>
                     <ActionButton
@@ -413,7 +413,7 @@ const PageHeader = () => (
                    
                   </>
                 ) : (
-                  /* ✅ Show locked button for non-admins with tooltip */
+                  /*  Show locked button for non-admins with tooltip */
                   <div className="relative group">
                     <ActionButton
                       onClick={() => {}}
@@ -470,13 +470,13 @@ const EmployeeDashboardView = () => {
   const textPrimary = darkMode ? 'text-almet-bali-hai' : 'text-almet-cloud-burst';
   const borderColor = darkMode ? 'border-almet-comet' : 'border-almet-bali-hai/30';
 
-  // ✅ Determine which assessment types the employee has
+  //  Determine which assessment types the employee has
   const hasLeadership = dashboardData.leadershipAssessments > 0;
   const hasBehavioral = dashboardData.behavioralAssessments > 0;
   const hasCore = dashboardData.coreAssessments > 0;
   const hasAnyAssessment = hasLeadership || hasBehavioral || hasCore;
 
-  // ✅ If no assessments at all, show empty state
+  //  If no assessments at all, show empty state
   if (!hasAnyAssessment) {
     return (
       <div className="space-y-5">
@@ -541,7 +541,7 @@ const EmployeeDashboardView = () => {
           </div>
         </div>
         
-        {/* ✅ Summary Cards - Only show available types */}
+        {/*  Summary Cards - Only show available types */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Leadership or Behavioral */}
           {hasLeadership && (
@@ -586,9 +586,9 @@ const EmployeeDashboardView = () => {
         </div>
       </div>
 
-      {/* ✅ My Assessments Cards - Show only what employee has */}
+      {/*  My Assessments Cards - Show only what employee has */}
       <div className={`grid grid-cols-1 ${(hasLeadership && hasCore) || (hasBehavioral && hasCore) ? 'lg:grid-cols-2' : 'lg:grid-cols-1'} gap-5`}>
-        {/* ✅ Leadership OR Behavioral (never both) */}
+        {/*  Leadership OR Behavioral (never both) */}
         {hasLeadership && (
           <NavigationCard
             icon={Crown}
@@ -613,7 +613,7 @@ const EmployeeDashboardView = () => {
           />
         )}
         
-        {/* ✅ Core - if exists */}
+        {/*  Core - if exists */}
         {hasCore && (
           <NavigationCard
             icon={Target}
@@ -627,7 +627,7 @@ const EmployeeDashboardView = () => {
         )}
       </div>
 
-      {/* ✅ Info Banner */}
+      {/*  Info Banner */}
       <div className="bg-sky-50 border border-sky-200 rounded-xl p-4">
         <div className="flex items-start gap-3">
           <Info className="w-5 h-5 text-sky-600 flex-shrink-0 mt-0.5" />
@@ -663,7 +663,7 @@ const EmployeeDashboardView = () => {
     );
   }
 
-  // ✅ Error state
+  //  Error state
   if (error && activeView === 'dashboard') {
     return (
       <div className="space-y-4">
@@ -691,7 +691,7 @@ const EmployeeDashboardView = () => {
     );
   }
 
-  // ✅ Settings view - Admin only
+  //  Settings view - Admin only
   if (showSettings) {
     if (!canAccessSettings()) {
       return (
@@ -803,7 +803,7 @@ const EmployeeDashboardView = () => {
       </>
     )}
 
-      {/* ✅ Assessment views with Real Components */}
+      {/*  Assessment views with Real Components */}
       {activeView === 'leadership' && (
         <div className="space-y-4">
           <LeadershipAssessmentCalculation />

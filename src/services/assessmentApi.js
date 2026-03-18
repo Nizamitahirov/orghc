@@ -74,7 +74,7 @@ const buildQueryParams = (params) => {
           searchParams.append(key, JSON.stringify(value));
         }
       } else {
-        searchParams.append(key, value); // ✅ This handles company ID
+        searchParams.append(key, value); //  This handles company ID
       }
     }
   });
@@ -773,7 +773,7 @@ export const positionLeadershipApi = {
 
 
 
-  // ✅ DÜZƏLDILDI: position_group_id parametri əlavə edildi
+  //  DÜZƏLDILDI: position_group_id parametri əlavə edildi
   getGradeLevels: async (positionGroupId) => {
     try {
       const response = await api.get(

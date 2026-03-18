@@ -91,7 +91,7 @@ export const TravelSection = ({
             </div>
           </div>
 
-          {/* ✅ NEW: Initial Finance Amount (Optional) */}
+          {/*  NEW: Initial Finance Amount (Optional) */}
           <div>
             <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
               Estimated Amount (Optional)

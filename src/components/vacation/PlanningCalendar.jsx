@@ -1,4 +1,4 @@
-// components/vacation/PlanningCalendar.jsx - ✅ COMPLETE FIXED VERSION
+// components/vacation/PlanningCalendar.jsx -  COMPLETE FIXED VERSION
 
 import { useState, useEffect } from 'react';
 import { Star, CheckCircle } from 'lucide-react';
@@ -24,7 +24,7 @@ export default function PlanningCalendar({
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  // ✅ Fetch holidays when month changes
+  //  Fetch holidays when month changes
   useEffect(() => {
     fetchHolidays();
   }, [currentMonth, businessFunctionCode]);
@@ -40,7 +40,7 @@ export default function PlanningCalendar({
         year
       };
       
-      // ✅ Add country based on business function
+      //  Add country based on business function
       if (businessFunctionCode && businessFunctionCode.toUpperCase() === 'UK') {
         params.country = 'uk';
       } else {
@@ -79,7 +79,7 @@ export default function PlanningCalendar({
   };
 
   const formatDate = (date) => {
-    // ✅ FIX: Use local date without timezone conversion
+    //  FIX: Use local date without timezone conversion
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -89,7 +89,7 @@ export default function PlanningCalendar({
   const isDateSelected = (date) => {
     const dateStr = formatDate(date);
     return selectedRanges.some(range => {
-      // ✅ Only check NEW selections (not existing schedules)
+      //  Only check NEW selections (not existing schedules)
       return !range.isExisting && dateStr >= range.start && dateStr <= range.end;
     });
   };
@@ -113,7 +113,7 @@ export default function PlanningCalendar({
   };
 
   const isPastDate = (date) => {
-    // ✅ FIX: Compare local dates without time
+    //  FIX: Compare local dates without time
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -134,7 +134,7 @@ export default function PlanningCalendar({
   const getHolidaysForDate = (date) => {
     const dateStr = formatDate(date);
     return holidays.filter(h => {
-      // ✅ FIX: Ensure exact date match without timezone issues
+      //  FIX: Ensure exact date match without timezone issues
       const holidayDate = h.date.split('T')[0];
       return holidayDate === dateStr;
     });
@@ -146,29 +146,29 @@ export default function PlanningCalendar({
     const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const dateStr = formatDate(localDate);
     
-    // ✅ CHECK: Is this an existing schedule?
+    //  CHECK: Is this an existing schedule?
     const isExisting = selectedRanges.some(range => 
       range.isExisting && dateStr >= range.start && dateStr <= range.end
     );
     
     if (isExisting) {
-      return; // ✅ Cannot select existing schedule dates
+      return; //  Cannot select existing schedule dates
     }
     
-    // ✅ CHECK: Is this date already in NEW selections?
+    //  CHECK: Is this date already in NEW selections?
     const isAlreadySelected = selectedRanges.some(range => {
       return !range.isExisting && dateStr >= range.start && dateStr <= range.end;
     });
     
     if (isAlreadySelected) {
-      // ✅ UNSELECT: Remove range containing this date (only NEW selections)
+      //  UNSELECT: Remove range containing this date (only NEW selections)
       if (typeof onRangeRemove === 'function') {
         onRangeRemove(dateStr);
       }
       return;
     }
     
-    // ✅ Start new selection
+    //  Start new selection
     setIsDragging(true);
     setDragStart(localDate);
     setDragEnd(localDate);
@@ -176,7 +176,7 @@ export default function PlanningCalendar({
 
   const handleMouseEnter = (date) => {
     if (isDragging && !isPastDate(date)) {
-      // ✅ FIX: Create new date object
+      //  FIX: Create new date object
       const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
       setDragEnd(localDate);
     }
@@ -188,12 +188,12 @@ const handleMouseUp = () => {
     let start = dragStart < dragEnd ? dragStart : dragEnd;
     let end = dragStart < dragEnd ? dragEnd : dragStart;
     
-    // ✅ AZ üçün: Extend to Sunday if full workweek selected
+    //  AZ üçün: Extend to Sunday if full workweek selected
     if (!businessFunctionCode || businessFunctionCode.toUpperCase() !== 'UK') {
       const startDay = start.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
       const endDay = end.getDay();
       
-      // ✅ Check if user selected Monday to Friday
+      //  Check if user selected Monday to Friday
       if (startDay === 1 && endDay === 5) {
         // Extend to Sunday
         while (end.getDay() !== 0) { // 0 = Sunday
@@ -206,7 +206,7 @@ const handleMouseUp = () => {
         }
       }
     }
-    // ✅ UK üçün: No extension - keep user selection exactly as-is
+    //  UK üçün: No extension - keep user selection exactly as-is
     
     const startStr = formatDate(start);
     const endStr = formatDate(end);
@@ -247,7 +247,7 @@ const handleMouseUp = () => {
       const holiday = isHoliday(date);
       const dayHolidays = getHolidaysForDate(date);
       
-      // ✅ NEW: Check if date is in existing schedule
+      //  NEW: Check if date is in existing schedule
       const isExistingSchedule = selectedRanges.some(range => 
         range.isExisting && dateStr >= range.start && dateStr <= range.end
       );
@@ -288,7 +288,7 @@ const handleMouseUp = () => {
             )}
           </div>
           
-          {/* ✅ Existing Schedule Indicator */}
+          {/*  Existing Schedule Indicator */}
           {isExistingSchedule && !past && (
             <div className="space-y-0.5">
               {/* Get the schedule for this date to show status */}
@@ -314,7 +314,7 @@ const handleMouseUp = () => {
             </div>
           )}
           
-          {/* ✅ Display holidays */}
+          {/*  Display holidays */}
           {dayHolidays.length > 0 && !past && (
             <div className="space-y-0.5 mb-1">
               {dayHolidays.map((h, idx) => (

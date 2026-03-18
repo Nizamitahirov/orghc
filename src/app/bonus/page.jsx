@@ -8,7 +8,7 @@ import BonusCalculationPanel from "@/components/bonus/BonusCalculationPanel";
 import BonusReportSection from "@/components/bonus/BonusReportSection";
 import CompanyTargetEvalSection from "@/components/bonus/CompanyTargetEvalSection";
 import { bonusYearService, bonusRecordService, downloadBlob } from "@/services/bonusService";
-import { Settings, BarChart2, Calculator, Lock } from "lucide-react";
+import { Settings, BarChart2, Calculator, Lock, Wallet, Users, CheckCircle, TrendingUp } from "lucide-react";
 
 const TABS = [
   { id: "bonus",  label: "Calculation", icon: Calculator },
@@ -26,11 +26,6 @@ export default function BonusMainPage() {
   const [records, setRecords]               = useState([]);
   const [loading, setLoading]               = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
-
-  const bg    = dark ? "bg-[#080808]"              : "bg-gray-50";
-  const topBg = dark ? "bg-[#0d0d0d] border-[#1c1c1c]" : "bg-white border-gray-200";
-  const text  = dark ? "text-white"               : "text-gray-900";
-  const sub   = dark ? "text-gray-500"             : "text-gray-500";
 
   useEffect(() => {
     bonusYearService.list().then(({ data }) => {
@@ -60,41 +55,69 @@ export default function BonusMainPage() {
     totalBonus: records.reduce((s, r) => s + parseFloat(r.total_bonus || 0), 0),
   };
 
+  const kpiCards = [
+    {
+      label: "Total Employees",
+      value: stats.total,
+      icon: Users,
+      iconBg: dark ? "bg-[#1a2744]" : "bg-almet-mystic",
+      iconColor: "text-almet-steel-blue",
+      accent: "text-almet-steel-blue",
+    },
+    {
+      label: "Calculated",
+      value: stats.calculated,
+      icon: Calculator,
+      iconBg: dark ? "bg-amber-500/10" : "bg-amber-50",
+      iconColor: "text-amber-500",
+      accent: "text-amber-500",
+    },
+    {
+      label: "Approved",
+      value: stats.approved,
+      icon: CheckCircle,
+      iconBg: dark ? "bg-emerald-500/10" : "bg-emerald-50",
+      iconColor: "text-emerald-500",
+      accent: "text-emerald-500",
+    }
+  ];
+
+  // ── Tab class ──
   const tabCls = (id) => {
-    const base = "flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-all duration-150 whitespace-nowrap";
-    return tab === id
-      ? `${base} ${dark ? "border-almet-steel-blue text-white" : "border-almet-sapphire text-almet-sapphire"}`
-      : `${base} border-transparent ${dark ? "text-gray-500 hover:text-gray-300" : "text-gray-500 hover:text-gray-700"}`;
+    const base = "relative flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition-all duration-150 whitespace-nowrap";
+    if (tab === id) {
+      return `${base} ${dark ? "text-white" : "text-almet-sapphire"}`;
+    }
+    return `${base} ${dark ? "text-gray-500 hover:text-gray-300" : "text-gray-400 hover:text-gray-600"}`;
   };
 
   return (
     <DashboardLayout>
-      <div className={`min-h-screen ${bg}`}>
+      <div className={`min-h-screen `}>
 
-        {/* Top bar */}
-        <div className={`border-b px-6 pt-5 pb-0 ${topBg}`}>
-          <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className={`text-xl font-bold ${text}`}>Bonus Management</h1>
-                {selectedYear?.is_locked && (
-                  <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/15 text-red-400">
-                    <Lock size={10} /> Locked
-                  </span>
-                )}
+        {/* ── Page Header ── */}
+        <div className={`px-6 pt-6 rounded-lg pb-0 border-b ${dark ? "bg-[#0d0d0d] border-[#1c1c1c]" : "bg-white border-gray-200"}`}>
+
+          {/* Title row */}
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
+              <div className={`p-2.5 rounded-xl ${dark ? "bg-almet-sapphire/20" : "bg-almet-mystic"}`}>
+                <Wallet size={18} className="text-almet-steel-blue" />
               </div>
-              <div className="flex items-center gap-5 flex-wrap">
-                {[
-                  { label: "Employees",  val: stats.total,                          color: "text-sky-400"     },
-                  { label: "Calculated", val: stats.calculated,                     color: "text-amber-400"   },
-                  { label: "Approved",   val: stats.approved,                       color: "text-emerald-400" },
-                  { label: "Bonus Pool", val: stats.totalBonus.toLocaleString("en", { maximumFractionDigits: 0 }) + " ₼", color: "text-violet-400" },
-                ].map(({ label, val, color }) => (
-                  <div key={label} className="flex items-baseline gap-1.5">
-                    <span className={`text-sm font-bold tabular-nums ${color}`}>{val}</span>
-                    <span className={`text-xs ${sub}`}>{label}</span>
-                  </div>
-                ))}
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h1 className={`text-lg font-bold ${dark ? "text-white" : "text-almet-cloud-burst"}`}>
+                    Bonus Management
+                  </h1>
+                  {selectedYear?.is_locked && (
+                    <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-500/10 text-red-500 ring-1 ring-red-500/20">
+                      <Lock size={10} /> Locked
+                    </span>
+                  )}
+                </div>
+                <p className={`text-xs mt-0.5 ${dark ? "text-gray-500" : "text-almet-bali-hai"}`}>
+                  {selectedYear ? `${selectedYear.year} fiscal year` : "Select a year to begin"}
+                </p>
               </div>
             </div>
 
@@ -107,22 +130,52 @@ export default function BonusMainPage() {
               />
               <button
                 onClick={() => router.push("/bonus/settings")}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm transition
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-sm font-medium transition
                   ${dark
-                    ? "border-[#2a2a2a] text-gray-400 hover:text-white hover:border-[#3a3a3a]"
-                    : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}
+                    ? "border-[#2a2a2a] text-gray-400 hover:text-white hover:border-[#3a3a3a] hover:bg-[#1a1a1a]"
+                    : "border-gray-200 text-almet-waterloo hover:bg-almet-mystic hover:text-almet-sapphire hover:border-almet-bali-hai"}`}
               >
                 <Settings size={14} /> Settings
               </button>
             </div>
           </div>
 
-          <div className="flex gap-1">
+          {/* KPI cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+            {kpiCards.map(({ label, value, icon: Icon, iconBg, iconColor, accent }) => (
+              <div
+                key={label}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl border
+                  ${dark
+                    ? "bg-[#111] border-[#1e1e1e]"
+                    : "bg-white border-gray-100 shadow-sm"}`}
+              >
+                <div className={`p-2 rounded-lg shrink-0 ${iconBg}`}>
+                  <Icon size={14} className={iconColor} />
+                </div>
+                <div className="min-w-0 flex justify-between items-center gap-4">
+                  <p className={`text-xs truncate ${dark ? "text-gray-500" : "text-almet-bali-hai"}`}>{label}</p>
+                  <p className={`text-base font-bold tabular-nums mt-0.5 ${accent}`}>{value}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tab bar */}
+          <div className="flex gap-0">
             {TABS.map(({ id, label, icon: Icon }) => (
               <button key={id} onClick={() => setTab(id)} className={tabCls(id)}>
-                <Icon size={13} /> {label}
+                <Icon size={14} /> {label}
+                {/* Active indicator */}
+                {tab === id && (
+                  <span
+                    className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full
+                      ${dark ? "bg-almet-steel-blue" : "bg-almet-sapphire"}`}
+                  />
+                )}
+                {/* Employee badge on bonus tab */}
                 {id === "bonus" && selectedRecord && (
-                  <span className="ml-1 px-1.5 py-0.5 rounded-full text-xs bg-almet-sapphire text-white leading-none">
+                  <span className="ml-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-almet-sapphire text-white leading-none">
                     {selectedRecord.employee_name?.split(" ")[0]}
                   </span>
                 )}
@@ -131,8 +184,8 @@ export default function BonusMainPage() {
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-5">
+        {/* ── Content ── */}
+        <div className="py-4 space-y-5">
           {tab === "bonus" && (
             <>
               {selectedYear && (

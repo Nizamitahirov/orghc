@@ -115,9 +115,37 @@ export const referenceDataAPI = {
   deleteJobFunction: (id) => apiService.deleteJobFunction(id),
 
 
+// ========================================
+// EMPLOYMENT TYPES
+// ========================================
+getEmploymentTypes: (params = {}) => apiService.getEmploymentTypes(params),
+getEmploymentType: (id) => apiService.getEmploymentType(id),
+
+getEmploymentTypeDropdown: () => {
+  return apiService.getEmploymentTypes({ page_size: 1000 }).then(response => {
+    const data = response?.data?.results ?? response?.data ?? [];
+    return {
+      ...response,
+      data: (Array.isArray(data) ? data : []).map(item => ({
+        value: item.id,
+        label: `${item.code} - ${item.name}`,
+        name: item.name,
+        code: item.code,
+        color: item.color,
+        description: item.description,
+        employee_count: item.employee_count,
+        is_active: item.is_active,
+      })),
+    };
+  });
+},
+
+createEmploymentType: (data) => apiService.createEmploymentType(data),
+updateEmploymentType: (id, data) => apiService.updateEmploymentType(id, data),
+deleteEmploymentType: (id) => apiService.deleteEmploymentType(id),
 
 // ========================================
-// JOB TITLES - ✅ FINAL FIX
+// JOB TITLES -  FINAL FIX
 // ========================================
 getJobTitles: (params = {}) => {
 
@@ -137,11 +165,11 @@ getJobTitleDropdown: () => {
     let dataArray;
     
     if (response.data.results) {
-      // ✅ Pagination formatında (DRF default)
+      //  Pagination formatında (DRF default)
       dataArray = response.data.results;
 
     } else if (Array.isArray(response.data)) {
-      // ✅ Direct array formatında
+      //  Direct array formatında
       dataArray = response.data;
 
     } else {

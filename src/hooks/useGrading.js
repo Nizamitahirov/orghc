@@ -1,688 +1,498 @@
-// src/hooks/useGrading.js - FIXED: Current üçün Current Scenario-dan input data götürmək
-
+// src/hooks/useGrading.js
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  fetchCurrentStructure,
-  fetchCurrentScenario,
-  fetchPositionGroups,
-  fetchScenarios,
-  fetchScenarioDetails,
-  calculateDynamicScenario,
-  saveDraftScenario,
-  applyScenario,
-  archiveScenario,
-  updateScenarioInput,
-  updateGradeInput,
-  updateGlobalHorizontalInterval,
-  setCalculatedOutputs,
-  setSelectedScenario,
-  clearErrors,
-  setError,
-  initializeScenarioInputs,
-  selectCurrentStructure,
-  selectCurrentScenario,
-  selectPositionGroups,
-  selectScenarioInputs,
-  selectCalculatedOutputs,
-  selectDraftScenarios,
-  selectArchivedScenarios,
-  selectSelectedScenario,
-  selectLoading,
-  selectErrors,
-  selectBestDraftScenario,
-  selectValidationSummary,
-  selectInputSummary,
+  fetchCurrentStructure, fetchCurrentScenario, fetchPositionGroups,
+  fetchScenarios, fetchScenarioDetails, fetchCurrencies,
+  calculateDynamicScenario, saveDraftScenario, applyScenario, archiveScenario,
   compareScenarios,
-  selectComparisonData
+  updateScenarioInput, updateScenarioCurrency, setSelectedStructureCurrency,
+  updateGradeInput, updateGlobalHorizontalInterval,
+  setCalculatedOutputs, setSelectedScenario, clearErrors, setError,
+  initializeScenarioInputs,
+  // Selectors
+  selectCurrentStructure,       // aktiv currency-nin structure-u
+  selectCurrentStructures,      // bütün { AZN: {...}, USD: {...} }
+  selectCurrentScenario,        // aktiv currency-nin scenario-su
+  selectCurrentScenarios,       // bütün { AZN: {...}, USD: {...} }
+  selectSelectedStructureCurrency,
+  selectAvailableStructureCurrencies,
+  selectPositionGroups,
+  selectCurrencies,
+  selectScenarioInputs, selectCalculatedOutputs,
+  selectDraftScenarios, selectArchivedScenarios, selectSelectedScenario,
+  selectLoading, selectErrors,
+  selectBestDraftScenario, selectValidationSummary, selectInputSummary,
+  selectComparisonData,
 } from '@/store/slices/gradingSlice';
-
+import { salaryService } from '@/services/salaryService';
 
 const useGrading = () => {
   const dispatch = useDispatch();
-  
-  // Redux state
-  const currentData = useSelector(selectCurrentStructure);        // Current Structure (yalnız calculated values)
-  const currentScenario = useSelector(selectCurrentScenario);     // Current Scenario (input + calculated values)
-  const positionGroups = useSelector(selectPositionGroups);
-  const scenarioInputs = useSelector(selectScenarioInputs);
-  const calculatedOutputs = useSelector(selectCalculatedOutputs);
-  const draftScenarios = useSelector(selectDraftScenarios);
-  const archivedScenarios = useSelector(selectArchivedScenarios);
-  const selectedScenario = useSelector(selectSelectedScenario);
-  const loading = useSelector(selectLoading);
-  const errors = useSelector(selectErrors);
-  const bestDraft = useSelector(selectBestDraftScenario);
-  const validationSummary = useSelector(selectValidationSummary);
-  const inputSummary = useSelector(selectInputSummary);
 
-  // Local state
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [compareMode, setCompareMode] = useState(false);
+  // ── Redux state ────────────────────────────────────────────────────────────
+  // currentData   → aktiv currency-nin structure-u (köhnə interfeys qorunur)
+  const currentData                  = useSelector(selectCurrentStructure);
+  const currentStructures            = useSelector(selectCurrentStructures);
+  const currentScenario              = useSelector(selectCurrentScenario);
+  const currentScenarios             = useSelector(selectCurrentScenarios);
+  const selectedStructureCurrency    = useSelector(selectSelectedStructureCurrency);
+  const availableStructureCurrencies = useSelector(selectAvailableStructureCurrencies);
+  const positionGroups               = useSelector(selectPositionGroups);
+  const currencies                   = useSelector(selectCurrencies);
+  const scenarioInputs               = useSelector(selectScenarioInputs);
+  const calculatedOutputs            = useSelector(selectCalculatedOutputs);
+  const draftScenarios               = useSelector(selectDraftScenarios);
+  const archivedScenarios            = useSelector(selectArchivedScenarios);
+  const selectedScenario             = useSelector(selectSelectedScenario);
+  const loading                      = useSelector(selectLoading);
+  const errors                       = useSelector(selectErrors);
+  const bestDraft                    = useSelector(selectBestDraftScenario);
+  const validationSummary            = useSelector(selectValidationSummary);
+  const inputSummary                 = useSelector(selectInputSummary);
+  const comparisonData               = useSelector(selectComparisonData);
+
+  // ── Local state ────────────────────────────────────────────────────────────
+  const [isDetailOpen,          setIsDetailOpen]          = useState(false);
+  const [compareMode,           setCompareMode]           = useState(false);
   const [selectedForComparison, setSelectedForComparison] = useState([]);
-  const [isCalculating, setIsCalculating] = useState(false);
+  const [isCalculating,         setIsCalculating]         = useState(false);
   const [lastCalculationInputs, setLastCalculationInputs] = useState(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isInitialized,         setIsInitialized]         = useState(false);
 
-  // Data loading (same as before)
+  // ── Salary local state ─────────────────────────────────────────────────────
+  const [salaryData,         setSalaryData]         = useState([]);
+  const [salaryLoading,      setSalaryLoading]      = useState(false);
+  const [salaryError,        setSalaryError]        = useState(null);
+  const [salaryUpdating,     setSalaryUpdating]     = useState(false);
+  const [salaryBulkUpdating, setSalaryBulkUpdating] = useState(false);
+  const [salaryPagination,   setSalaryPagination]   = useState({ count: 0, next: null, previous: null });
+  const [salaryFilters,      setSalaryFilters]      = useState({ search: '', has_salary: '', position_group: '' });
+
+  // ── Initial data load ──────────────────────────────────────────────────────
   const loadInitialData = useCallback(async () => {
-
-    
     try {
-      const corePromises = [
+      const coreResults = await Promise.allSettled([
         dispatch(fetchCurrentStructure()),
         dispatch(fetchPositionGroups()),
-        dispatch(fetchCurrentScenario())  // ✅ Current Scenario-nu da yükləyirik
-      ];
-      
-      const coreResults = await Promise.allSettled(corePromises);
-      
-      const currentStructureResult = coreResults[0];
-      if (currentStructureResult.status === 'fulfilled' && currentStructureResult.value.payload) {
-  
-        dispatch(initializeScenarioInputs(currentStructureResult.value.payload));
+        dispatch(fetchCurrentScenario()),
+        dispatch(fetchCurrencies()),
+      ]);
+
+      // İlk currency-nin structure-u ilə scenario input-larını init et
+      const structureResult = coreResults[0];
+      if (structureResult.status === 'fulfilled' && structureResult.value.payload) {
+        // payload = { AZN: {...}, USD: {...} } — ilk mövcud currency-ni al
+        const structures = structureResult.value.payload;
+        const firstCurrency = Object.keys(structures)[0];
+        if (firstCurrency) {
+          dispatch(initializeScenarioInputs(structures[firstCurrency]));
+        }
       }
-      
-      const scenarioPromises = [
+
+      await Promise.allSettled([
         dispatch(fetchScenarios({ status: 'DRAFT' })),
-        dispatch(fetchScenarios({ status: 'ARCHIVED' }))
-      ];
-      
-      await Promise.allSettled(scenarioPromises);
-      
+        dispatch(fetchScenarios({ status: 'ARCHIVED' })),
+      ]);
+
       setIsInitialized(true);
-  
-      
-    } catch (error) {
-      console.error('❌ Error during initial data load:', error);
+    } catch {
       setIsInitialized(true);
     }
   }, [dispatch]);
 
   useEffect(() => {
-    if (!isInitialized) {
-      loadInitialData();
-    }
+    if (!isInitialized) loadInitialData();
   }, [loadInitialData, isInitialized]);
 
-  // Input handlers (eyni qalır)
-  const handleBaseValueChange = useCallback((value) => {
-  
-    
-    if (errors.baseValue1) {
-      dispatch(clearErrors());
+  // ── Currency tab dəyişdirmə ────────────────────────────────────────────────
+  const handleStructureCurrencyChange = useCallback((currency) => {
+    dispatch(setSelectedStructureCurrency(currency));
+    // Scenario input-larını həmin currency-nin structure-u ilə re-init et
+    const struct = currentStructures[currency];
+    if (struct) dispatch(initializeScenarioInputs(struct));
+  }, [dispatch, currentStructures]);
+
+  // ── Salary ─────────────────────────────────────────────────────────────────
+  const fetchSalaryData = useCallback(async (params = {}) => {
+    setSalaryLoading(true);
+    setSalaryError(null);
+    try {
+      const mergedParams = { ...salaryFilters, ...params };
+      const cleanParams = Object.fromEntries(
+        Object.entries(mergedParams).filter(([, v]) => v !== '' && v !== null && v !== undefined)
+      );
+      const response = await salaryService.list(cleanParams);
+      const data = response.data;
+      setSalaryData(data.results || data || []);
+      setSalaryPagination({
+        count:    data.count    || 0,
+        next:     data.next     || null,
+        previous: data.previous || null,
+      });
+    } catch (err) {
+      setSalaryError(err.response?.data?.error || err.message || 'Failed to load salary data');
+    } finally {
+      setSalaryLoading(false);
     }
-    
-    const numValue = parseFloat(value);
-    if (value !== '' && (isNaN(numValue) || numValue <= 0)) {
+  }, [salaryFilters]);
+
+  const handleSalaryUpdate = useCallback(async (employeeId, salaryPayload) => {
+    setSalaryUpdating(true);
+    try {
+      await salaryService.update({ employee_id: employeeId, ...salaryPayload });
+      setSalaryData(prev => prev.map(emp =>
+        emp.id === employeeId ? { ...emp, ...salaryPayload } : emp
+      ));
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.error || err.message };
+    } finally {
+      setSalaryUpdating(false);
+    }
+  }, []);
+
+  const handleSalaryBulkUpdate = useCallback(async (employeeIds, payload) => {
+    setSalaryBulkUpdating(true);
+    try {
+      await salaryService.bulkUpdate({ employee_ids: employeeIds, ...payload });
+      await fetchSalaryData();
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.error || err.message };
+    } finally {
+      setSalaryBulkUpdating(false);
+    }
+  }, [fetchSalaryData]);
+
+  const handleSalaryExcelImport = useCallback(async (file) => {
+    try {
+      const response = await salaryService.excelImport(file);
+      await fetchSalaryData();
+      return { success: true, data: response.data };
+    } catch (err) {
+      return { success: false, error: err.response?.data?.error || err.message };
+    }
+  }, [fetchSalaryData]);
+
+  const handleSalaryTemplateDownload = useCallback(async () => {
+    try {
+      const response = await salaryService.excelTemplate();
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const a   = document.createElement('a');
+      a.href    = url;
+      a.download = 'salary_template.xlsx';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Template download failed:', err);
+    }
+  }, []);
+
+  const updateSalaryFilters = useCallback((newFilters) => {
+    setSalaryFilters(prev => ({ ...prev, ...newFilters }));
+  }, []);
+
+  const salaryByGrade = useMemo(() => {
+    const map = new Map();
+    salaryData.forEach(emp => {
+      const lvl = emp.grading_level || 'Unknown';
+      if (!map.has(lvl)) map.set(lvl, { count: 0, totalCurrent: 0, employees: [] });
+      const g = map.get(lvl);
+      g.count++;
+      g.totalCurrent += parseFloat(emp.monthly_gross || 0);
+      g.employees.push(emp);
+    });
+    return map;
+  }, [salaryData]);
+
+  // ── Input handlers ─────────────────────────────────────────────────────────
+  const handleBaseValueChange = useCallback((value) => {
+    if (errors.baseValue1) dispatch(clearErrors());
+    const n = parseFloat(value);
+    if (value !== '' && (isNaN(n) || n <= 0)) {
       dispatch(setError({ field: 'baseValue1', message: 'Base value must be a positive number' }));
       return;
     }
-    
     dispatch(updateScenarioInput({ field: 'baseValue1', value }));
-    
-    const timer = setTimeout(() => {
-      if (value && numValue > 0) {
-        calculateGrades();
-      } else {
-        clearCalculatedOutputs();
-      }
+    const t = setTimeout(() => {
+      if (value && n > 0) calculateGrades();
+      else clearCalculatedOutputs();
     }, 500);
-
-    return () => clearTimeout(timer);
+    return () => clearTimeout(t);
   }, [dispatch, errors.baseValue1]);
-  const comparisonData = useSelector(selectComparisonData);  // YENİ
-  
-  // Comparison function - YENİ
-  const handleCompareScenarios = useCallback(async (scenarioIds) => {
-    try {
 
-      const response = await dispatch(compareScenarios(scenarioIds));
-      
-      if (response.type.endsWith('/fulfilled')) {
-
-        return response.payload;
-      } else {
-        console.error('❌ Comparison failed:', response.payload);
-        return null;
-      }
-    } catch (error) {
-      console.error('❌ Error in comparison:', error);
-      return null;
-    }
+  const handleCurrencyChange = useCallback((currency) => {
+    dispatch(updateScenarioCurrency(currency));
   }, [dispatch]);
+
   const handleVerticalChange = useCallback((gradeName, value) => {
-   
-    const errorKey = `vertical-${gradeName}`;
-    if (errors[errorKey]) {
-      const newErrors = { ...errors };
-      delete newErrors[errorKey];
-      dispatch(clearErrors());
-    }
-    
+    const ek = `vertical-${gradeName}`;
+    if (errors[ek]) dispatch(clearErrors());
     if (value !== '' && value !== null && value !== undefined) {
-      const numValue = parseFloat(value);
-      if (isNaN(numValue) || numValue < 0 || numValue > 100) {
-        dispatch(setError({ 
-          field: errorKey, 
-          message: `Vertical rate for ${gradeName} must be between 0-100` 
-        }));
+      const n = parseFloat(value);
+      if (isNaN(n) || n < 0 || n > 100) {
+        dispatch(setError({ field: ek, message: `Vertical rate for ${gradeName} must be 0-100` }));
         return;
       }
     }
-    
     dispatch(updateGradeInput({ gradeName, field: 'vertical', value }));
-    
-    const timer = setTimeout(() => {
-      calculateGrades();
-    }, 500);
-
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => calculateGrades(), 500);
+    return () => clearTimeout(t);
   }, [dispatch, errors]);
 
   const handleGlobalHorizontalChange = useCallback((intervalKey, value) => {
-  
-    
-    const errorKey = `global-horizontal-${intervalKey}`;
-    if (errors[errorKey]) {
-      const newErrors = { ...errors };
-      delete newErrors[errorKey];
-      dispatch(clearErrors());
-    }
-    
+    const ek = `global-horizontal-${intervalKey}`;
+    if (errors[ek]) dispatch(clearErrors());
     if (value !== '' && value !== null && value !== undefined) {
-      const numValue = parseFloat(value);
-      if (isNaN(numValue) || numValue < 0 || numValue > 100) {
-        dispatch(setError({ 
-          field: errorKey, 
-          message: `${intervalKey.replace(/_/g, ' ')} rate must be between 0-100` 
-        }));
+      const n = parseFloat(value);
+      if (isNaN(n) || n < 0 || n > 100) {
+        dispatch(setError({ field: ek, message: `${intervalKey.replace(/_/g, ' ')} rate must be 0-100` }));
         return;
       }
     }
-    
     dispatch(updateGlobalHorizontalInterval({ intervalKey, value }));
-    
-    const timer = setTimeout(() => {
-      calculateGrades();
-    }, 500);
-
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => calculateGrades(), 500);
+    return () => clearTimeout(t);
   }, [dispatch, errors]);
 
-  // Digər funksiyalar eyni qalır...
   const clearCalculatedOutputs = useCallback(() => {
-
-    
-    const emptyOutputs = {};
-    if (scenarioInputs.gradeOrder && scenarioInputs.gradeOrder.length > 0) {
-      scenarioInputs.gradeOrder.forEach((gradeName) => {
-        emptyOutputs[gradeName] = { 
-          LD: "", LQ: "", M: "", UQ: "", UD: "" 
-        };
-      });
-      dispatch(setCalculatedOutputs(emptyOutputs));
-    }
+    const empty = {};
+    (scenarioInputs.gradeOrder || []).forEach(gn => {
+      empty[gn] = { LD: '', LQ: '', M: '', UQ: '', UD: '' };
+    });
+    dispatch(setCalculatedOutputs(empty));
   }, [dispatch, scenarioInputs.gradeOrder]);
 
   const calculateGrades = useCallback(async () => {
+    if (!scenarioInputs.baseValue1 || parseFloat(scenarioInputs.baseValue1) <= 0) {
+      clearCalculatedOutputs(); return;
+    }
+    if (!scenarioInputs.gradeOrder?.length) return;
+
+    const hasV = Object.values(scenarioInputs.grades || {}).some(g =>
+      g?.vertical !== null && g?.vertical !== '' && g?.vertical !== undefined && g?.vertical !== 0);
+    const hasH = Object.values(scenarioInputs.globalHorizontalIntervals || {}).some(v =>
+      v !== '' && v !== null && v !== undefined && v !== 0);
+
+    if (!hasV && !hasH) { clearCalculatedOutputs(); return; }
+
+    const sig = JSON.stringify({
+      baseValue1: scenarioInputs.baseValue1,
+      currency:   scenarioInputs.currency,
+      grades:     scenarioInputs.grades,
+      globalHorizontalIntervals: scenarioInputs.globalHorizontalIntervals,
+    });
+    if (sig === lastCalculationInputs) return;
+
+    setIsCalculating(true);
+    setLastCalculationInputs(sig);
+
+    const formattedGrades = {};
+    (scenarioInputs.gradeOrder || []).forEach(gn => {
+      const gi = scenarioInputs.grades[gn] || {};
+      let v = gi.vertical;
+      if (v === '' || v === null || v === undefined) v = null;
+      else { v = parseFloat(v); if (isNaN(v)) v = null; }
+
+      const cleanIvs = {};
+      Object.keys(scenarioInputs.globalHorizontalIntervals || {}).forEach(k => {
+        const iv = scenarioInputs.globalHorizontalIntervals[k];
+        cleanIvs[k] = (iv === '' || iv === null || iv === undefined) ? 0 : parseFloat(iv) || 0;
+      });
+
+      formattedGrades[gn] = { vertical: v, horizontal_intervals: cleanIvs };
+    });
+
     try {
-
-      
-      if (!scenarioInputs.baseValue1 || parseFloat(scenarioInputs.baseValue1) <= 0) {
-    
-        clearCalculatedOutputs();
-        return;
-      }
-
-      if (!scenarioInputs.gradeOrder || scenarioInputs.gradeOrder.length === 0) {
-      
-        return;
-      }
-
-      const hasVerticalInputs = Object.values(scenarioInputs.grades || {}).some(grade => 
-        grade && grade.vertical !== null && grade.vertical !== '' && grade.vertical !== undefined && grade.vertical !== 0
-      );
-      
-      const hasHorizontalInputs = Object.values(scenarioInputs.globalHorizontalIntervals || {}).some(interval => 
-        interval !== '' && interval !== null && interval !== undefined && interval !== 0
-      );
-
-      if (!hasVerticalInputs && !hasHorizontalInputs) {
-      
-        clearCalculatedOutputs();
-        return;
-      }
-
-      const currentInputString = JSON.stringify({
-        baseValue1: scenarioInputs.baseValue1,
-        grades: scenarioInputs.grades,
-        globalHorizontalIntervals: scenarioInputs.globalHorizontalIntervals
-      });
-
-      if (currentInputString === lastCalculationInputs) {
-      
-        return;
-      }
-
-      setIsCalculating(true);
-      setLastCalculationInputs(currentInputString);
-
-      const formattedGrades = {};
-      scenarioInputs.gradeOrder.forEach(gradeName => {
-        const gradeInput = scenarioInputs.grades[gradeName] || {};
-        
-        let verticalValue = gradeInput.vertical;
-        if (verticalValue === '' || verticalValue === null || verticalValue === undefined) {
-          verticalValue = null;
-        } else {
-          try {
-            verticalValue = parseFloat(verticalValue);
-            if (isNaN(verticalValue)) {
-              verticalValue = null;
-            }
-          } catch (e) {
-            verticalValue = null;
-          }
-        }
-        
-        const cleanIntervals = {};
-        Object.keys(scenarioInputs.globalHorizontalIntervals || {}).forEach(key => {
-          const value = scenarioInputs.globalHorizontalIntervals[key];
-          if (value === '' || value === null || value === undefined) {
-            cleanIntervals[key] = 0;
-          } else {
-            try {
-              cleanIntervals[key] = parseFloat(value) || 0;
-            } catch (e) {
-              cleanIntervals[key] = 0;
-            }
-          }
-        });
-        
-        formattedGrades[gradeName] = {
-          vertical: verticalValue,
-          horizontal_intervals: cleanIntervals
-        };
-      });
-
-      const calculationData = {
+      const response = await dispatch(calculateDynamicScenario({
         baseValue1: parseFloat(scenarioInputs.baseValue1),
+        currency:   scenarioInputs.currency || 'AZN',
         gradeOrder: scenarioInputs.gradeOrder,
-        grades: formattedGrades
-      };
-
-
-
-      const response = await dispatch(calculateDynamicScenario(calculationData));
-      
-      if (response.type.endsWith('/fulfilled')) {
-      
-      } else {
-        console.error('❌ Calculation failed:', response.payload);
+        grades:     formattedGrades,
+      }));
+      if (!response.type.endsWith('/fulfilled')) {
+        console.error('Calculation failed:', response.payload);
       }
-    } catch (error) {
-      console.error('❌ Error during calculation:', error);
+    } catch (e) {
+      console.error('Error during calculation:', e);
     } finally {
       setIsCalculating(false);
     }
   }, [dispatch, scenarioInputs, lastCalculationInputs, clearCalculatedOutputs]);
 
-
-const handleSaveDraft = useCallback(async (customName = '') => {
-  try {
-  
-    
+  const handleSaveDraft = useCallback(async (customName = '') => {
     if (!validationSummary.canSave) {
-      console.error('❌ Cannot save draft - validation failed');
       dispatch(setError({ field: 'saving', message: 'Please fix validation errors before saving' }));
       return null;
     }
-
-    // Use custom name or generate auto name
-    const scenarioName = customName && customName.trim() 
-      ? customName.trim() 
+    const name = customName?.trim()
+      ? customName.trim()
       : `Scenario ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
 
-    const draftData = {
-      name: scenarioName,
-      description: customName && customName.trim() 
-        ? 'Custom scenario' 
-        : 'Auto-generated scenario with global horizontal intervals',
-      baseValue1: parseFloat(scenarioInputs.baseValue1),
-      gradeOrder: scenarioInputs.gradeOrder,
-      grades: scenarioInputs.grades,
+    const response = await dispatch(saveDraftScenario({
+      name,
+      description:              customName?.trim() ? 'Custom scenario' : 'Auto-generated scenario',
+      currency:                 scenarioInputs.currency || 'AZN',
+      baseValue1:               parseFloat(scenarioInputs.baseValue1),
+      gradeOrder:               scenarioInputs.gradeOrder,
+      grades:                   scenarioInputs.grades,
       globalHorizontalIntervals: scenarioInputs.globalHorizontalIntervals || {
-        LD_to_LQ: 0,
-        LQ_to_M: 0,
-        M_to_UQ: 0,
-        UQ_to_UD: 0
+        LD_to_LQ: 0, LQ_to_M: 0, M_to_UQ: 0, UQ_to_UD: 0,
       },
-      calculatedOutputs: calculatedOutputs
-    };
+      calculatedOutputs,
+    }));
 
-
-    const response = await dispatch(saveDraftScenario(draftData));
-    
     if (response.type.endsWith('/fulfilled')) {
-  
       dispatch(initializeScenarioInputs(currentData));
       clearCalculatedOutputs();
       return response.payload;
-    } else {
-      console.error('❌ Failed to save draft:', response.payload);
-      return null;
     }
-  } catch (error) {
-    console.error('❌ Error saving draft:', error);
     return null;
-  }
-}, [dispatch, validationSummary.canSave, scenarioInputs, calculatedOutputs, currentData, clearCalculatedOutputs]);
+  }, [dispatch, validationSummary.canSave, scenarioInputs, calculatedOutputs, currentData, clearCalculatedOutputs]);
 
   const handleSaveAsCurrent = useCallback(async (scenarioId) => {
-    try {
-   
-      const response = await dispatch(applyScenario(scenarioId));
-      
-      if (response.type.endsWith('/fulfilled')) {
-   
-        setIsDetailOpen(false);
-      } else {
-        console.error('❌ Failed to apply scenario:', response.payload);
-      }
-    } catch (error) {
-      console.error('❌ Error applying scenario:', error);
-    }
+    const response = await dispatch(applyScenario(scenarioId));
+    if (response.type.endsWith('/fulfilled')) setIsDetailOpen(false);
   }, [dispatch]);
 
   const handleArchiveDraft = useCallback(async (scenarioId) => {
-    try {
-
-      const response = await dispatch(archiveScenario(scenarioId));
-      
-      if (response.type.endsWith('/fulfilled')) {
- 
-        setIsDetailOpen(false);
-      } else {
-        console.error('❌ Failed to archive scenario:', response.payload);
-      }
-    } catch (error) {
-      console.error('❌ Error archiving scenario:', error);
-    }
+    const response = await dispatch(archiveScenario(scenarioId));
+    if (response.type.endsWith('/fulfilled')) setIsDetailOpen(false);
   }, [dispatch]);
 
   const handleViewDetails = useCallback(async (scenario) => {
     try {
-      
       if (scenario.id && scenario.status !== 'current') {
         const response = await dispatch(fetchScenarioDetails(scenario.id));
-        if (response.type.endsWith('/fulfilled')) {
-          dispatch(setSelectedScenario(response.payload));
-        } else {
-          dispatch(setSelectedScenario(scenario));
-        }
+        dispatch(setSelectedScenario(
+          response.type.endsWith('/fulfilled') ? response.payload : scenario
+        ));
       } else {
         dispatch(setSelectedScenario(scenario));
       }
-      
-      setIsDetailOpen(true);
-    } catch (error) {
-     
+    } catch {
       dispatch(setSelectedScenario(scenario));
-      setIsDetailOpen(true);
     }
+    setIsDetailOpen(true);
   }, [dispatch]);
 
-  // Comparison functions
-  // In useGrading.js - Update toggleCompareMode
+  const handleCompareScenarios = useCallback(async (scenarioIds) => {
+    try {
+      const response = await dispatch(compareScenarios(scenarioIds));
+      return response.type.endsWith('/fulfilled') ? response.payload : null;
+    } catch { return null; }
+  }, [dispatch]);
 
-const toggleCompareMode = useCallback(() => {
-  setCompareMode(prev => {
-    const newMode = !prev;
-   
-
-    if (!newMode) {
-      // Exiting compare mode - clear selections
-      setSelectedForComparison([]);
-    }
-    // Note: No longer auto-selecting 'current' since it's always included
-    return newMode;
-  });
-}, []);
-
-  const toggleScenarioForComparison = useCallback((scenarioId) => {
-    setSelectedForComparison(prev => {
-      const newSelection = prev.includes(scenarioId)
-        ? prev.filter(id => id !== scenarioId)
-        : [...prev, scenarioId];
-      
-   
-      return newSelection;
+  // ── Compare mode ───────────────────────────────────────────────────────────
+  const toggleCompareMode = useCallback(() => {
+    setCompareMode(prev => {
+      if (prev) setSelectedForComparison([]);
+      return !prev;
     });
   }, []);
 
-  const startComparison = useCallback(() => {
-  
-    setIsDetailOpen(true);
-  }, [selectedForComparison]);
+  const toggleScenarioForComparison = useCallback((scenarioId) => {
+    setSelectedForComparison(prev =>
+      prev.includes(scenarioId) ? prev.filter(id => id !== scenarioId) : [...prev, scenarioId]
+    );
+  }, []);
 
-  // ✅ FIXED: Scenario retrieval for comparison - Current Scenario istifadə edirik
-  const getScenarioForComparison = useCallback((scenarioId) => {
- 
-    
+  /**
+   * Scenario-nu tap. 'current' üçün işçinin currency-sinə görə yaxud
+   * seçilmiş currency-nin current scenario-sunu qaytar.
+   *
+   * @param {string} scenarioId
+   * @param {string} [employeeCurrency] — işçinin salary_currency (optional)
+   */
+  const getScenarioForComparison = useCallback((scenarioId, employeeCurrency) => {
     if (scenarioId === 'current') {
-    
-      // ✅ Current Scenario-dan input data götürürük, Current Structure-dan deyil
-      return {
-        scenario: currentScenario,  // currentData deyil, currentScenario
-        data: currentScenario?.data || currentScenario,
-        name: 'Current Active Scenario',
-        status: 'current'
-      };
-    }
-    
-    // Search in all scenarios
-    const allScenarios = [...draftScenarios, ...archivedScenarios];
-    const scenario = allScenarios.find(s => s.id === scenarioId);
-    
-    if (scenario) {
-   
-      return {
-        scenario: scenario,
-        data: scenario.data || scenario,
-        name: scenario.name,
-        status: scenario.status.toLowerCase()
-      };
-    }
-    
+      // İşçinin currency-sinə görə avtomatik seç; fallback → seçilmiş currency → AZN
+      const cur = employeeCurrency && currentScenarios[employeeCurrency]
+        ? employeeCurrency
+        : selectedStructureCurrency && currentScenarios[selectedStructureCurrency]
+          ? selectedStructureCurrency
+          : Object.keys(currentScenarios)[0];
 
-    return null;
-  }, [currentScenario, draftScenarios, archivedScenarios]); 
+      const scenario = currentScenarios[cur] || Object.values(currentScenarios)[0];
+      const struct   = currentStructures[cur] || Object.values(currentStructures)[0];
+      return scenario
+        ? { scenario, data: scenario.data || scenario, name: `Current Structure (${cur})`, status: 'current' }
+        : struct
+          ? { scenario: struct, data: struct, name: `Current Structure (${cur})`, status: 'current' }
+          : null;
+    }
+    const all = [...draftScenarios, ...archivedScenarios];
+    const s   = all.find(x => x.id === scenarioId);
+    return s ? { scenario: s, data: s.data || s, name: s.name, status: s.status.toLowerCase() } : null;
+  }, [currentScenarios, currentStructures, selectedStructureCurrency, draftScenarios, archivedScenarios]);
 
-  
   const getVerticalInputValue = useCallback((scenarioId, gradeName) => {
-  
-    
-    if (scenarioId === 'current') {
-    
-      
-      // Current Scenario-dan input data götürürük
-      if (currentScenario && currentScenario.input_rates && currentScenario.input_rates[gradeName] && currentScenario.input_rates[gradeName].vertical !== undefined) {
-        const value = currentScenario.input_rates[gradeName].vertical;
-
-        return value;
-      }
-      
-      // Fallback: data.positionVerticalInputs
-      if (currentScenario && currentScenario.data && currentScenario.data.positionVerticalInputs && currentScenario.data.positionVerticalInputs[gradeName] !== undefined) {
-        const value = currentScenario.data.positionVerticalInputs[gradeName];
-   
-        return value;
-      }
-      
-
-      return null;
-    }
-    
-    const comparisonData = getScenarioForComparison(scenarioId);
-    if (!comparisonData) {
-
-      return null;
-    }
-    
-    const { scenario } = comparisonData;
-    
-    // Check input_rates first (most reliable for scenarios)
-    if (scenario.input_rates && scenario.input_rates[gradeName] && scenario.input_rates[gradeName].vertical !== undefined) {
-      const value = scenario.input_rates[gradeName].vertical;
-
-      return value;
-    }
-    
-    // Fallback: Check data.positionVerticalInputs
-    if (scenario.data && scenario.data.positionVerticalInputs && scenario.data.positionVerticalInputs[gradeName] !== undefined) {
-      const value = scenario.data.positionVerticalInputs[gradeName];
- 
-      return value;
-    }
-    
-
+    const src = scenarioId === 'current'
+      ? (currentScenarios[selectedStructureCurrency] || Object.values(currentScenarios)[0])
+      : getScenarioForComparison(scenarioId)?.scenario;
+    if (!src) return null;
+    if (src.input_rates?.[gradeName]?.vertical !== undefined) return src.input_rates[gradeName].vertical;
+    if (src.data?.positionVerticalInputs?.[gradeName] !== undefined) return src.data.positionVerticalInputs[gradeName];
     return null;
-  }, [currentScenario, getScenarioForComparison]);
+  }, [currentScenarios, selectedStructureCurrency, getScenarioForComparison]);
 
   const getHorizontalInputValues = useCallback((scenarioId) => {
-  
-    
-    if (scenarioId === 'current') {
-     
-      // Current Scenario-dan horizontal intervals götürürük
-      if (currentScenario && currentScenario.data && currentScenario.data.globalHorizontalIntervals) {
-     
-        return currentScenario.data.globalHorizontalIntervals;
-      }
-      
-      // Fallback: input_rates-dən götürmək
-      if (currentScenario && currentScenario.input_rates) {
-        for (const [gradeName, gradeData] of Object.entries(currentScenario.input_rates)) {
-          if (gradeData && gradeData.horizontal_intervals) {
-  
-            return gradeData.horizontal_intervals;
-          }
-        }
-      }
-      
-
-      return {
-        LD_to_LQ: 0,
-        LQ_to_M: 0,
-        M_to_UQ: 0,
-        UQ_to_UD: 0
-      };
-    }
-    
-    const comparisonData = getScenarioForComparison(scenarioId);
-    if (!comparisonData) {
-  
-      return {
-        LD_to_LQ: 0,
-        LQ_to_M: 0,
-        M_to_UQ: 0,
-        UQ_to_UD: 0
-      };
-    }
-    
-    const { scenario } = comparisonData;
-    
-    // Check data.globalHorizontalIntervals first
-    if (scenario.data && scenario.data.globalHorizontalIntervals) {
-  
-      return scenario.data.globalHorizontalIntervals;
-    }
-    
-    // Fallback: Check input_rates (get from any position - they should be the same)
-    if (scenario.input_rates) {
-      for (const [gradeName, gradeData] of Object.entries(scenario.input_rates)) {
-        if (gradeData && gradeData.horizontal_intervals) {
-    
-          return gradeData.horizontal_intervals;
-        }
+    const def = { LD_to_LQ: 0, LQ_to_M: 0, M_to_UQ: 0, UQ_to_UD: 0 };
+    const src = scenarioId === 'current'
+      ? (currentScenarios[selectedStructureCurrency] || Object.values(currentScenarios)[0])
+      : getScenarioForComparison(scenarioId)?.scenario;
+    if (!src) return def;
+    if (src.data?.globalHorizontalIntervals) return src.data.globalHorizontalIntervals;
+    if (src.input_rates) {
+      for (const gd of Object.values(src.input_rates)) {
+        if (gd?.horizontal_intervals) return gd.horizontal_intervals;
       }
     }
-    
+    return def;
+  }, [currentScenarios, selectedStructureCurrency, getScenarioForComparison]);
 
-    return {
-      LD_to_LQ: 0,
-      LQ_to_M: 0,
-      M_to_UQ: 0,
-      UQ_to_UD: 0
-    };
-  }, [currentScenario, getScenarioForComparison]);
+  const refreshData = useCallback(() => loadInitialData(), [loadInitialData]);
 
-  const refreshData = useCallback(async () => {
-
-    await loadInitialData();
-  }, [loadInitialData]);
-
-  // Combined scenario display data (eyni qalır)
+  // ── Derived / memoised ─────────────────────────────────────────────────────
   const newScenarioDisplayData = useMemo(() => {
-    if (!scenarioInputs.gradeOrder || scenarioInputs.gradeOrder.length === 0) {
-      return null;
-    }
-    
-    const combinedGrades = {};
-    scenarioInputs.gradeOrder.forEach((gradeName) => {
-      const inputGrade = scenarioInputs.grades[gradeName] || { vertical: '' };
-      const outputGrade = calculatedOutputs[gradeName] || { 
-        LD: "", LQ: "", M: "", UQ: "", UD: "" 
-      };
-      
-      combinedGrades[gradeName] = {
-        ...inputGrade,
-        ...outputGrade,
-        isCalculated: Object.values(outputGrade).some(value => value && value !== "")
+    if (!scenarioInputs.gradeOrder?.length) return null;
+    const combined = {};
+    scenarioInputs.gradeOrder.forEach(gn => {
+      const inp = scenarioInputs.grades[gn] || { vertical: '' };
+      const out = calculatedOutputs[gn]     || { LD: '', LQ: '', M: '', UQ: '', UD: '' };
+      combined[gn] = {
+        ...inp, ...out,
+        isCalculated: Object.values(out).some(v => v && v !== ''),
       };
     });
-    
     return {
-      baseValue1: scenarioInputs.baseValue1,
-      gradeOrder: scenarioInputs.gradeOrder,
-      grades: combinedGrades,
+      baseValue1:               scenarioInputs.baseValue1,
+      currency:                 scenarioInputs.currency,
+      gradeOrder:               scenarioInputs.gradeOrder,
+      grades:                   combined,
       globalHorizontalIntervals: scenarioInputs.globalHorizontalIntervals,
       calculationProgress: {
-        totalPositions: scenarioInputs.gradeOrder.length,
-        calculatedPositions: Object.values(combinedGrades).filter(grade => grade.isCalculated).length,
-        hasVerticalInputs: Object.values(scenarioInputs.grades || {}).some(grade => 
-          grade.vertical !== null && grade.vertical !== '' && grade.vertical !== undefined
-        ),
-        hasHorizontalInputs: Object.values(scenarioInputs.globalHorizontalIntervals || {}).some(interval => 
-          interval !== '' && interval !== null && interval !== undefined && interval !== 0
-        )
-      }
+        totalPositions:      scenarioInputs.gradeOrder.length,
+        calculatedPositions: Object.values(combined).filter(g => g.isCalculated).length,
+        hasVerticalInputs:   Object.values(scenarioInputs.grades || {}).some(g =>
+          g.vertical !== null && g.vertical !== '' && g.vertical !== undefined),
+        hasHorizontalInputs: Object.values(scenarioInputs.globalHorizontalIntervals || {}).some(v =>
+          v !== '' && v !== null && v !== undefined && v !== 0),
+      },
     };
   }, [scenarioInputs, calculatedOutputs]);
 
-  // Auto-calculation effect (eyni qalır)
   useEffect(() => {
-    if (!isInitialized || !scenarioInputs.baseValue1 || parseFloat(scenarioInputs.baseValue1) <= 0) {
-      return;
-    }
-
-    const hasAnyInput = 
-      Object.values(scenarioInputs.grades || {}).some(grade => 
-        grade.vertical !== null && grade.vertical !== '' && grade.vertical !== undefined && grade.vertical !== 0
-      ) ||
-      Object.values(scenarioInputs.globalHorizontalIntervals || {}).some(interval => 
-        interval !== '' && interval !== null && interval !== undefined && interval !== 0
-      );
-
-    if (hasAnyInput) {
-      const timer = setTimeout(() => {
-
-        calculateGrades();
-      }, 1000);
-
-      return () => clearTimeout(timer);
-    }
+    if (!isInitialized || !scenarioInputs.baseValue1 || parseFloat(scenarioInputs.baseValue1) <= 0) return;
+    const hasAny =
+      Object.values(scenarioInputs.grades || {}).some(g =>
+        g.vertical !== null && g.vertical !== '' && g.vertical !== undefined && g.vertical !== 0) ||
+      Object.values(scenarioInputs.globalHorizontalIntervals || {}).some(v =>
+        v !== '' && v !== null && v !== undefined && v !== 0);
+    if (!hasAny) return;
+    const t = setTimeout(() => calculateGrades(), 1000);
+    return () => clearTimeout(t);
   }, [isInitialized, scenarioInputs, calculateGrades]);
 
   useEffect(() => {
@@ -691,73 +501,52 @@ const toggleCompareMode = useCallback(() => {
     }
   }, [isInitialized, scenarioInputs.baseValue1, clearCalculatedOutputs]);
 
-  // Computed values
   const basePositionName = useMemo(() => {
-    if (currentData && currentData.gradeOrder && currentData.gradeOrder.length > 0) {
-      return currentData.gradeOrder[currentData.gradeOrder.length - 1];
-    }
-    if (scenarioInputs.gradeOrder && scenarioInputs.gradeOrder.length > 0) {
-      return scenarioInputs.gradeOrder[scenarioInputs.gradeOrder.length - 1];
-    }
-    return "Base Position";
+    const order = currentData?.gradeOrder || scenarioInputs.gradeOrder;
+    return order?.length ? order[order.length - 1] : 'Base Position';
   }, [currentData, scenarioInputs.gradeOrder]);
 
-  const isLoading = useMemo(() => {
-    return Object.values(loading).some(Boolean) || isCalculating || !isInitialized;
-  }, [loading, isCalculating, isInitialized]);
+  const isLoading = useMemo(() =>
+    Object.values(loading).some(Boolean) || isCalculating || !isInitialized,
+  [loading, isCalculating, isInitialized]);
 
-  const hasErrors = useMemo(() => {
-    return Object.keys(errors).length > 0;
-  }, [errors]);
+  const hasErrors = useMemo(() => Object.keys(errors).length > 0, [errors]);
 
-  const dataAvailability = useMemo(() => {
-    return {
-      hasCurrentData: !!(currentData && currentData.gradeOrder && currentData.gradeOrder.length > 0),
-      hasCurrentScenario: !!(currentScenario && currentScenario.id),
-      hasPositionGroups: !!(positionGroups && positionGroups.length > 0),
-      hasDraftScenarios: draftScenarios.length > 0,
-      hasArchivedScenarios: archivedScenarios.length > 0,
-      isSystemReady: !!(currentData && currentData.gradeOrder && currentData.gradeOrder.length > 0 && isInitialized)
-    };
-  }, [currentData, currentScenario, positionGroups, draftScenarios, archivedScenarios, isInitialized]);
-
-
+  const dataAvailability = useMemo(() => ({
+    hasCurrentData:       !!(currentData?.gradeOrder?.length),
+    hasCurrentScenario:   !!(currentScenario?.id),
+    hasPositionGroups:    !!(positionGroups?.length),
+    hasDraftScenarios:    draftScenarios.length > 0,
+    hasArchivedScenarios: archivedScenarios.length > 0,
+    isSystemReady:        !!(currentData?.gradeOrder?.length && isInitialized),
+  }), [currentData, currentScenario, positionGroups, draftScenarios, archivedScenarios, isInitialized]);
 
   return {
-    // Core data
-    currentData,         
-    currentScenario,    
+    // Data
+    currentData,           // aktiv currency-nin structure-u
+    currentStructures,     // bütün { AZN: {...}, USD: {...} }
+    currentScenario,       // aktiv currency-nin scenario-su
+    currentScenarios,      // bütün { AZN: {...}, USD: {...} }
+    selectedStructureCurrency,
+    availableStructureCurrencies,
     positionGroups,
-    scenarioInputs,
-    calculatedOutputs,
-    newScenarioDisplayData,
-    draftScenarios,
-    archivedScenarios,
-    selectedScenario,
-    bestDraft,
-    basePositionName,
-    
-    // Computed state
-    validationSummary,
-    inputSummary,
-    dataAvailability,
-    
+    currencies,
+    scenarioInputs, calculatedOutputs, newScenarioDisplayData,
+    draftScenarios, archivedScenarios, selectedScenario, bestDraft, basePositionName,
+
+    // Computed
+    validationSummary, inputSummary, dataAvailability,
+
     // UI state
-    isDetailOpen,
-    setIsDetailOpen,
-    compareMode,
-    selectedForComparison,
-    isLoading,
-    isCalculating,
-    errors,
-    hasErrors,
-    isInitialized,
-    
-   
+    isDetailOpen, setIsDetailOpen,
+    compareMode, selectedForComparison,
+    isLoading, isCalculating, errors, hasErrors, isInitialized,
     loading,
-    
-    // Actions
+
+    // Grading actions
     handleBaseValueChange,
+    handleCurrencyChange,
+    handleStructureCurrencyChange,   // ← YENİ: current structure tab dəyişdirmə
     handleVerticalChange,
     handleGlobalHorizontalChange,
     handleSaveDraft,
@@ -766,19 +555,23 @@ const toggleCompareMode = useCallback(() => {
     handleViewDetails,
     toggleCompareMode,
     toggleScenarioForComparison,
-    startComparison,
     getScenarioForComparison,
     calculateGrades,
     clearCalculatedOutputs,
     refreshData,
-
     getVerticalInputValue,
     getHorizontalInputValues,
-    comparisonData,           
+    comparisonData,
     handleCompareScenarios,
- 
     clearErrors: () => dispatch(clearErrors()),
-    setError: (field, message) => dispatch(setError({ field, message }))
+    setError:    (field, message) => dispatch(setError({ field, message })),
+
+    // Salary
+    salaryData, salaryLoading, salaryError,
+    salaryUpdating, salaryBulkUpdating,
+    salaryPagination, salaryFilters, salaryByGrade,
+    fetchSalaryData, handleSalaryUpdate, handleSalaryBulkUpdate,
+    handleSalaryExcelImport, handleSalaryTemplateDownload, updateSalaryFilters,
   };
 };
 

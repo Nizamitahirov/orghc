@@ -41,14 +41,14 @@ useEffect(() => {
     setFormData({
       title: newsItem.title || '',
       excerpt: newsItem.excerpt || '',
-      content: newsItem.content || '',  // ✅ Bu düzgündür
+      content: newsItem.content || '',  //  Bu düzgündür
       category: newsItem.category || (categories.length > 0 ? categories[0].id : ''),
       image: newsItem.image || null,
       imagePreview: newsItem.imagePreview || newsItem.image_url || '',
-      tags: newsItem.tags || newsItem.tags_list || [],  // ✅ tags_list də əlavə et
+      tags: newsItem.tags || newsItem.tags_list || [],  //  tags_list də əlavə et
       isPinned: newsItem.isPinned || newsItem.is_pinned || false,
       isPublished: newsItem.isPublished !== undefined ? newsItem.isPublished : (newsItem.is_published !== undefined ? newsItem.is_published : true),
-      targetGroups: newsItem.targetGroups || (newsItem.target_groups_info?.map(g => g.id)) || [],  // ✅ Düzəliş
+      targetGroups: newsItem.targetGroups || (newsItem.target_groups_info?.map(g => g.id)) || [],  //  Düzəliş
       notifyMembers: newsItem.notifyMembers || newsItem.notify_members || false,
       authorDisplayName: newsItem.authorDisplayName || newsItem.author_display_name || ''
     });

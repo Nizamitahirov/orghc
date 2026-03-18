@@ -160,7 +160,7 @@ const [selectedRequestForDetail, setSelectedRequestForDetail] = useState(null);
   };
   useEffect(() => {
     if (userDefaults) {
-      // ✅ Get current user ID
+      //  Get current user ID
       const fetchCurrentUser = async () => {
         try {
           const response = await resignationExitService.getCurrentUser();
@@ -174,7 +174,7 @@ const [selectedRequestForDetail, setSelectedRequestForDetail] = useState(null);
     }
   }, [userDefaults]);
   
-  // ✅ NEW: Handle Edit Request
+  //  NEW: Handle Edit Request
   const handleEditRequest = async (request) => {
     try {
       // Load full request details
@@ -237,7 +237,7 @@ const [selectedRequestForDetail, setSelectedRequestForDetail] = useState(null);
     }
   };
   
-  // ✅ NEW: Handle Update Submit
+  //  NEW: Handle Update Submit
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
     
@@ -303,13 +303,13 @@ const [selectedRequestForDetail, setSelectedRequestForDetail] = useState(null);
     }
   };
   
-  // ✅ NEW: Handle Delete Request
+  //  NEW: Handle Delete Request
   const handleDeleteRequest = (request) => {
     setRequestToDelete(request);
     setShowDeleteConfirmModal(true);
   };
   
-  // ✅ NEW: Confirm Delete
+  //  NEW: Confirm Delete
   const confirmDelete = async () => {
     if (!requestToDelete) return;
     
@@ -332,7 +332,7 @@ const [selectedRequestForDetail, setSelectedRequestForDetail] = useState(null);
     }
   };
   
-  // ✅ NEW: Cancel Edit
+  //  NEW: Cancel Edit
   const handleCancelEdit = () => {
     setEditingRequest(null);
     setFormData(prev => ({
@@ -1321,7 +1321,7 @@ const handleOpenRequestDetail = (request) => {
                       <Eye className='w-3.5 h-3.5' />
                     </button>
                     
-                    {/* ✅ NEW: Edit Button */}
+                    {/*  NEW: Edit Button */}
                     {BusinessTripHelpers.canEditRequest(request, userPermissions, currentUserId) && (
                       <button
                         onClick={() => handleEditRequest(request)}
@@ -1331,7 +1331,7 @@ const handleOpenRequestDetail = (request) => {
                   </button>
                 )}
                 
-                {/* ✅ NEW: Delete Button */}
+                {/*  NEW: Delete Button */}
                 {BusinessTripHelpers.canDeleteRequest(request, userPermissions, currentUserId) && (
                   <button
                     onClick={() => handleDeleteRequest(request)}
@@ -1892,7 +1892,7 @@ const handleOpenRequestDetail = (request) => {
                       <Eye className='w-3.5 h-3.5' />
                     </button>
                     
-                    {/* ✅ NEW: Edit Button for All Requests */}
+                    {/*  NEW: Edit Button for All Requests */}
                     {BusinessTripHelpers.canEditRequest(request, userPermissions, currentUserId) && (
                       <button
                         onClick={() => handleEditRequest(request)}
@@ -1902,7 +1902,7 @@ const handleOpenRequestDetail = (request) => {
                       </button>
                     )}
                     
-                    {/* ✅ NEW: Delete Button for All Requests */}
+                    {/*  NEW: Delete Button for All Requests */}
                     {BusinessTripHelpers.canDeleteRequest(request, userPermissions, currentUserId) && (
                       <button
                         onClick={() => handleDeleteRequest(request)}

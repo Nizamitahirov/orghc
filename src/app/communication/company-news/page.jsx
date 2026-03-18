@@ -187,16 +187,16 @@ export default function CompanyNewsPage() {
     return;
   }
   
-  // ✅ Bütün field-ləri düzgün map et
+  //  Bütün field-ləri düzgün map et
   setEditingNews({
-    ...item,  // ✅ Əvvəlcə bütün original data-nı götür
-    tags: item.tags_list || [],  // ✅ tags_list-dən tags-a
-    imagePreview: item.image_url,  // ✅ image_url-dən imagePreview-a
-    targetGroups: item.target_groups_info?.map(g => g.id) || [],  // ✅ ID array-inə çevir
+    ...item,  //  Əvvəlcə bütün original data-nı götür
+    tags: item.tags_list || [],  //  tags_list-dən tags-a
+    imagePreview: item.image_url,  //  image_url-dən imagePreview-a
+    targetGroups: item.target_groups_info?.map(g => g.id) || [],  //  ID array-inə çevir
     notifyMembers: item.notify_members,
     isPinned: item.is_pinned,
     authorDisplayName: item.author_display_name,
-    isPublished: item.is_published  // ✅ Əlavə et
+    isPublished: item.is_published  //  Əlavə et
   });
   setShowFormModal(true);
 };
@@ -352,7 +352,7 @@ export default function CompanyNewsPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2.5">
-              {/* ✅ Only Admin can see these buttons */}
+              {/*  Only Admin can see these buttons */}
               {permissions.is_admin && (
                 <>
                   <button 

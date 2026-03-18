@@ -460,9 +460,9 @@ function MetricCard({ icon: Icon, title, value, subtitle, color, darkMode }) {
 }
 
 function EvaluationScaleReference({ scales, darkMode }) {
-  if (!scales || scales.length === 0) {
-    return null;
-  }
+  const [selectedScale, setSelectedScale] = useState(null);
+
+  if (!scales || scales.length === 0) return null;
 
   return (
     <details className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-almet-mystic'} rounded-xl border overflow-hidden group`}>
@@ -477,21 +477,52 @@ function EvaluationScaleReference({ scales, darkMode }) {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </summary>
-      
+
       <div className={`p-3 border-t ${darkMode ? 'border-almet-comet' : 'border-almet-mystic'}`}>
         <div className="grid grid-cols-5 gap-2">
-          {scales.map((scale) => (
-            <div key={scale.id} className={`${darkMode ? 'bg-almet-san-juan' : 'bg-almet-mystic'} rounded-lg p-2 text-center`}>
-              <div className="text-sm font-bold text-almet-sapphire mb-1">{scale.name}</div>
-              <div className={`text-xs font-semibold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'} mb-0.5`}>
-                Value: {scale.value}
-              </div>
-              <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                {scale.range_min}-{scale.range_max}%
-              </div>
-            </div>
-          ))}
+          {scales.map((scale) => {
+            const isSelected = selectedScale?.id === scale.id;
+            return (
+              <button
+                key={scale.id}
+                onClick={() => setSelectedScale(isSelected ? null : scale)}
+                className={`rounded-lg p-2 text-center transition-all  w-full
+                  ${isSelected
+                    ? 'ring-2 ring-almet-sapphire bg-almet-sapphire/10'
+                    : darkMode ? 'bg-almet-san-juan hover:bg-almet-san-juan/70' : 'bg-almet-mystic hover:bg-almet-mystic/70'
+                  }`}
+              >
+                <div className="text-sm font-bold text-almet-sapphire mb-1">{scale.name}</div>
+                <div className={`text-xs font-semibold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'} mb-0.5`}>
+                  Value: {scale.value}
+                </div>
+                <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                  {scale.range_min}-{scale.range_max}%
+                </div>
+              </button>
+            );
+          })}
         </div>
+
+        {/* Description panel - klik edilən kart üçün */}
+        {selectedScale && (
+          <div className={`mt-3 p-3 rounded-lg border transition-all
+            ${darkMode
+              ? 'bg-almet-sapphire/10 border-almet-sapphire/30'
+              : 'bg-almet-sapphire/5 border-almet-sapphire/20'
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-bold text-almet-sapphire">{selectedScale.name}</span>
+              <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                ({selectedScale.range_min}–{selectedScale.range_max}%)
+              </span>
+            </div>
+            <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
+              {selectedScale.description || 'No description available.'}
+            </p>
+          </div>
+        )}
       </div>
     </details>
   );

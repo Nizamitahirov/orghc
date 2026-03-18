@@ -2,477 +2,461 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { 
-  FileText, LogOut, Plus, Search, Clock, Eye, Trash2, 
-  Building2, Calendar, ArrowLeft, ChevronRight, Home, Settings,
-  RefreshCw, UserCheck, TrendingUp
+import {
+  FileText, LogOut, Plus, Search, Clock, Trash2,
+  Building2, Calendar, ChevronRight, Home, Settings,
+  ArrowLeft, CheckCircle, AlertTriangle, Shield,
+  Filter, LogIn
 } from 'lucide-react';
 import resignationExitService from '@/services/resignationExitService';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { useToast } from '@/components/common/Toast';
 
-// Modal Imports
-import ResignationSubmissionModal from '@/components/resignation/ResignationSubmissionModal';
-import ResignationDetailModal from '@/components/resignation/ResignationDetailModal';
-import ExitInterviewModal from '@/components/resignation/ExitInterviewModal';
-import CreateExitInterviewModal from '@/components/resignation/CreateExitInterviewModal';
-import ViewExitInterviewModal from '@/components/resignation/ViewExitInterviewModal';
+import ResignationSubmissionModal  from '@/components/resignation/ResignationSubmissionModal';
+import ResignationDetailModal      from '@/components/resignation/ResignationDetailModal';
+import ExitInterviewModal          from '@/components/resignation/ExitInterviewModal';
+import CreateExitInterviewModal    from '@/components/resignation/CreateExitInterviewModal';
+import ViewExitInterviewModal      from '@/components/resignation/ViewExitInterviewModal';
 
+// ── Status config ────────────────────────────────────────────────────────────
+const STATUS_CFG = {
+  PENDING_MANAGER:  { label: 'Pending Manager', dot: 'bg-amber-400',   pill: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'  },
+  PENDING_HR:       { label: 'Pending HR',       dot: 'bg-blue-400',    pill: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'       },
+  MANAGER_APPROVED: { label: 'Mgr Approved',     dot: 'bg-emerald-400', pill: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  MANAGER_REJECTED: { label: 'Mgr Rejected',     dot: 'bg-red-400',     pill: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'           },
+  HR_APPROVED:      { label: 'HR Approved',      dot: 'bg-emerald-400', pill: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  HR_REJECTED:      { label: 'HR Rejected',      dot: 'bg-red-400',     pill: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'           },
+  COMPLETED:        { label: 'Completed',        dot: 'bg-emerald-400', pill: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  PENDING:          { label: 'Pending',          dot: 'bg-amber-400',   pill: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'   },
+  IN_PROGRESS:      { label: 'In Progress',      dot: 'bg-blue-400',    pill: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'       },
+};
+
+const StatusPill = ({ status }) => {
+  const c = STATUS_CFG[status] ?? { label: status, dot: 'bg-gray-400', pill: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400' };
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${c.pill}`}>
+      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${c.dot}`} />
+      {c.label}
+    </span>
+  );
+};
+
+// ── Tiny helpers ─────────────────────────────────────────────────────────────
+const fmt = (d) => resignationExitService.helpers.formatDate(d);
+
+const Crumb = ({ path, onHome }) => (
+  <nav className="flex items-center gap-1.5 text-[11px] text-gray-400 mb-4">
+    <button onClick={onHome} className="flex items-center gap-1 hover:text-almet-sapphire transition-colors">
+      <Home size={12} /> Home
+    </button>
+    {path.map((p, i) => (
+      <React.Fragment key={i}>
+        <ChevronRight size={11} />
+        <span className={i === path.length - 1 ? 'text-gray-700 dark:text-gray-200 font-semibold' : ''}>{p}</span>
+      </React.Fragment>
+    ))}
+  </nav>
+);
+
+// ── Stat card ─────────────────────────────────────────────────────────────────
+const Stat = ({ icon: Icon, label, value, note, iconCls, bgCls, onClick }) => (
+  <button
+    onClick={onClick}
+    className="group bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-left w-full"
+  >
+    <div className="flex items-start justify-between mb-3">
+      <div className={`p-2 rounded-lg ${bgCls}`}><Icon size={16} className={iconCls} /></div>
+      <ChevronRight size={13} className="text-gray-300 group-hover:text-almet-sapphire group-hover:translate-x-0.5 transition-all" />
+    </div>
+    <p className="text-2xl font-bold text-gray-900 dark:text-white leading-none mb-1">{value}</p>
+    <p className="text-xs font-semibold text-gray-600 dark:text-gray-300">{label}</p>
+    {note && <p className="text-[11px] text-gray-400 mt-0.5">{note}</p>}
+  </button>
+);
+
+// ── Category card ─────────────────────────────────────────────────────────────
+const CatCard = ({ icon: Icon, title, desc, badge, badgeCls, iconBg, iconCls, onClick }) => (
+  <button
+    onClick={onClick}
+    className="group bg-white dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all text-left w-full"
+  >
+    <div className="flex items-start justify-between mb-4">
+      <div className={`p-2.5 rounded-xl ${iconBg}`}><Icon size={18} className={iconCls} /></div>
+      {badge != null && badge > 0 && (
+        <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${badgeCls}`}>{badge}</span>
+      )}
+    </div>
+    <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">{title}</h3>
+    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-3">{desc}</p>
+    <span className="inline-flex items-center gap-1 text-xs font-semibold text-almet-sapphire group-hover:gap-1.5 transition-all">
+      Open <ChevronRight size={13} />
+    </span>
+  </button>
+);
+
+// ── Quick action button ────────────────────────────────────────────────────────
+const QBtn = ({ icon: Icon, label, desc, border, iconCls, bgCls, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`group bg-white dark:bg-gray-800 rounded-xl p-4 border-2 border-transparent hover:${border} transition-all text-left w-full shadow-sm hover:shadow-md`}
+  >
+    <div className={`p-2 rounded-lg ${bgCls} inline-flex mb-3`}>
+      <Icon size={16} className={iconCls} />
+    </div>
+    <p className="text-xs font-bold text-gray-900 dark:text-white mb-0.5">{label}</p>
+    <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">{desc}</p>
+  </button>
+);
+
+// ── Item row card ─────────────────────────────────────────────────────────────
+const ItemRow = ({ item, type, onView, onDelete, isAdmin }) => {
+  const Icon = type === 'resignation' ? FileText : LogOut;
+  const urg  = item.days_remaining <= 7  ? 'text-red-500'
+             : item.days_remaining <= 14 ? 'text-amber-500'
+             : 'text-gray-400 dark:text-gray-500';
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden">
+      <button onClick={() => onView(item)} className="w-full p-4 text-left">
+        <div className="flex items-start gap-3">
+          <div className="p-2 bg-almet-mystic dark:bg-almet-cloud-burst/20 rounded-lg shrink-0">
+            <Icon size={15} className="text-almet-sapphire" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2 mb-1.5">
+              <div>
+                <p className="text-xs font-bold text-gray-900 dark:text-white">{item.employee_name}</p>
+                <p className="text-[11px] text-gray-400 dark:text-gray-500">{item.employee_id} · {item.position}</p>
+              </div>
+              <StatusPill status={item.status} />
+            </div>
+            <div className="flex flex-wrap gap-3 text-[11px] text-gray-400 dark:text-gray-500">
+              {item.department    && <span className="flex items-center gap-1"><Building2 size={10}/>{item.department}</span>}
+              {item.last_working_day && <span className="flex items-center gap-1"><Calendar size={10}/>{fmt(item.last_working_day)}</span>}
+              {item.days_remaining != null && (
+                <span className={`flex items-center gap-1 font-semibold ${urg}`}>
+                  <Clock size={10}/>{item.days_remaining}d remaining
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </button>
+      {isAdmin && (
+        <div className="px-4 pb-3 flex justify-end">
+          <button
+            onClick={() => onDelete(item)}
+            className="flex items-center gap-1 text-[11px] font-medium text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 px-2 py-1 rounded-lg transition-colors"
+          >
+            <Trash2 size={11}/> Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════════════
 export default function ResignationExitManagement() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]       = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
-  const [userRole, setUserRole] = useState('employee');
-  const { showSuccess, showError, showInfo } = useToast();
-  
-  const [currentView, setCurrentView] = useState('home');
+  const [userRole, setUserRole]     = useState(null);
+  const { showSuccess, showError }  = useToast();
+
+  const [view, setView]             = useState('home'); // 'home' | 'resignations' | 'exits'
   const [selectedItem, setSelectedItem] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState('');
-  
-  const [data, setData] = useState({
-    resignations: [],
-    exitInterviews: []
-  });
-  
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [deleteModal, setDeleteModal] = useState({ show: false, item: null, type: '' });
+  const [showModal, setShowModal]   = useState(false);
+  const [modalType, setModalType]   = useState('');
 
-  useEffect(() => {
-    loadUserAndData();
-  }, []);
+  const [data, setData]             = useState({ resignations: [], exitInterviews: [] });
+  const [search, setSearch]         = useState('');
+  const [filterStatus, setFilter]   = useState('all');
+  const [delModal, setDelModal]     = useState({ show: false, item: null, type: '' });
 
-  const loadUserAndData = async () => {
+  useEffect(() => { boot(); }, []);
+
+  const boot = async () => {
     try {
       setLoading(true);
-      
-      const userInfo = await resignationExitService.getCurrentUser();
-      const userProfile = await resignationExitService.getUser();
-      
-      const fullUserData = {
-        ...userInfo,
-        ...userProfile,
-        id: userProfile.employee?.id || userInfo.id,
-        employee_id: userProfile.employee?.employee_id || userInfo.username,
-        full_name: userProfile.employee?.full_name || `${userInfo.first_name} ${userInfo.last_name}`,
-        job_title: userProfile.employee?.job_title || '',
-        department_name: userProfile.employee?.department?.name || '',
-        line_manager_name: userProfile.employee?.line_manager?.full_name || ''
+      const [info, profile] = await Promise.all([
+        resignationExitService.getCurrentUser(),
+        resignationExitService.getUser(),
+      ]);
+      const full = {
+        ...info, ...profile,
+        id:            profile.employee?.id || info.id,
+        employee_id:   profile.employee?.employee_id || info.username,
+        full_name:     profile.employee?.full_name || `${info.first_name} ${info.last_name}`,
+        job_title:     profile.employee?.job_title || '',
+        department_name: profile.employee?.department?.name || '',
       };
-      
-      setCurrentUser(fullUserData);
-      setUserRole(userInfo);
-      await loadDataForRole(userInfo);
-
-    } catch (error) {
-      console.error('Error loading data:', error);
-      showError('Failed to load data. Please try again.');
+      setCurrentUser(full);
+      setUserRole(info);
+      await fetchData(info);
+    } catch (e) {
+      console.error(e);
+      showError('Failed to load. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadDataForRole = async (role) => {
+  const fetchData = async (role) => {
     try {
       const [resigs, exits] = await Promise.all([
         resignationExitService.resignation.getResignations().catch(() => ({ results: [] })),
-        resignationExitService.exitInterview.getExitInterviews().catch(() => ({ results: [] }))
+        role?.is_admin
+          ? resignationExitService.exitInterview.getExitInterviews().catch(() => ({ results: [] }))
+          : Promise.resolve({ results: [] }),
       ]);
-      
-      setData({
-        resignations: resigs.results || [],
-        exitInterviews: exits.results || []
-      });
-    } catch (error) {
-      console.error('Error loading data:', error);
+      setData({ resignations: resigs.results || [], exitInterviews: exits.results || [] });
+    } catch (e) {
+      console.error(e);
       showError('Failed to load data.');
     }
   };
 
   const handleDelete = async () => {
-    const { item, type } = deleteModal;
+    const { item, type } = delModal;
     try {
-      switch (type) {
-        case 'resignation':
-          await resignationExitService.resignation.deleteResignation(item.id);
-          showSuccess('Resignation deleted successfully');
-          break;
-        case 'exit':
-          await resignationExitService.exitInterview.deleteExitInterview(item.id);
-          showSuccess('Exit interview deleted successfully');
-          break;
-      }
-      await loadDataForRole(userRole);
-      setDeleteModal({ show: false, item: null, type: '' });
-    } catch (error) {
-      console.error('Error deleting:', error);
-      showError('Failed to delete. Please try again.');
+      type === 'resignation'
+        ? await resignationExitService.resignation.deleteResignation(item.id)
+        : await resignationExitService.exitInterview.deleteExitInterview(item.id);
+      showSuccess('Deleted successfully');
+      await fetchData(userRole);
+      setDelModal({ show: false, item: null, type: '' });
+    } catch (e) {
+      console.error(e);
+      showError('Failed to delete.');
     }
   };
 
-  const handleModalClose = () => {
-    setShowModal(false);
-    setSelectedItem(null);
-    setModalType('');
-  };
+  const closeModal  = () => { setShowModal(false); setSelectedItem(null); setModalType(''); };
+  const onSuccess   = () => fetchData(userRole);
+  const goHome      = () => { setView('home'); setSearch(''); setFilter('all'); };
+  const goView      = (v) => { setView(v); setSearch(''); setFilter('all'); };
+  const openDetail  = (item, type) => { setSelectedItem(item); setModalType(type); setShowModal(true); };
 
-  const handleModalSuccess = () => {
-    loadDataForRole(userRole);
-  };
+  if (loading) return <LoadingSpinner message="Loading Employee Offboarding…" />;
 
-  const navigateToView = (view, item = null) => {
-    setCurrentView(view);
-    if (item) setSelectedItem(item);
-    setSearchTerm('');
-    setFilterStatus('all');
-  };
+  const pendingRes  = data.resignations.filter(r => ['PENDING_MANAGER','PENDING_HR'].includes(r.status));
+  const doneRes     = data.resignations.filter(r => r.status === 'COMPLETED');
+  const pendingExit = data.exitInterviews.filter(e => e.status !== 'COMPLETED');
+  const doneExit    = data.exitInterviews.filter(e => e.status === 'COMPLETED');
 
-  const navigateToHome = () => {
-    setCurrentView('home');
-    setSelectedItem(null);
-  };
+  // ── HOME ──────────────────────────────────────────────────────────────────
+  const HomeView = () => (
+    <div className="space-y-6">
+      {/* Hero */}
+      <div className="relative bg-gradient-to-br from-almet-sapphire via-almet-astral to-almet-steel-blue rounded-2xl p-6 text-white overflow-hidden">
+        <div className="absolute -top-8 -right-8 w-40 h-40 bg-white/5 rounded-full" />
+        <div className="absolute -bottom-6 left-1/3 w-28 h-28 bg-white/5 rounded-full" />
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-1.5 bg-white/15 rounded-lg"><LogIn size={15}/></div>
+            <span className="text-xs font-medium text-white/70">Employee Offboarding</span>
+          </div>
+          <h1 className="text-lg font-bold mb-1">Resignation & Exit Management</h1>
+          <p className="text-xs text-white/60 ">
+            Manage resignations, conduct exit interviews, and ensure a smooth offboarding process.
+          </p>
+        </div>
+      </div>
 
-  const openDetailModal = (item, type) => {
-    setSelectedItem(item);
-    setModalType(type);
-    setShowModal(true);
-  };
+      {/* Stats */}
+      <section>
+        <h2 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Overview</h2>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <Stat icon={FileText}     label="Total Resignations" value={data.resignations.length}   note={`${pendingRes.length} pending`}     iconCls="text-red-500"     bgCls="bg-red-50 dark:bg-red-900/20"     onClick={() => goView('resignations')} />
+          <Stat icon={AlertTriangle} label="Awaiting Approval" value={pendingRes.length}           note="Needs attention"                    iconCls="text-amber-500"   bgCls="bg-amber-50 dark:bg-amber-900/20"  onClick={() => goView('resignations')} />
+          {userRole?.is_admin && <>
+            <Stat icon={LogOut}       label="Exit Interviews"  value={data.exitInterviews.length} note={`${doneExit.length} completed`}    iconCls="text-blue-500"    bgCls="bg-blue-50 dark:bg-blue-900/20"   onClick={() => goView('exits')} />
+            <Stat icon={CheckCircle}  label="Fully Completed"  value={doneRes.length + doneExit.length} note="This period"                 iconCls="text-emerald-500" bgCls="bg-emerald-50 dark:bg-emerald-900/20" onClick={() => goView('resignations')} />
+          </>}
+          {!userRole?.is_admin &&
+            <Stat icon={CheckCircle} label="Completed" value={doneRes.length} note="Fully processed" iconCls="text-emerald-500" bgCls="bg-emerald-50 dark:bg-emerald-900/20" onClick={() => goView('resignations')} />
+          }
+        </div>
+      </section>
 
-  const Breadcrumb = ({ path }) => (
-    <div className="flex items-center gap-2 text-xs mb-3">
-      <button 
-        onClick={navigateToHome}
-        className="flex items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-almet-sapphire transition-colors"
-      >
-        <Home size={14} />
-        <span>Home</span>
-      </button>
-      {path.map((item, idx) => (
-        <React.Fragment key={idx}>
-          <ChevronRight size={12} className="text-gray-400" />
-          <span className={idx === path.length - 1 ? "text-gray-900 dark:text-white font-medium" : "text-gray-600 dark:text-gray-400"}>
-            {item}
-          </span>
-        </React.Fragment>
-      ))}
+      {/* Quick actions */}
+      <section>
+        <h2 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Quick Actions</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <QBtn icon={Plus}     label="Submit My Resignation"  desc="Start the official resignation process." border="border-red-300"    iconCls="text-red-500"    bgCls="bg-red-50 dark:bg-red-900/20"     onClick={() => { setModalType('submit_resignation'); setShowModal(true); }} />
+          {userRole?.is_admin && <>
+            <QBtn icon={LogOut}   label="Create Exit Interview"  desc="Schedule an interview for a departing employee." border="border-blue-300"   iconCls="text-blue-500"   bgCls="bg-blue-50 dark:bg-blue-900/20"   onClick={() => { setModalType('create_exit_interview'); setShowModal(true); }} />
+            <QBtn icon={Settings} label="Manage Questions"        desc="Configure interview and review question sets."   border="border-purple-300" iconCls="text-purple-500" bgCls="bg-purple-50 dark:bg-purple-900/20" onClick={() => window.location.href = 'question-management/'} />
+          </>}
+        </div>
+      </section>
+
+      {/* Categories */}
+      <section>
+        <h2 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Browse</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <CatCard
+            icon={FileText} title="Resignations"
+            desc="View and manage resignation requests, approvals, and status updates."
+            badge={pendingRes.length} badgeCls="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+            iconBg="bg-red-50 dark:bg-red-900/20" iconCls="text-red-500"
+            onClick={() => goView('resignations')}
+          />
+          {userRole?.is_admin
+            ? <CatCard
+                icon={LogOut} title="Exit Interviews"
+                desc="Conduct structured exit interviews and review employee feedback."
+                badge={pendingExit.length} badgeCls="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                iconBg="bg-blue-50 dark:bg-blue-900/20" iconCls="text-blue-500"
+                onClick={() => goView('exits')}
+              />
+            : <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-5 border border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center gap-2 text-center">
+                <div className="p-2.5 bg-gray-100 dark:bg-gray-700 rounded-xl"><Shield size={18} className="text-gray-400"/></div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Exit Interviews</p>
+                <p className="text-[11px] text-gray-400">Admin access required</p>
+              </div>
+          }
+        </div>
+      </section>
     </div>
   );
 
-  const StatusBadge = ({ status }) => (
-    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${resignationExitService.helpers.getStatusColor(status)}`}>
-      {resignationExitService.helpers.getStatusText(status)}
-    </span>
-  );
+  // ── LIST VIEW ─────────────────────────────────────────────────────────────
+  const ListView = ({ items, type, title, icon: Icon }) => {
+    const filtered = items.filter(item => {
+      const q = search.toLowerCase();
+      const ok  = item.employee_name?.toLowerCase().includes(q) || item.employee_id?.toLowerCase().includes(q);
+      const okS = filterStatus === 'all' || item.status === filterStatus;
+      return ok && okS;
+    });
 
-  const ActionCard = ({ icon: Icon, title, description, count, color, onClick }) => (
-    <button
-      onClick={onClick}
-      className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-gray-200 dark:border-gray-700 hover:border-almet-sapphire dark:hover:border-almet-sapphire hover:shadow-lg transition-all text-left group"
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className={`p-2 ${color} rounded-lg group-hover:scale-110 transition-transform`}>
-          <Icon size={20} />
-        </div>
-        {count !== undefined && (
-          <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-full text-xs font-bold">
-            {count}
-          </span>
-        )}
-      </div>
-      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">{title}</h3>
-      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{description}</p>
-      <div className="flex items-center gap-1 text-almet-sapphire mt-2 text-xs font-medium">
-        <span>View details</span>
-        <ChevronRight size={14} />
-      </div>
-    </button>
-  );
-
-  const ListItem = ({ item, type, onView, onDelete }) => {
-    const icons = { 
-      resignation: FileText, 
-      exit: LogOut
-    };
-    const Icon = icons[type];
-
-    return (
-      <button
-        onClick={() => onView(item)}
-        className="w-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:shadow-md hover:border-almet-sapphire dark:hover:border-almet-sapphire transition-all text-left group"
-      >
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-almet-mystic dark:bg-almet-cloud-burst/20 rounded-lg group-hover:bg-almet-sapphire group-hover:text-white transition-colors">
-            <Icon size={16} className="text-almet-sapphire group-hover:text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between mb-2">
-              <div>
-                <h4 className="text-xs font-semibold text-gray-900 dark:text-white">{item.employee_name}</h4>
-                <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
-                  {item.employee_id} • {item.position}
-                </p>
-              </div>
-              <StatusBadge status={item.status} />
-            </div>
-            
-            <div className="flex items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400 mb-2">
-              <div className="flex items-center gap-1">
-                <Building2 size={10} />
-                <span>{item.department}</span>
-              </div>
-              {item.last_working_day && (
-                <div className="flex items-center gap-1">
-                  <Calendar size={10} />
-                  <span>{resignationExitService.helpers.formatDate(item.last_working_day)}</span>
-                </div>
-              )}
-              {item.days_remaining !== undefined && (
-                <div className="flex items-center gap-1">
-                  <Clock size={10} />
-                  <span className={`font-medium ${
-                    item.days_remaining <= 7 ? 'text-red-600 dark:text-red-400' : 
-                    item.days_remaining <= 14 ? 'text-amber-600 dark:text-amber-400' : ''
-                  }`}>
-                    {item.days_remaining}d remaining
-                  </span>
-                </div>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 text-almet-sapphire text-[10px] font-medium">
-                <span>View details</span>
-                <ChevronRight size={12} />
-              </div>
-              {userRole.is_admin && (
-                <button 
-                  onClick={(e) => { e.stopPropagation(); onDelete(item); }}
-                  className="ml-auto flex items-center gap-1 px-2 py-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-[10px] font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                >
-                  <Trash2 size={10} />
-                  Delete
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </button>
-    );
-  };
-
-  const HomeView = () => {
-    const pendingResignations = data.resignations.filter(r => ['PENDING_MANAGER', 'PENDING_HR'].includes(r.status));
-    const pendingExits = data.exitInterviews.filter(e => e.status === 'PENDING');
+    // distinct statuses in current list
+    const statusCounts = items.reduce((a, i) => { a[i.status] = (a[i.status]||0)+1; return a; }, {});
 
     return (
       <div className="space-y-4">
-        {/* Welcome Section */}
-        <div className="bg-gradient-to-br from-almet-sapphire via-almet-astral to-almet-steel-blue rounded-lg p-4 text-white">
-          <h2 className="text-base font-bold mb-1">Employee Offboarding</h2>
-          <p className="text-white/90 text-xs">
-            Manage resignations and exit interviews
-          </p>
-        </div>
+        <Crumb path={[title]} onHome={goHome} />
 
-        {/* Quick Actions */}
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-            <Plus size={16} className="text-almet-sapphire" />
-            Quick Actions
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            <button 
-              onClick={() => { setModalType('submit_resignation'); setShowModal(true); }}
-              className="bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-gray-200 dark:border-gray-700 hover:border-red-500 dark:hover:border-red-500 hover:shadow-lg transition-all group"
-            >
-              <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg mb-2 group-hover:bg-red-500 group-hover:text-white transition-colors inline-flex">
-                <Plus size={18} className="text-red-600 dark:text-red-400 group-hover:text-white" />
-              </div>
-              <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-1">Submit Resignation</h4>
-              <p className="text-[10px] text-gray-600 dark:text-gray-400">Start resignation process</p>
+        {/* Header row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={goHome} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <ArrowLeft size={16} className="text-gray-500"/>
             </button>
-
-            {userRole.is_admin && (
-              <>
-                <button 
-                  onClick={() => { setModalType('create_exit_interview'); setShowModal(true); }}
-                  className="bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-lg transition-all group"
-                >
-                  <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg mb-2 group-hover:bg-blue-500 group-hover:text-white transition-colors inline-flex">
-                    <Plus size={18} className="text-blue-600 dark:text-blue-400 group-hover:text-white" />
-                  </div>
-                  <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-1">Create Exit Interview</h4>
-                  <p className="text-[10px] text-gray-600 dark:text-gray-400">Schedule new interview</p>
-                </button>
-
-                <button 
-                  onClick={() => window.location.href = 'question-management/'}
-                  className="bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 hover:shadow-lg transition-all group"
-                >
-                  <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg mb-2 group-hover:bg-purple-500 group-hover:text-white transition-colors inline-flex">
-                    <Settings size={18} className="text-purple-600 dark:text-purple-400 group-hover:text-white" />
-                  </div>
-                  <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-1">Manage Questions</h4>
-                  <p className="text-[10px] text-gray-600 dark:text-gray-400">Configure interview questions</p>
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Main Categories */}
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Categories</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <ActionCard
-              icon={FileText}
-              title="Resignations"
-              description="View and manage employee resignations and approvals"
-              count={pendingResignations.length}
-              color="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
-              onClick={() => navigateToView('resignations')}
-            />
-            <ActionCard
-              icon={LogOut}
-              title="Exit Interviews"
-              description="Conduct and review exit interview responses"
-              count={pendingExits.length}
-              color="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-              onClick={() => navigateToView('exits')}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const ListView = ({ items, type, title, icon: Icon }) => {
-    const filtered = items.filter(item => {
-      const matchesSearch = item.employee_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                           item.employee_id?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesFilter = filterStatus === 'all' || item.status === filterStatus;
-      return matchesSearch && matchesFilter;
-    });
-
-    return (
-      <div className="space-y-3">
-        <Breadcrumb path={[title]} />
-
-        <div className="bg-gradient-to-br from-almet-sapphire to-almet-astral rounded-lg p-4 text-white">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-2 bg-white/20 rounded-lg">
-              <Icon size={20} />
-            </div>
             <div>
-              <h2 className="text-base font-bold">{title}</h2>
-              <p className="text-white/90 text-xs mt-0.5">
-                {filtered.length} {filtered.length === 1 ? 'item' : 'items'} found
-              </p>
+              <h1 className="text-base font-bold text-gray-900 dark:text-white">{title}</h1>
+              <p className="text-[11px] text-gray-400">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</p>
             </div>
           </div>
-          <button
-            onClick={navigateToHome}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-xs font-medium"
-          >
-            <ArrowLeft size={14} />
-            Back to Home
-          </button>
+          {type === 'resignation' &&
+            <button onClick={() => { setModalType('submit_resignation'); setShowModal(true); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-almet-sapphire text-white rounded-lg text-xs font-semibold hover:bg-almet-astral transition-colors shadow-sm">
+              <Plus size={13}/> New
+            </button>
+          }
+          {type === 'exit' && userRole?.is_admin &&
+            <button onClick={() => { setModalType('create_exit_interview'); setShowModal(true); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-almet-sapphire text-white rounded-lg text-xs font-semibold hover:bg-almet-astral transition-colors shadow-sm">
+              <Plus size={13}/> New
+            </button>
+          }
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input 
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by name or employee ID..."
-                className="w-full focus:outline-none  pl-9 pr-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
-              />
-            </div>
+        {/* Search + filter */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+            <input
+              value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search by name or ID…"
+              className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+            />
+          </div>
+          <div className="relative">
+            <Filter size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
             <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent min-w-[180px]"
+              value={filterStatus} onChange={e => setFilter(e.target.value)}
+              className="pl-8 pr-6 py-2 text-xs border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-sapphire appearance-none"
             >
-              <option value="all">All Status</option>
+              <option value="all">All statuses</option>
               <option value="PENDING_MANAGER">Pending Manager</option>
               <option value="PENDING_HR">Pending HR</option>
-              <option value="APPROVED">Approved</option>
+              <option value="MANAGER_APPROVED">Mgr Approved</option>
+              <option value="HR_APPROVED">HR Approved</option>
               <option value="COMPLETED">Completed</option>
             </select>
           </div>
         </div>
 
-        {filtered.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
-            <Icon size={40} className="mx-auto text-gray-400 mb-3" />
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">No items found</h3>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
-              {searchTerm || filterStatus !== 'all' ? 'Try adjusting your filters' : 'No data available'}
-            </p>
-            <button
-              onClick={navigateToHome}
-              className="px-3 py-1.5 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-xs font-medium"
-            >
-              Back to Home
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filtered.map(item => (
-              <ListItem 
-                key={item.id} 
-                item={item} 
-                type={type}
-                onView={(item) => openDetailModal(item, type === 'resignation' ? 'resignation_detail' : 'exit_interview')}
-                onDelete={(item) => setDeleteModal({ show: true, item, type })}
-              />
-            ))}
+        {/* Status pills */}
+        {Object.keys(statusCounts).length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {Object.entries(statusCounts).map(([s, n]) => {
+              const c = STATUS_CFG[s] ?? { label: s, dot: 'bg-gray-400', pill: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400' };
+              const active = filterStatus === s;
+              return (
+                <button key={s}
+                  onClick={() => setFilter(active ? 'all' : s)}
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border transition-all
+                    ${active ? `${c.pill} border-current` : 'bg-gray-50 dark:bg-gray-700/50 text-gray-500 border-gray-200 dark:border-gray-600 hover:border-gray-300'}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`}/>{c.label} ({n})
+                </button>
+              );
+            })}
           </div>
         )}
+
+        {/* Items */}
+        {filtered.length === 0
+          ? <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-2xl mb-3">
+                <Icon size={28} className="text-gray-400"/>
+              </div>
+              <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">No records found</p>
+              <p className="text-xs text-gray-400">
+                {search || filterStatus !== 'all' ? 'Try adjusting your search or filters.' : 'No data available yet.'}
+              </p>
+            </div>
+          : <div className="space-y-2">
+              {filtered.map(item => (
+                <ItemRow key={item.id} item={item} type={type} isAdmin={userRole?.is_admin}
+                  onView={item => openDetail(item, type === 'resignation' ? 'resignation_detail' : 'exit_interview')}
+                  onDelete={item => setDelModal({ show: true, item, type })}
+                />
+              ))}
+            </div>
+        }
       </div>
     );
   };
 
-  if (loading) return <LoadingSpinner message="Loading Employee Offboarding System..." />;
-
+  // ── RENDER ────────────────────────────────────────────────────────────────
   return (
     <DashboardLayout>
-      <div className="max-w-7xl mx-auto">
-        {currentView === 'home' && <HomeView />}
-        {currentView === 'resignations' && <ListView items={data.resignations} type="resignation" title="Resignations" icon={FileText} />}
-        {currentView === 'exits' && <ListView items={data.exitInterviews} type="exit" title="Exit Interviews" icon={LogOut} />}
+      <div className=" mx-auto px-1 py-2">
+        {view === 'home'         && <HomeView />}
+        {view === 'resignations' && <ListView items={data.resignations}   type="resignation" title="Resignations"    icon={FileText}/>}
+        {view === 'exits' && userRole?.is_admin &&
+          <ListView items={data.exitInterviews} type="exit" title="Exit Interviews" icon={LogOut}/>}
 
-        {showModal && (
-          <>
-            {modalType === 'submit_resignation' && (
-              <ResignationSubmissionModal onClose={handleModalClose} onSuccess={handleModalSuccess} currentEmployee={currentUser} />
-            )}
-            {modalType === 'resignation_detail' && selectedItem && (
-              <ResignationDetailModal resignation={selectedItem} onClose={handleModalClose} onSuccess={handleModalSuccess} userRole={userRole} />
-            )}
-            {modalType === 'exit_interview' && selectedItem && (
-              selectedItem.status === 'COMPLETED' ? (
-                <ViewExitInterviewModal interview={selectedItem} onClose={handleModalClose} />
-              ) : (
-                <ExitInterviewModal interview={selectedItem} onClose={handleModalClose} onSuccess={handleModalSuccess} />
-              )
-            )}
-            {modalType === 'create_exit_interview' && (
-              <CreateExitInterviewModal onClose={handleModalClose} onSuccess={handleModalSuccess} />
-            )}
-          </>
-        )}
+        {showModal && <>
+          {modalType === 'submit_resignation'    && <ResignationSubmissionModal onClose={closeModal} onSuccess={onSuccess} currentEmployee={currentUser}/>}
+          {modalType === 'resignation_detail' && selectedItem && <ResignationDetailModal resignation={selectedItem} onClose={closeModal} onSuccess={onSuccess} userRole={userRole}/>}
+          {modalType === 'exit_interview'     && selectedItem && (
+            selectedItem.status === 'COMPLETED'
+              ? <ViewExitInterviewModal interview={selectedItem} onClose={closeModal}/>
+              : <ExitInterviewModal     interview={selectedItem} onClose={closeModal} onSuccess={onSuccess}/>
+          )}
+          {modalType === 'create_exit_interview' && <CreateExitInterviewModal onClose={closeModal} onSuccess={onSuccess}/>}
+        </>}
 
         <ConfirmationModal
-          isOpen={deleteModal.show}
-          onClose={() => setDeleteModal({ show: false, item: null, type: '' })}
+          isOpen={delModal.show}
+          onClose={() => setDelModal({ show:false, item:null, type:'' })}
           onConfirm={handleDelete}
-          title="Delete Item"
-          message={`Are you sure you want to delete this ${deleteModal.type}? This action cannot be undone.`}
+          title="Delete Record"
+          message={`Are you sure you want to delete this ${delModal.type === 'resignation' ? 'resignation' : 'exit interview'}? This cannot be undone.`}
           confirmText="Delete"
           type="danger"
         />

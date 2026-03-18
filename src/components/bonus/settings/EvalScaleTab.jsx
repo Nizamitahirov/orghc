@@ -1,33 +1,36 @@
 "use client";
 import { useState, useEffect } from "react";
-import { evaluationScaleService } from "@/services/performanceService";
-import { Info, TrendingUp, Save } from "lucide-react";
+import { bonusEvalScaleService } from "@/services/bonusService";
+import { TrendingUp, Save } from "lucide-react";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { useToast } from "@/components/common/Toast";
 
 export default function EvalScaleTab({ dark, bonusYear }) {
-  const [scales, setScales]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [edited, setEdited]   = useState({});   // scale.id → bonus_salary_pct value
-  const [saving, setSaving]   = useState(null);
+  const { showSuccess, showError } = useToast();
 
-  const text    = dark ? "text-white"    : "text-gray-900";
-  const sub     = dark ? "text-[#90a0b9]": "text-almet-comet";
-  const border  = dark ? "border-[#1e2640]" : "border-gray-200";
-  const rowHov  = dark ? "hover:bg-[#0f1526]" : "hover:bg-[#f8f9fc]";
-  const headBg  = dark ? "bg-[#080b14] text-[#90a0b9]" : "bg-[#f5f7fb] text-almet-comet";
-  const inputCls = dark
-    ? "bg-[#131929] border-[#1e2640] text-white focus:border-almet-steel-blue"
-    : "bg-white border-gray-200 text-gray-900 focus:border-almet-sapphire";
+  const [scales,  setScales]  = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [edited,  setEdited]  = useState({});
+  const [saving,  setSaving]  = useState(null);
+
+  const text  = dark ? "text-white"     : "text-gray-900";
+  const sub   = dark ? "text-[#8a9bb8]" : "text-almet-comet";
+  const muted = dark ? "text-gray-600"  : "text-gray-400";
+  const inp   = dark
+    ? "bg-[#0b0e16] border-white/[0.08] text-white focus:border-almet-steel-blue/60"
+    : "bg-gray-50 border-gray-200 text-gray-900 focus:border-almet-sapphire";
 
   const loadScales = () => {
     setLoading(true);
-    evaluationScaleService.list()
+    bonusEvalScaleService.list()
       .then((res) => {
-        const list = res?.results ?? res ?? [];
+        const list = res?.data?.results ?? res?.data ?? [];
         setScales(list);
         const init = {};
-        list.forEach(s => { init[s.id] = s.bonus_salary_pct ?? ""; });
+        list.forEach((s) => { init[s.id] = s.bonus_salary_pct ?? ""; });
         setEdited(init);
       })
+      .catch(() => showError("Failed to load evaluation scales."))
       .finally(() => setLoading(false));
   };
 
@@ -36,169 +39,145 @@ export default function EvalScaleTab({ dark, bonusYear }) {
   const handleSave = async (scale) => {
     setSaving(scale.id);
     try {
-      await evaluationScaleService.update(scale.id, {
+      await bonusEvalScaleService.update(scale.id, {
         bonus_salary_pct: edited[scale.id] !== "" ? parseFloat(edited[scale.id]) : null,
       });
       await loadScales();
+      showSuccess(`"${scale.name}" bonus % saved.`);
+    } catch {
+      showError("Failed to save bonus percentage.");
     } finally {
       setSaving(null);
     }
   };
 
-  const ratingBadge = (max) => {
-    if (max >= 120) return { bg: dark ? "bg-green-500/15 text-green-400"  : "bg-green-50 text-green-700",  bar: "bg-green-500"  };
-    if (max >= 100) return { bg: dark ? "bg-blue-500/15 text-blue-400"    : "bg-blue-50 text-blue-700",    bar: "bg-blue-500"   };
-    if (max >= 80)  return { bg: dark ? "bg-yellow-500/15 text-yellow-400": "bg-yellow-50 text-yellow-700",bar: "bg-yellow-500" };
-    if (max >= 50)  return { bg: dark ? "bg-orange-500/15 text-orange-400": "bg-orange-50 text-orange-700",bar: "bg-orange-500" };
-    return                  { bg: dark ? "bg-red-500/15 text-red-400"     : "bg-red-50 text-red-700",      bar: "bg-red-500"    };
+  const ratingTheme = (max) => {
+    if (max >= 120) return { badge: dark ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-200", bar: "bg-emerald-500" };
+    if (max >= 100) return { badge: dark ? "bg-sky-500/15 text-sky-300 border-sky-500/20"             : "bg-sky-50 text-sky-700 border-sky-200",             bar: "bg-sky-500"     };
+    if (max >= 80)  return { badge: dark ? "bg-amber-500/15 text-amber-300 border-amber-500/20"       : "bg-amber-50 text-amber-700 border-amber-200",       bar: "bg-amber-400"   };
+    if (max >= 50)  return { badge: dark ? "bg-orange-500/15 text-orange-300 border-orange-500/20"    : "bg-orange-50 text-orange-700 border-orange-200",    bar: "bg-orange-500"  };
+    return                  { badge: dark ? "bg-rose-500/15 text-rose-300 border-rose-500/20"         : "bg-rose-50 text-rose-700 border-rose-200",           bar: "bg-rose-500"    };
   };
+
+  if (loading) return <LoadingSpinner message="Loading evaluation scales…" />;
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-start gap-3 mb-5">
-        <div className={`p-2 rounded-lg shrink-0 ${dark ? "bg-almet-sapphire/20" : "bg-almet-mystic"}`}>
-          <TrendingUp size={15} className="text-almet-steel-blue" />
+      {/* ── Header ── */}
+      <div className="flex items-start gap-4 mb-6">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0
+          ${dark ? "bg-amber-500/10 border border-amber-500/20" : "bg-amber-50 border border-amber-200"}`}>
+          <TrendingUp size={18} className="text-amber-400" />
         </div>
         <div>
-          <h2 className={`text-sm font-semibold ${text}`}>Evaluation Scale — Bonus Impact</h2>
-          <p className={`text-xs mt-0.5 ${sub}`}>
-            Rating scales from Performance Settings. Set the <b>% of Yearly Salary</b> column
-            used in bonus calculation per rating.
+          <h2 className={`text-base font-bold tracking-tight ${text}`}>Evaluation Scale</h2>
+          <p className={`text-xs mt-1 ${sub}`}>
+            Set the <b>% of Yearly Salary</b> for each rating — the key bonus multiplier.
           </p>
         </div>
       </div>
 
-      {/* Info */}
-      <div className={`flex items-start gap-2.5 p-3 rounded-lg mb-5 border
-        ${dark ? "bg-almet-sapphire/10 border-almet-sapphire/20 text-[#90a0b9]"
-               : "bg-almet-mystic border-almet-sapphire/20 text-almet-comet"}`}>
-        <Info size={13} className="mt-0.5 shrink-0 text-almet-steel-blue" />
-        <p className="text-xs leading-relaxed">
-          <b>Range Min / Range Max</b> are managed in <b>Performance → Settings → Evaluation Scales</b>.
-          Only the <b>% of Yearly Salary</b> column is editable here — this value is used as the
-          bonus multiplier for each rating level.
-        </p>
-      </div>
+      {/* ── Scale rows ── */}
+      <div className="space-y-2.5">
+        {scales.map((s) => {
+          const theme    = ratingTheme(s.range_max);
+          const val      = edited[s.id] ?? "";
+          const isDirty  = String(val) !== String(s.bonus_salary_pct ?? "");
+          const isSaving = saving === s.id;
+          const barWidth = Math.min(((parseFloat(val) || 0) / 150) * 100, 100);
 
-      {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <div className="w-5 h-5 border-2 border-almet-steel-blue border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
-        <>
-          <div className={`rounded-xl border overflow-hidden ${border}`}>
-            {/* Header row */}
-            <div className={`grid text-xs font-semibold uppercase tracking-wide px-4 py-3 border-b ${border} ${headBg}`}
-              style={{ gridTemplateColumns: "180px 110px 110px 1fr 90px" }}>
-              <span>Rating</span>
-              <span className="text-center">Range Min</span>
-              <span className="text-center">Range Max</span>
-              <span className="text-center">% of Yearly Salary</span>
-              <span className="text-center">Save</span>
-            </div>
+          return (
+            <div
+              key={s.id}
+              className={`flex justify-between gap-5 px-5 py-3 rounded-2xl border transition-all
+                ${isDirty
+                  ? dark ? "border-almet-steel-blue/30 bg-almet-sapphire/5" : "border-almet-sapphire/30 bg-almet-mystic"
+                  : dark ? "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]" : "border-gray-200 bg-gray-50 hover:bg-white"
+                }`}
+            >
+              {/* Rating badge + range */}
+              <div className="flex items-center gap-3">
+                <span className={`px-3 py-1.5 rounded-xl text-sm font-black border w-24 text-center shrink-0 ${theme.badge}`}>
+                  {s.name}
+                </span>
+                <span className={`text-xs ${muted}`}>
+                  {s.range_min}–{s.range_max}%
+                </span>
+              </div>
 
-            {scales.map((s) => {
-              const style   = ratingBadge(s.range_max);
-              const val     = edited[s.id] ?? "";
-              const isDirty = String(val) !== String(s.bonus_salary_pct ?? "");
-              const isSaving = saving === s.id;
-
-              return (
-                <div
-                  key={s.id}
-                  className={`grid items-center px-4 py-3 border-t transition ${border} ${rowHov}`}
-                  style={{ gridTemplateColumns: "180px 110px 110px 1fr 90px" }}
-                >
-                  {/* Rating name */}
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${style.bg}`}>
-                      {s.name}
-                    </span>
-                    {s.description && (
-                      <span className={`text-xs truncate max-w-[80px] ${sub}`}>{s.description}</span>
-                    )}
-                  </div>
-
-                  {/* Range min */}
-                  <div className="flex items-center justify-center">
-                    <span className={`text-sm ${sub}`}>{s.range_min}%</span>
-                  </div>
-
-                  {/* Range max */}
-                  <div className="flex items-center justify-center">
-                    <span className={`text-sm font-semibold ${text}`}>{s.range_max}%</span>
-                  </div>
-
-                  {/* Bonus salary pct — editable */}
-                  <div className="flex items-center justify-center gap-2">
-                    {/* Visual bar behind */}
-                    <div className="flex items-center gap-2">
-                      <div className={`w-20 h-1.5 rounded-full overflow-hidden ${dark ? "bg-[#1e2640]" : "bg-gray-200"}`}>
-                        <div
-                          className={`h-full rounded-full transition-all ${style.bar}`}
-                          style={{ width: `${Math.min(((parseFloat(val) || 0) / 150) * 100, 100)}%` }}
-                        />
-                      </div>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          min={0}
-                          max={200}
-                          step={0.5}
-                          placeholder="—"
-                          value={val}
-                          onChange={(e) => setEdited(prev => ({ ...prev, [s.id]: e.target.value }))}
-                          className={`w-20 px-2 py-1.5 pr-6 rounded-lg border text-xs text-center outline-none transition ${inputCls}
-                            ${isDirty ? (dark ? "border-almet-steel-blue/60" : "border-almet-sapphire/60") : ""}`}
-                        />
-                        <span className={`absolute right-2 top-1/2 -translate-y-1/2 text-[10px] pointer-events-none ${sub}`}>%</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Save */}
-                  <div className="flex justify-center">
-                    <button
-                      onClick={() => handleSave(s)}
-                      disabled={!isDirty || isSaving}
-                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition
-                        ${isDirty
-                          ? "bg-almet-sapphire hover:bg-almet-cloud-burst text-white"
-                          : dark ? "bg-[#131929] text-[#3a4560] cursor-not-allowed" : "bg-gray-100 text-gray-300 cursor-not-allowed"
-                        } disabled:opacity-60`}
-                    >
-                      <Save size={10} />
-                      {isSaving ? "…" : "Save"}
-                    </button>
+              {/* % of Yearly Salary — editable */}
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex flex-col items-end gap-1 w-28">
+                  <span className={`text-[10px] font-semibold uppercase tracking-wide ${muted}`}>
+                    % of Yearly Salary
+                  </span>
+                  <div className={`w-full h-1.5 rounded-full overflow-hidden ${dark ? "bg-white/[0.06]" : "bg-gray-200"}`}>
+                    <div
+                      className={`h-full rounded-full transition-all ${theme.bar}`}
+                      style={{ width: `${barWidth}%` }}
+                    />
                   </div>
                 </div>
-              );
-            })}
 
-            {scales.length === 0 && (
-              <div className={`text-center py-12 text-sm ${sub}`}>
-                No evaluation scales found. Configure them in Performance Settings.
-              </div>
-            )}
-          </div>
+                <div className="relative">
+                  <input
+                    type="number" min={0} max={200} step={0.5}
+                    placeholder="—"
+                    value={val}
+                    onChange={(e) => setEdited((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                    className={`w-24 px-3 py-2 pr-7 rounded-xl border text-sm text-center outline-none transition
+                      ${isDirty ? (dark ? "border-almet-steel-blue/50" : "border-almet-sapphire/50") : ""}
+                      ${inp}`}
+                  />
+                  <span className={`absolute right-2.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none ${muted}`}>%</span>
+                </div>
 
-          {/* Formula reference */}
-          {scales.length > 0 && (
-            <div className={`mt-4 p-4 rounded-xl border ${dark ? "bg-[#0a0e1a] border-[#1e2640]" : "bg-[#f5f7fb] border-gray-200"}`}>
-              <p className={`text-xs font-semibold mb-2 ${text}`}>Bonus Calculation Formula</p>
-              <div className="space-y-1">
-                {[
-                  "Company Targets   →  Salary × Target Weight%  × (Bonus Salary% / 100)",
-                  "Objectives        →  Salary × Adjusted Weight% × (Bonus Salary% / 100)",
-                  "Competencies      →  Salary × Group Weight%    × (Bonus Salary% / 100)",
-                ].map((line) => (
-                  <p key={line} className={`text-[11px] font-mono ${sub}`}>{line}</p>
-                ))}
+                <button
+                  onClick={() => handleSave(s)}
+                  disabled={!isDirty || isSaving}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all
+                    ${isDirty
+                      ? "bg-almet-sapphire hover:bg-almet-cloud-burst text-white shadow-lg shadow-almet-sapphire/20 hover:-translate-y-0.5"
+                      : dark ? "bg-white/[0.04] text-gray-700 cursor-not-allowed" : "bg-gray-100 text-gray-300 cursor-not-allowed"
+                    } disabled:opacity-50 disabled:transform-none`}
+                >
+                  <Save size={11} />
+                  {isSaving ? "…" : "Save"}
+                </button>
               </div>
             </div>
-          )}
-        </>
+          );
+        })}
+
+        {scales.length === 0 && (
+          <div className={`text-center py-16 rounded-2xl border-2 border-dashed
+            ${dark ? "border-white/[0.06] text-gray-600" : "border-gray-200 text-gray-400"}`}>
+            <TrendingUp size={28} className="mx-auto mb-3 opacity-30" />
+            <p className="text-sm font-medium">No evaluation scales found</p>
+            <p className="text-xs mt-1 opacity-70">Configure them in Performance Settings</p>
+          </div>
+        )}
+      </div>
+
+      {/* ── Formula reference ── */}
+      {scales.length > 0 && (
+        <div className={`mt-6 p-5 rounded-2xl border ${dark ? "bg-white/[0.02] border-white/[0.06]" : "bg-gray-50 border-gray-200"}`}>
+          <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${muted}`}>
+            How bonus is calculated
+          </p>
+          <div className="space-y-2">
+            {[
+              { label: "Company Targets", formula: "Salary × Target Weight%  × (Yearly Salary% ÷ 100)" },
+              { label: "Objectives",      formula: "Salary × Adjusted Weight% × (Yearly Salary% ÷ 100)" },
+              { label: "Competencies",    formula: "Salary × Group Weight%    × (Yearly Salary% ÷ 100)" },
+            ].map(({ label, formula }) => (
+              <div key={label} className="flex items-baseline gap-3">
+                <span className={`text-[11px] font-bold w-28 shrink-0 ${sub}`}>{label}</span>
+                <span className={`text-[11px] font-mono ${muted}`}>{formula}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

@@ -185,11 +185,11 @@ const isEmployeeOnlyAccess = () => {
  
   const employeesInGroup = employees.filter(emp => emp.position_group_level === positionGroupId);
   
-  // ✅ Get unique job titles and sort
+  //  Get unique job titles and sort
   const jobTitlesInGroup = [...new Set(employeesInGroup.map(emp => emp.job_title).filter(Boolean))]
     .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase(), 'az'));
   
-  // ✅ Map to dropdown format with title case
+  //  Map to dropdown format with title case
   return jobTitlesInGroup.map((title, index) => ({ 
     value: title,
     name: toTitleCase(title),
@@ -243,19 +243,19 @@ const isEmployeeOnlyAccess = () => {
   setError(null);
   
   try {
-    // ✅ Build params with proper type conversion
+    //  Build params with proper type conversion
     const employeeParams = {};
     
 
     
     if (selectedCompany && selectedCompany !== '') {
-      // ✅ CRITICAL: Ensure it's sent as a number
+      //  CRITICAL: Ensure it's sent as a number
       const companyId = parseInt(selectedCompany, 10);
       
       if (isNaN(companyId)) {
         console.error('❌ Invalid company ID:', selectedCompany);
       } else {
-        employeeParams.company = companyId;  // ✅ Send as 'company' (backend will use it)
+        employeeParams.company = companyId;  //  Send as 'company' (backend will use it)
     
       }
     } else {
@@ -273,7 +273,7 @@ const isEmployeeOnlyAccess = () => {
       skillGroupsRes
     ] = await Promise.all([
       assessmentApi.positionCore.getAll(),
-      assessmentApi.employeeCore.getAll(employeeParams),  // ✅ Pass params
+      assessmentApi.employeeCore.getAll(employeeParams),  //  Pass params
       assessmentApi.employees.getAll(),
       assessmentApi.positionGroups.getAll(),
       assessmentApi.coreScales.getAll(),
@@ -291,7 +291,7 @@ const isEmployeeOnlyAccess = () => {
       setEmployees(employeesList);
       // Extract unique job titles from employees
       const jobTitles = [...new Set(employeesList.map(emp => emp.job_title).filter(Boolean))]
-  .sort((a, b) => a.localeCompare(b, 'az')); // ✅ Azərbaycan əlifbası ilə sort
+  .sort((a, b) => a.localeCompare(b, 'az')); //  Azərbaycan əlifbası ilə sort
 
 setUniqueJobTitles(jobTitles.map(title => ({ 
   name: toTitleCase(title), 
@@ -355,7 +355,7 @@ const handleEmployeeChange = async (employeeId) => {
 
   setSelectedEmployeeInfo(selectedEmployee);
   
-  // ✅ ƏVVƏLCƏ API-dən template yoxla
+  //  ƏVVƏLCƏ API-dən template yoxla
   setEmployeeFormData(prev => ({ ...prev, employee: employeeId }));
   
   try {
@@ -366,7 +366,7 @@ const handleEmployeeChange = async (employeeId) => {
 
     
     if (response.assessment_template) {
-      // ✅ SONRA duplicate yoxla
+      //  SONRA duplicate yoxla
       const existingAssessment = employeeAssessments.find(
         assessment => assessment.employee === employeeId
       );
@@ -386,7 +386,7 @@ const handleEmployeeChange = async (employeeId) => {
         return;
       }
 
-      // ✅ Template var və duplicate yoxdur - davam et
+      //  Template var və duplicate yoxdur - davam et
       setEmployeeFormData(prev => ({
         ...prev, 
         employee: employeeId,
@@ -401,7 +401,7 @@ const handleEmployeeChange = async (employeeId) => {
     }
   } catch (err) {
     console.error('Error fetching employee position template:', err);
-    console.error('Error response:', err.response?.data); // ✅ Debug log
+    console.error('Error response:', err.response?.data); //  Debug log
     
     if (err.response?.data?.error) {
       setTemplateError({
@@ -414,7 +414,7 @@ const handleEmployeeChange = async (employeeId) => {
         type: 'api_error',
         message: 'Failed to load position template for this employee',
         employee: selectedEmployee,
-        details: err.message // ✅ Əlavə detail
+        details: err.message //  Əlavə detail
       });
     }
     
@@ -759,7 +759,7 @@ const handleEmployeeChange = async (employeeId) => {
   onChange={(e) => {
     const value = e.target.value;
    
-    setSelectedCompany(value);  // ✅ This triggers useEffect
+    setSelectedCompany(value);  //  This triggers useEffect
   }}
   className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire min-w-[160px]"
 >
@@ -2048,7 +2048,7 @@ const handleEmployeeChange = async (employeeId) => {
               </div>
             </div>
 
-            {/* ✅ NEW: Skill Group Performance Summary */}
+            {/*  NEW: Skill Group Performance Summary */}
             {selectedAssessment.group_scores && Object.keys(selectedAssessment.group_scores).length > 0 && (
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="bg-gradient-to-r from-almet-sapphire to-almet-astral p-3 border-b border-gray-200">

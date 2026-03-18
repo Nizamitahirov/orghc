@@ -81,6 +81,7 @@ const Sidebar = ({ collapsed = false, toggleSidebar, isPinned = false, togglePin
       if (response.ok) {
         const data = await response.json();
         if (data.is_admin) {
+      
           setUserRole('admin');
         } else if (data.is_manager) {
           setUserRole('manager');
@@ -108,7 +109,6 @@ const Sidebar = ({ collapsed = false, toggleSidebar, isPinned = false, togglePin
       }
     }
   };
-
   const getFilteredMenuItems = () => {
     const allMenuItems = [
      
@@ -122,6 +122,12 @@ const Sidebar = ({ collapsed = false, toggleSidebar, isPinned = false, togglePin
         path: "/structure/org-structure",
         id: "org-structure"
       },
+      // {
+      //   label: "Finance Reports",
+      //   icon: <BarChart2  className="w-4 h-4" />,
+      //   path: "/finance",
+      //   id: "finance-reports"
+      // },
       {
         label: "Headcount Table",
         icon: <UsersRound  className="w-4 h-4" />,
@@ -171,7 +177,8 @@ const Sidebar = ({ collapsed = false, toggleSidebar, isPinned = false, togglePin
         label: "Bonus",
         icon: <Coins className="w-4 h-4" />,
         path: "/bonus",
-        id: "bonus"
+        id: "bonus",
+            requiredRole: ['admin']
       },
       {
         label: "Tasks Mng",
@@ -214,7 +221,7 @@ const Sidebar = ({ collapsed = false, toggleSidebar, isPinned = false, togglePin
         icon: <LogOut  className="w-4 h-4" />,
         path: "/requests/resignation",
         id: "resignation",
-         requiredRole: ['admin']
+   
       
       },
       {

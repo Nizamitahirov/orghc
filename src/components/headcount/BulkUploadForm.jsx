@@ -65,7 +65,7 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
       // The downloadEmployeeTemplate function should handle the actual file download
       // If it doesn't, we can show a success message
       if (result) {
-        alert('✅ Template downloaded successfully!');
+        alert(' Template downloaded successfully!');
       }
     } catch (error) {
       console.error('❌ Template download failed:', error);

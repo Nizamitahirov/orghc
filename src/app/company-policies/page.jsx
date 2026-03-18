@@ -13,7 +13,7 @@ import FoldersView from "@/components/policy/FoldersView";
 import PoliciesView from "@/components/policy/PoliciesView";
 import CreateCompanyModal from "@/components/policy/CreateCompanyModal";
 
-// ✅ Dynamic import for PDFViewer (no SSR)
+//  Dynamic import for PDFViewer (no SSR)
 const PDFViewer = dynamic(() => import("@/components/policy/PDFViewer"), {
   ssr: false,
   loading: () => (
@@ -54,7 +54,7 @@ export default function CompanyPoliciesPage() {
   const [editingCompany, setEditingCompany] = useState(null);
   const [submittingCompany, setSubmittingCompany] = useState(false);
   
-  // ✅ Access control state
+  //  Access control state
   const [userAccess, setUserAccess] = useState(null);
   const [accessLoading, setAccessLoading] = useState(true);
   
@@ -74,7 +74,7 @@ export default function CompanyPoliciesPage() {
     loadOverallStatistics();
   }, []);
 
-  // ✅ Load user access
+  //  Load user access
   const loadUserAccess = async () => {
     try {
       setAccessLoading(true);
@@ -115,7 +115,7 @@ export default function CompanyPoliciesPage() {
 
   // Company CRUD handlers
   const handleAddCompany = () => {
-    // ✅ Check access before opening
+    //  Check access before opening
     if (!userAccess?.is_admin) {
       showWarning('You do not have permission to add folders');
       return;
@@ -125,7 +125,7 @@ export default function CompanyPoliciesPage() {
   };
 
   const handleEditCompany = (company) => {
-    // ✅ Check access before editing
+    //  Check access before editing
     if (!userAccess?.is_admin) {
       showWarning('You do not have permission to edit folders');
       return;
@@ -162,7 +162,7 @@ export default function CompanyPoliciesPage() {
   };
 
   const handleDeleteCompany = (company) => {
-    // ✅ Check access before deleting
+    //  Check access before deleting
     if (!userAccess?.is_admin) {
       showWarning('You do not have permission to delete folders');
       return;
