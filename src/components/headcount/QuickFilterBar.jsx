@@ -1,6 +1,6 @@
 // COPY this entire file to: src/components/headcount/QuickFilterBar.jsx
 
-import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useRef, useEffect, useMemo, useCallback, memo } from "react";
 import { ChevronDown, X, Check, Filter, AlertCircle, RefreshCw, Users, Search } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import { useReferenceData } from "../../hooks/useReferenceData";
@@ -129,17 +129,13 @@ const QuickFilterBar = ({
     
     return businessFunctions
       .filter(bf => bf && bf.is_active !== false)
-      .map(bf => {
-        const option = {
-          value: bf.id || bf.value, //  ID for selection
-          label: bf.name || bf.label,
-          name: bf.name || bf.label, // Keep name for backend
-          code: bf.code,
-          employee_count: bf.employee_count || 0
-        };
-  
-        return option;
-      })
+      .map(bf => ({
+        value: String(bf.id || bf.value), // Normalize to string
+        label: bf.name || bf.label,
+        name: bf.name || bf.label,
+        code: bf.code,
+        employee_count: bf.employee_count || 0
+      }))
       .sort((a, b) => (a.label || '').localeCompare(b.label || ''));
   }, [businessFunctions]);
 
@@ -151,15 +147,17 @@ const QuickFilterBar = ({
   // Department selection handler
   const getSelectedDepartmentNames = useMemo(() => {
     if (!Array.isArray(departmentFilter) || departmentFilter.length === 0) return [];
-    
+
     const selectedNames = new Set();
     departmentFilter.forEach(deptId => {
-      const dept = departments.find(d => (d.id || d.value) === deptId);
+      // Normalize to string for comparison to avoid string/number type mismatch
+      const idStr = String(deptId);
+      const dept = departments.find(d => String(d.id || d.value) === idStr);
       if (dept) {
         selectedNames.add(dept.name || dept.label || dept.display_name);
       }
     });
-    
+
     return Array.from(selectedNames);
   }, [departmentFilter, departments]);
 
@@ -171,14 +169,16 @@ const QuickFilterBar = ({
 
     const allDepartmentIds = [];
     selectedDepartmentNames.forEach(deptName => {
-      const matchingDepartments = departments.filter(dept => 
-        (dept.name || dept.label || dept.display_name) === deptName && 
+      const matchingDepartments = departments.filter(dept =>
+        (dept.name || dept.label || dept.display_name) === deptName &&
         dept.is_active !== false
       );
-      
+
       matchingDepartments.forEach(dept => {
-        if (dept.id || dept.value) {
-          allDepartmentIds.push(dept.id || dept.value);
+        const id = dept.id || dept.value;
+        if (id != null) {
+          // Always push as string so downstream comparisons are consistent
+          allDepartmentIds.push(String(id));
         }
       });
     });
@@ -219,7 +219,7 @@ const QuickFilterBar = ({
       await fetchBusinessFunctions?.();
       setRetryAttempts(prev => ({ ...prev, businessFunctions: 0 }));
     } catch (error) {
-      console.error('Companys retry failed:', error);
+      console.error('Companies retry failed:', error);
     }
   }, [fetchBusinessFunctions, retryAttempts.businessFunctions]);
 
@@ -289,7 +289,7 @@ const QuickFilterBar = ({
           selectedValues={businessFunctionFilter}
           onChange={onBusinessFunctionChange}
           dropdownKey="businessFunction"
-          placeholder="All Companys"
+          placeholder="All Companies"
           isLoading={loading.businessFunctions}
           hasError={!!error.businessFunctions}
           showCodes={true}
@@ -647,4 +647,4 @@ const MultiSelectDropdown = ({
   );
 };
 
-export default QuickFilterBar;
+export default memo(QuickFilterBar);

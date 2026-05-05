@@ -450,14 +450,22 @@ createTripRequestWithFiles: async (formData) => {
   },
 
   // === EMPLOYEES ===
-  searchEmployees: async () => {
+  searchEmployees: async (search = '') => {
     try {
-      const response = await businessTripApi.get('/employees/', { 
-        params: { 
-          page_size: 100
-        }
-      });
-      return response.data;
+      const params = {};
+      if (search) params.search = search;
+      const response = await businessTripApi.get('/task-management/employees/all/', { params });
+      // Normalise field names to match EmployeeSection expectations
+      const employees = (response.data.employees || []).map(emp => ({
+        ...emp,
+        business_function_name: emp.business_function || '',
+        department_name: emp.department || '',
+        job_function_name: emp.job_title || '',
+        unit_name: '',
+        phone: emp.phone || '',
+        line_manager_name: '',
+      }));
+      return { results: employees };
     } catch (error) {
       throw error;
     }
@@ -528,7 +536,10 @@ export const BusinessTripHelpers = {
     if (data.hr_representative_id) {
       formData.append('hr_representative_id', data.hr_representative_id);
     }
-    
+
+    // Pass needs_approval (default true)
+    formData.append('needs_approval', data.needs_approval !== false ? 'true' : 'false');
+
     if (data.employee_manual) {
       Object.keys(data.employee_manual).forEach(key => {
         formData.append(`employee_manual[${key}]`, data.employee_manual[key]);
@@ -644,33 +655,27 @@ getFileIcon: (fileType) => {
     return BusinessTripHelpers.hasPermission(userPermissions, 'business_trips.request.approve');
   },
 
-   canEditRequest: (request, userPermissions, currentUserId) => {
+   canEditRequest: (request, userPermissions) => {
     // Admin can edit everything
     if (userPermissions?.is_admin) return true;
-    
-    // Check if user is the requester
-    const isRequester = request.requester_id === currentUserId;
-    if (!isRequester) return false;
-    
-    // Only DRAFT, SUBMITTED, PENDING_LINE_MANAGER can be edited
-    const editableStatuses = ['DRAFT', 'SUBMITTED', 'PENDING_LINE_MANAGER'];
+
+    // Must have submit permission to edit
+    const canSubmit = BusinessTripHelpers.hasPermission(userPermissions, 'business_trips.request.submit');
+    if (!canSubmit) return false;
+
+    const editableStatuses = ['DRAFT', 'SUBMITTED', 'PENDING_LINE_MANAGER', 'PENDING_FINANCE', 'PENDING_HR', 'APPROVED'];
     return editableStatuses.includes(request.status);
   },
-  
-  //  UPDATED: Can delete request with proper checks
-  canDeleteRequest: (request, userPermissions, currentUserId) => {
-    // Admin can delete everything (except APPROVED)
-    if (userPermissions?.is_admin) {
-      const deletableStatuses = ['DRAFT', 'SUBMITTED', 'PENDING_LINE_MANAGER', 'PENDING_FINANCE', 'PENDING_HR'];
-      return deletableStatuses.includes(request.status);
-    }
-    
-    // Check if user is the requester
-    const isRequester = request.requester_id === currentUserId;
-    if (!isRequester) return false;
-    
-    // Only DRAFT, SUBMITTED, PENDING_LINE_MANAGER can be deleted by regular users
-    const deletableStatuses = ['DRAFT', 'SUBMITTED', 'PENDING_LINE_MANAGER'];
+
+  canDeleteRequest: (request, userPermissions) => {
+    // Admin can delete everything
+    if (userPermissions?.is_admin) return true;
+
+    // Must have submit permission to delete
+    const canSubmit = BusinessTripHelpers.hasPermission(userPermissions, 'business_trips.request.submit');
+    if (!canSubmit) return false;
+
+    const deletableStatuses = ['DRAFT', 'SUBMITTED', 'PENDING_LINE_MANAGER', 'PENDING_FINANCE', 'PENDING_HR', 'APPROVED'];
     return deletableStatuses.includes(request.status);
   },
 
@@ -703,23 +708,6 @@ getFileIcon: (fileType) => {
     return errors;
   },
 
-  // Validate hotel dates
-  validateHotelDates: (hotels) => {
-    const errors = [];
-    hotels.forEach((hotel, index) => {
-      if (!hotel.hotel_name || !hotel.check_in_date || !hotel.check_out_date) {
-        errors.push(`Hotel ${index + 1}: All required fields must be filled`);
-      }
-      if (hotel.check_in_date && hotel.check_out_date) {
-        const checkIn = new Date(hotel.check_in_date);
-        const checkOut = new Date(hotel.check_out_date);
-        if (checkOut <= checkIn) {
-          errors.push(`Hotel ${index + 1}: Check-out must be after check-in`);
-        }
-      }
-    });
-    return errors;
-  }
 };
 
 export default BusinessTripService;

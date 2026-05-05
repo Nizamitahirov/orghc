@@ -7,6 +7,8 @@ import {
   MessageSquare, Check, Hash, Briefcase
 } from 'lucide-react';
 
+import { capitalizeAcronyms } from '../../utils/formatText';
+
 // ─── tiny helpers ────────────────────────────────────────────────────────────
 const STATUS_MAP = {
   DRAFT:               { label: 'Draft',                     cls: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',   Icon: Edit },
@@ -128,7 +130,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
   );
 
   const d = {
-    job_title: job.job_title || 'No Title',
+    job_title: capitalizeAcronyms(job.job_title || 'No Title'),
     job_purpose: job.job_purpose || '',
     bf: job.business_function?.name || '',
     dept: job.department?.name || '',

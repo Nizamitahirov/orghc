@@ -149,7 +149,7 @@ export default function ReferenceDataView({ context }) {
   const getTabConfig = (tabId) => {
     const configs = {
       business_functions: {
-        title: 'Companys',
+        title: 'Companies',
         data: businessFunctions,
         columns: [
           { key: 'name', label: 'Name', sortable: true },
@@ -605,7 +605,7 @@ export default function ReferenceDataView({ context }) {
 
 
   const tabs = [
-    { id: 'business_functions', label: 'Companys', data: businessFunctions },
+    { id: 'business_functions', label: 'Companies', data: businessFunctions },
     { id: 'departments', label: 'Departments', data: departments },
     { id: 'units', label: 'Units', data: units },
     { id: 'job_functions', label: 'Job Functions', data: jobFunctions },

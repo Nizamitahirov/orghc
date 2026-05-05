@@ -3,11 +3,12 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
 import { 
-  Archive, 
-  Search, 
-  Filter, 
-  RotateCcw, 
-  Trash2, 
+  Archive,
+  Search,
+  Filter,
+  RotateCcw,
+  Trash2,
+  Pencil,
   Calendar,
   User,
   Building,
@@ -70,6 +71,11 @@ const ArchiveEmployeesTable = () => {
     onConfirm: null,
     loading: false
   });
+
+  // Edit archive modal state
+  const [editModal, setEditModal] = useState({ isOpen: false, employee: null });
+  const [editForm, setEditForm] = useState({ termination_date: '', exit_type: '' });
+  const [editSaving, setEditSaving] = useState(false);
   
   // Filter and search states
   const [searchTerm, setSearchTerm] = useState("");
@@ -297,20 +303,46 @@ const ArchiveEmployeesTable = () => {
   }, [updateLoading, updateError]);
 
   // Bulk restore employees
-  const bulkRestoreEmployees = useCallback(async (employeeIds, restoreToActive = false) => {
-    updateLoading('bulkOperations', true);
+  // archiveRecords: array of archive employee objects (with original_employee_pk and original_employee_id)
+  const bulkRestoreEmployees = useCallback(async (archiveRecords, restoreToActive = false) => {
+    // Separate PKs (numeric) from string fallbacks
+    const pkIds = [];
+    const strIds = [];
+    const trackedStrIds = new Set();
 
+    archiveRecords.forEach(rec => {
+      const pk = rec.original_employee_pk;
+      const strId = rec.original_employee_id;
+      if (pk != null && pk !== "") {
+        pkIds.push(Number(pk));
+      } else if (strId) {
+        if (!trackedStrIds.has(strId)) {
+          strIds.push(strId);
+          trackedStrIds.add(strId);
+        }
+      }
+    });
+
+    if (pkIds.length === 0 && strIds.length === 0) {
+      throw new Error('No valid employee IDs to restore. The selected employees may not have a restorable record.');
+    }
+
+    updateLoading('bulkOperations', true);
     try {
-      const response = await archiveEmployeesService.bulkRestoreEmployees(employeeIds, restoreToActive);
-      
+      const response = await archiveEmployeesService.bulkRestoreEmployees(pkIds, restoreToActive, strIds);
+
       if (response.success) {
-        setArchivedEmployees(prev => 
-          prev.filter(emp => !employeeIds.includes(emp.id))
+        // Remove restored employees from local state — match by both pk and string ID
+        const pkSet = new Set(pkIds.map(String));
+        const strSet = new Set(strIds);
+        setArchivedEmployees(prev =>
+          prev.filter(emp =>
+            !pkSet.has(String(emp.original_employee_pk)) &&
+            !strSet.has(emp.original_employee_id)
+          )
         );
-        
         setSelectedArchivedEmployees([]);
         await fetchArchiveStatistics();
-        
         return { success: true, data: response.data };
       }
     } catch (error) {
@@ -542,13 +574,13 @@ const ArchiveEmployeesTable = () => {
       message: `Are you sure you want to restore ${restorableEmployees.length} employee${restorableEmployees.length !== 1 ? 's' : ''}? This action will move them back to the active employee list.`,
       onConfirm: async () => {
         try {
-          await bulkRestoreEmployees(restorableEmployees.map(emp => emp.original_employee_pk), false);
-          
+          await bulkRestoreEmployees(restorableEmployees, false);
+
           await Promise.all([
             fetchArchivedEmployees(buildApiParams),
             fetchArchiveStatistics()
           ]);
-          
+
           showSuccess(`Successfully restored ${restorableEmployees.length} employee${restorableEmployees.length !== 1 ? 's' : ''}!`);
         } catch (error) {
           throw new Error(error.message || 'Failed to restore employees');
@@ -569,7 +601,7 @@ const ArchiveEmployeesTable = () => {
       message: `Are you sure you want to restore ${employee.full_name}? This will move them back to the active employee list.`,
       onConfirm: async () => {
         try {
-          await bulkRestoreEmployees([employee.original_employee_pk], false);
+          await bulkRestoreEmployees([employee], false);
           showSuccess(`Successfully restored ${employee.full_name}!`);
         } catch (error) {
           throw new Error(error.message || 'Failed to restore employee');
@@ -577,6 +609,44 @@ const ArchiveEmployeesTable = () => {
       }
     });
   }, [bulkRestoreEmployees, showWarning, showSuccess, showConfirmModal]);
+
+  // Edit archive record handlers
+  const openEditModal = useCallback((employee) => {
+    setEditForm({
+      termination_date: employee.termination_date || '',
+      exit_type: employee.exit_type || '',
+    });
+    setEditModal({ isOpen: true, employee });
+  }, []);
+
+  const closeEditModal = useCallback(() => {
+    setEditModal({ isOpen: false, employee: null });
+    setEditForm({ termination_date: '', exit_type: '' });
+  }, []);
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!editModal.employee) return;
+    setEditSaving(true);
+    try {
+      const result = await archiveEmployeesService.updateArchiveRecord(editModal.employee.id, {
+        termination_date: editForm.termination_date || null,
+        exit_type: editForm.exit_type || null,
+      });
+      if (result.success) {
+        setArchivedEmployees(prev => prev.map(emp =>
+          emp.id === editModal.employee.id
+            ? { ...emp, termination_date: result.data.termination_date, exit_type: result.data.exit_type, exit_type_display: result.data.exit_type_display }
+            : emp
+        ));
+        showSuccess('Archive record updated successfully!');
+        closeEditModal();
+      }
+    } catch (error) {
+      showError(error.message || 'Failed to update archive record');
+    } finally {
+      setEditSaving(false);
+    }
+  }, [editModal, editForm, showSuccess, showError, closeEditModal]);
 
   // Active filters calculation
   const activeFilters = useMemo(() => {
@@ -835,8 +905,8 @@ const ArchiveEmployeesTable = () => {
                 options={businessFunctionOptions}
                 value={filters.business_function}
                 onChange={(values) => handleFilterChange('business_function', values)}
-                placeholder="Select Companys..."
-                searchPlaceholder="Search Companys..."
+                placeholder="Select Companies..."
+                searchPlaceholder="Search Companies..."
                 darkMode={darkMode}
            
                      allowUncheck={true}
@@ -1002,24 +1072,32 @@ const ArchiveEmployeesTable = () => {
         </td>
 
          <td className="px-3 py-3">
-          {/* Employment period */}
-          {/* <p className={`text-xs ${textSecondary}`}>
-            {formatDate(employee.start_date)} → {formatDate(employee.end_date)}
-          </p> */}
-
-          {/* Termination date — backend-dən gəlir */}
           {employee.termination_date && (
-            <p className="text-xs text-red-500 dark:text-red-400 font-medium mt-0.5 flex items-center gap-1">
+            <p className="text-xs text-red-500 dark:text-red-400 font-medium flex items-center gap-1">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />
-              Term: {formatDate(employee.termination_date)}
+              {formatDate(employee.termination_date)}
             </p>
           )}
+        </td>
 
-          {/* {employee.contract_duration && (
-            <p className={`text-xs ${textMuted} mt-0.5`}>
-              {employee.contract_duration}
-            </p>
-          )} */}
+        <td className="px-3 py-3">
+          {employee.exit_type ? (
+            <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border ${
+              employee.exit_type === 'voluntary_resignation'
+                ? 'bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 border-teal-200 dark:border-teal-700'
+                : employee.exit_type === 'termination'
+                ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-700'
+                : employee.exit_type === 'end_of_internship'
+                ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-700'
+                : employee.exit_type === 'probation_period_failed'
+                ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-700'
+                : 'bg-gray-50 dark:bg-gray-700/20 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-600'
+            }`}>
+              {(employee.exit_type_display || employee.exit_type.replace(/_/g, ' ')).replace(/\b\w/g, c => c.toUpperCase())}
+            </span>
+          ) : (
+            <span className={`text-xs ${textMuted}`}>—</span>
+          )}
         </td>
 
         <td className="px-3 py-3">
@@ -1057,6 +1135,13 @@ const ArchiveEmployeesTable = () => {
                 <XCircle size={14} />
               </span>
             )}
+            <button
+              onClick={() => openEditModal(employee)}
+              className="text-blue-500 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-200 p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all"
+              title="Edit termination date & exit type"
+            >
+              <Pencil size={14} />
+            </button>
           </div>
         </td>
       </tr>
@@ -1099,7 +1184,9 @@ const ArchiveEmployeesTable = () => {
                <th className={`px-3 py-3 text-left text-xs font-semibold ${textMuted} uppercase tracking-wider`}>
                  Termination
                 </th>
-
+                <th className={`px-3 py-3 text-left text-xs font-semibold ${textMuted} uppercase tracking-wider`}>
+                  Exit Type
+                </th>
                 <th className={`px-3 py-3 text-left text-xs font-semibold ${textMuted} uppercase tracking-wider`}>
                   Status
                 </th>
@@ -1275,6 +1362,78 @@ const ArchiveEmployeesTable = () => {
         confirmText="Restore"
         cancelText="Cancel"
       />
+
+      {/* Edit Archive Record Modal */}
+      {editModal.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5`}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                Edit Archive Record
+              </h3>
+              <button onClick={closeEditModal} className="text-gray-400 hover:text-gray-600 p-1 rounded">
+                <X size={16} />
+              </button>
+            </div>
+            <p className={`text-xs mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              {editModal.employee?.full_name}
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  Termination Date
+                </label>
+                <input
+                  type="date"
+                  value={editForm.termination_date}
+                  onChange={e => setEditForm(f => ({ ...f, termination_date: e.target.value }))}
+                  className={`w-full text-xs px-3 py-2 rounded-lg border ${
+                    darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-800'
+                  } focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  Exit Type
+                </label>
+                <select
+                  value={editForm.exit_type}
+                  onChange={e => setEditForm(f => ({ ...f, exit_type: e.target.value }))}
+                  className={`w-full text-xs px-3 py-2 rounded-lg border ${
+                    darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-800'
+                  } focus:outline-none focus:ring-1 focus:ring-blue-500`}
+                >
+                  <option value="">— Not specified —</option>
+                  <option value="VOLUNTARY_RESIGNATION">Voluntary Resignation</option>
+                  <option value="TERMINATION">Termination</option>
+                  <option value="END_OF_INTERNSHIP">End of Internship</option>
+                  <option value="PROBATION_PERIOD_FAILED">Probation Period Failed</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={closeEditModal}
+                className={`flex-1 text-xs py-2 rounded-lg border ${
+                  darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                } transition`}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={editSaving}
+                className="flex-1 text-xs py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition"
+              >
+                {editSaving ? 'Saving…' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

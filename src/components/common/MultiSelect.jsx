@@ -237,16 +237,16 @@ const MultiSelect = ({
           {/* Options List */}
           <div className="max-h-48 overflow-y-auto">
             {filteredOptions.length > 0 ? (
-              filteredOptions.map((option) => {
+              filteredOptions.map((option, index) => {
                 if (!option) return null;
-                
+
                 const optionId = option.id || option.value;
                 const optionName = option.name || option.label;
                 const isSelected = isItemSelected(optionId) || isItemSelected(optionName);
-                
+
                 return (
-                  <label 
-                    key={optionId || optionName} 
+                  <label
+                    key={`${index}-${optionId ?? optionName}`}
                     className={`flex items-center px-3 py-2 hover:${bgCardHover} cursor-pointer transition-colors ${
                       isSelected ? darkMode ? 'bg-almet-comet/50' : 'bg-blue-50' : ''
                     }`}

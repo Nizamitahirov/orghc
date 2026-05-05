@@ -486,12 +486,17 @@ class ArchiveEmployeesService {
   /**
    * Bulk restore soft-deleted employees
    */
-  async bulkRestoreEmployees(employeeIds, restoreToActive = false) {
+  async bulkRestoreEmployees(employeeIds, restoreToActive = false, employeeStringIds = []) {
     try {
       const requestData = {
-        employee_ids: Array.isArray(employeeIds) ? employeeIds : [employeeIds],
         restore_to_active: restoreToActive
       };
+      if (employeeIds && employeeIds.length > 0) {
+        requestData.employee_ids = Array.isArray(employeeIds) ? employeeIds : [employeeIds];
+      }
+      if (employeeStringIds && employeeStringIds.length > 0) {
+        requestData.employee_string_ids = Array.isArray(employeeStringIds) ? employeeStringIds : [employeeStringIds];
+      }
 
       const response = await vacantApi.post('/employees/bulk-restore-employees/', requestData);
       
@@ -506,14 +511,31 @@ class ArchiveEmployeesService {
     }
   }
 
-   async bulkSoftDeleteEmployees(employeeIds, reason = null, termination_date = null) {
+  /**
+   * Update termination_date and/or exit_type on an archive record
+   */
+  async updateArchiveRecord(archiveId, { termination_date, exit_type }) {
+    try {
+      const response = await vacantApi.patch(
+        `/employees/${archiveId}/update-archive/`,
+        { termination_date: termination_date ?? null, exit_type: exit_type ?? null }
+      );
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Failed to update archive record:', error);
+      throw this.handleError(error, 'Failed to update archive record');
+    }
+  }
+
+   async bulkSoftDeleteEmployees(employeeIds, reason = null, termination_date = null, exit_type = null) {
     try {
       const requestData = {
         employee_ids: Array.isArray(employeeIds) ? employeeIds : [employeeIds]
       };
 
       if (reason)            requestData.reason            = reason;
-      if (termination_date)  requestData.termination_date  = termination_date;  // ← YENİ
+      if (termination_date)  requestData.termination_date  = termination_date;
+      if (exit_type)         requestData.exit_type         = exit_type;
 
       const response = await vacantApi.post('/employees/bulk-soft-delete-with-vacancies/', requestData);
       
@@ -531,7 +553,7 @@ class ArchiveEmployeesService {
   /**
    * Bulk hard delete employees with archives (NO VACANCY CREATION)
    */
-  async bulkHardDeleteEmployees(employeeIds, notes = null, confirmHardDelete = true, termination_date = null) {
+  async bulkHardDeleteEmployees(employeeIds, notes = null, confirmHardDelete = true, termination_date = null, exit_type = null) {
     try {
       const requestData = {
         employee_ids: Array.isArray(employeeIds) ? employeeIds : [employeeIds],
@@ -539,7 +561,8 @@ class ArchiveEmployeesService {
       };
 
       if (notes)             requestData.notes             = notes;
-      if (termination_date)  requestData.termination_date  = termination_date;  // ← YENİ
+      if (termination_date)  requestData.termination_date  = termination_date;
+      if (exit_type)         requestData.exit_type         = exit_type;
 
       const response = await vacantApi.post('/employees/bulk-hard-delete-with-archives/', requestData);
       

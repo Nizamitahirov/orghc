@@ -12,7 +12,7 @@ export default function BonusYearTab({ dark, years, onRefresh }) {
   const [perfYears, setPerfYears] = useState([]);
   const [loadingPerf, setLoadingPerf] = useState(true);
   const [showForm, setShowForm]   = useState(false);
-  const [form, setForm]           = useState({ performance_year: "", is_active: true });
+  const [form, setForm]           = useState({ performance_year: "", is_active: true, base_currency: "AZN" });
   const [saving, setSaving]       = useState(false);
   const [locking, setLocking]     = useState(null);
   const [error, setError]         = useState("");
@@ -40,7 +40,7 @@ export default function BonusYearTab({ dark, years, onRefresh }) {
     try {
       await bonusYearService.create(form);
       setShowForm(false);
-      setForm({ performance_year: "", is_active: true });
+      setForm({ performance_year: "", is_active: true, base_currency: "AZN" });
       onRefresh();
       showSuccess("Bonus year created successfully.");
     } catch (e) {
@@ -151,6 +151,12 @@ export default function BonusYearTab({ dark, years, onRefresh }) {
                   </span>
                 )}
               </div>
+              {y.base_currency && (
+                <span className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded text-[10px] font-bold
+                  ${dark ? "bg-almet-sapphire/10 text-almet-steel-blue" : "bg-almet-mystic text-almet-sapphire"}`}>
+                  Base: {y.base_currency}
+                </span>
+              )}
               {y.locked_at && (
                 <p className={`text-xs mt-0.5 ${muted}`}>
                   Locked {new Date(y.locked_at).toLocaleDateString("en", { day: "numeric", month: "short", year: "numeric" })}
@@ -227,6 +233,20 @@ export default function BonusYearTab({ dark, years, onRefresh }) {
                     ))}
                   </select>
                 )}
+              </div>
+
+              {/* Base currency */}
+              <div>
+                <label className={`text-xs font-semibold block mb-2 ${sub}`}>Base Currency</label>
+                <select
+                  value={form.base_currency}
+                  onChange={(e) => setForm({ ...form, base_currency: e.target.value })}
+                  className={`w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition ${inp}`}
+                >
+                  {["AZN", "USD", "EUR", "GBP", "TRY", "RUB"].map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Toggle */}

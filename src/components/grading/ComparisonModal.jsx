@@ -373,7 +373,11 @@ const UnderpaidOverpaidSection = ({ data }) => {
                   <td className="px-3 py-2.5 text-almet-waterloo dark:text-gray-400">{emp.start_date || "—"}</td>
                   <td className="px-3 py-2.5 text-right font-mono text-almet-cloud-burst dark:text-white">{emp.current_salary != null ? fmt(emp.current_salary) : "—"}</td>
                   <td className="px-3 py-2.5 text-right font-mono text-emerald-700 dark:text-emerald-400">{emp.current_grade_salary != null ? fmt(emp.current_grade_salary) : "—"}</td>
-                  <td className="px-3 py-2.5 text-right font-mono text-almet-sapphire">{fmt(emp.scenario_salary)}</td>
+                  <td className={`px-3 py-2.5 text-right font-mono ${
+                    emp.scenario_salary > emp.current_salary ? "text-emerald-600 dark:text-emerald-400" :
+                    emp.scenario_salary < emp.current_salary ? "text-red-600 dark:text-red-400" :
+                    "text-almet-sapphire"
+                  }`}>{fmt(emp.scenario_salary)}</td>
                   <td className="px-3 py-2.5 text-right font-mono text-purple-600 dark:text-purple-400">{emp.market_avg_salary != null ? fmt(emp.market_avg_salary) : "—"}</td>
                 </tr>
               )) : (

@@ -12,9 +12,11 @@ import {
   X,
   File,
   CheckCircle,
+  Files,
 } from "lucide-react";
 import { useToast } from "@/components/common/Toast";
 import Pagination from "@/components/common/Pagination";
+import BulkPolicyUploadModal from "./BulkPolicyUploadModal";
 import {
   getPoliciesByFolder,
   createPolicy,
@@ -23,6 +25,7 @@ import {
   trackPolicyView,
   trackPolicyDownload,
   validatePDFFile,
+  bulkCreatePolicies,
 } from "@/services/policyService";
 
 export default function PoliciesView({
@@ -50,6 +53,7 @@ export default function PoliciesView({
   const [showAddPolicy, setShowAddPolicy] = useState(false);
   const [showEditPolicy, setShowEditPolicy] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState(null);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   
   // Form state
   const [policyForm, setPolicyForm] = useState({
@@ -307,15 +311,29 @@ export default function PoliciesView({
             </div>
           </div>
 
-          {/*  Add Policy Button - only show if admin */}
+          {/*  Add Policy / Bulk Upload - only show if admin */}
           {userAccess?.is_admin && (
-            <button
-              onClick={openAddModal}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-almet-sapphire text-white hover:bg-almet-cloud-burst transition-all"
-            >
-              <Upload className="w-4 h-4" />
-              Add Policy
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowBulkUpload(true)}
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border transition-all ${
+                  darkMode
+                    ? "border-gray-600 text-gray-300 hover:bg-gray-700"
+                    : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
+                title="Upload multiple PDFs at once"
+              >
+                <Files className="w-4 h-4" />
+                Bulk Upload
+              </button>
+              <button
+                onClick={openAddModal}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-almet-sapphire text-white hover:bg-almet-cloud-burst transition-all"
+              >
+                <Upload className="w-4 h-4" />
+                Add Policy
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -459,6 +477,23 @@ export default function PoliciesView({
             </div>
           )}
         </>
+      )}
+
+      {/* Bulk Upload Modal */}
+      {showBulkUpload && (
+        <BulkPolicyUploadModal
+          folderId={selectedFolder.id}
+          folderName={selectedFolder.name}
+          darkMode={darkMode}
+          onClose={() => setShowBulkUpload(false)}
+          onSuccess={() => {
+            loadPolicies(selectedFolder.id);
+            setShowBulkUpload(false);
+          }}
+          bulkFn={bulkCreatePolicies}
+          showAckToggle={true}
+          entityName="Policy"
+        />
       )}
 
       {/* Add/Edit Policy Modal */}

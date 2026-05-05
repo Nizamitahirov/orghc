@@ -2,6 +2,7 @@
 'use client'
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle2, XCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 // Context
 const ToastContext = createContext();
@@ -11,9 +12,19 @@ export const ToastProvider = ({ children }) => {
   const [toasts, setToasts] = useState([]);
 
   const addToast = (message, type = 'info', duration = 5000) => {
-    const id = Date.now() + Math.random();
-    const newToast = { id, message, type, duration };
-    setToasts((prev) => [...prev, newToast]);
+    // Deduplicate: skip if identical message+type already visible
+    let skipped = false;
+    setToasts((prev) => {
+      if (prev.some((t) => t.message === message && t.type === type)) {
+        skipped = true;
+        return prev;
+      }
+      return prev;
+    });
+    if (skipped) return null;
+
+    const id = `${type}-${message}-${Date.now()}`;
+    setToasts((prev) => [...prev, { id, message, type, duration }]);
 
     if (duration > 0) {
       setTimeout(() => removeToast(id), duration);
@@ -119,21 +130,22 @@ const Toast = ({ toast }) => {
       }}
     >
       <div className="flex items-center px-5 py-4 gap-4">
-        <span className="flex-shrink-0 text-lg opacity-80">
-          {toast.type === 'success' && '✓'}
-          {toast.type === 'error' && '✕'}
-          {toast.type === 'warning' && '⚡'}
-          {toast.type === 'info' && 'i'}
+        <span className="flex-shrink-0 opacity-80" aria-hidden="true">
+          {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-green-600" />}
+          {toast.type === 'error' && <XCircle className="w-5 h-5 text-red-600" />}
+          {toast.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-500" />}
+          {toast.type === 'info' && <Info className="w-5 h-5 text-blue-600" />}
         </span>
         <p className="flex-1 text-sm font-normal leading-relaxed opacity-90">
           {toast.message}
         </p>
         <button
           onClick={handleClose}
-          className="text-gray-400 hover:text-gray-600 transition-colors duration-200 
-          w-6 h-6 rounded-full hover:bg-white/30 flex items-center justify-center text-xs"
+          aria-label="Dismiss notification"
+          className="text-gray-400 hover:text-gray-600 transition-colors duration-200
+          w-6 h-6 rounded-full hover:bg-white/30 flex items-center justify-center"
         >
-          ✕
+          <X className="w-3.5 h-3.5" />
         </button>
       </div>
 

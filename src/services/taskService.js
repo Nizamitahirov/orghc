@@ -351,7 +351,97 @@ const taskService = {
       console.error('Get my tasks failed:', error);
       return { success: false, error: error.response?.data?.error || 'Failed to fetch tasks' };
     }
-  }
+  },
+
+  uploadAttachment: async (taskId, file) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await api.post(
+        `/task-management/tasks/${taskId}/upload_attachment/`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Upload attachment failed:', error);
+      return { success: false, error: error.response?.data?.error || 'Failed to upload file' };
+    }
+  },
+
+  deleteAttachment: async (taskId, attachmentId) => {
+    try {
+      await api.delete(`/task-management/tasks/${taskId}/delete_attachment/${attachmentId}/`);
+      return { success: true };
+    } catch (error) {
+      console.error('Delete attachment failed:', error);
+      return { success: false, error: error.response?.data?.error || 'Failed to delete file' };
+    }
+  },
+
+  // ========================================
+  // ANALYTICS
+  // ========================================
+
+  getAnalytics: async (teamId) => {
+    try {
+      const response = await api.get('/task-management/analytics/', { params: { team_id: teamId } });
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Get analytics failed:', error);
+      return { success: false, error: error.response?.data?.error || 'Failed to fetch analytics' };
+    }
+  },
+
+  aiTeamSummary: async (teamId) => {
+    try {
+      const response = await api.post('/task-management/ai/summary/', { team_id: teamId });
+      return { success: true, summary: response.data.summary };
+    } catch (error) {
+      console.error('AI summary failed:', error);
+      return { success: false, error: error.response?.data?.error || 'Failed to generate summary' };
+    }
+  },
+
+  // ========================================
+  // AI TASK DISPATCHER
+  // ========================================
+
+  aiSmartFill: async (title, description = '') => {
+    try {
+      const response = await api.post('/task-management/ai/smart-fill/', { title, description });
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('AI smart fill failed:', error);
+      return { success: false, error: error.response?.data?.error || 'AI smart fill failed' };
+    }
+  },
+
+  aiParseTasks: async (text) => {
+    try {
+      const response = await api.post('/task-management/ai/parse/', { text });
+      return {
+        success: true,
+        data: response.data.tasks,
+        count: response.data.count,
+        employees: response.data.employees || [],
+      };
+    } catch (error) {
+      console.error('AI parse failed:', error);
+      return { success: false, error: error.response?.data?.error || 'AI parse failed' };
+    }
+  },
+
+  // tasks: [{ title, description, assigned_to_id, priority, due_date }]
+  aiCreateTasks: async (teamId, tasks) => {
+    try {
+      const response = await api.post('/task-management/ai/create-bulk/', { team_id: teamId, tasks });
+      return { success: true, data: response.data.created, count: response.data.count };
+    } catch (error) {
+      console.error('AI create failed:', error);
+      return { success: false, error: error.response?.data?.error || 'AI create failed' };
+    }
+  },
 };
 
 export default taskService;

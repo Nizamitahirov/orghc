@@ -9,6 +9,7 @@ import { useToast } from "@/components/common/Toast";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import roleAccessService from "@/services/roleAccessService";
 import { employeeService } from "@/services/newsService";
+import { referenceDataService } from "@/services/vacantPositionsService";
 import { 
   Shield, 
   Users, 
@@ -36,6 +37,7 @@ export default function RoleAccessManagementPage() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [permissionSearch, setPermissionSearch] = useState("");
   
   // Pagination states
   const [rolesPage, setRolesPage] = useState(1);
@@ -58,10 +60,16 @@ export default function RoleAccessManagementPage() {
   const [itemToDelete, setItemToDelete] = useState(null);
   const [itemToRevoke, setItemToRevoke] = useState(null);
   
+  // Business functions (for scope selection)
+  const [businessFunctions, setBusinessFunctions] = useState([]);
+  const [scopeBusinessFunctions, setScopeBusinessFunctions] = useState([]);
+  const [bulkScopeBusinessFunctions, setBulkScopeBusinessFunctions] = useState([]);
+
   // Form states
-  const [roleForm, setRoleForm] = useState({ name: "", is_active: true });
+  const [roleForm, setRoleForm] = useState({ name: "", is_active: true, scope: "global" });
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [selectedRole, setSelectedRole] = useState(null);
+  const [selectedAssignBF, setSelectedAssignBF] = useState(null);
   const [bulkSelectedRoles, setBulkSelectedRoles] = useState([]);
   const [bulkPermissionsAction, setBulkPermissionsAction] = useState("add");
   const [bulkPermissionsSelected, setBulkPermissionsSelected] = useState([]);
@@ -100,6 +108,7 @@ export default function RoleAccessManagementPage() {
   useEffect(() => {
     fetchEmployees();
     fetchAllPermissions();
+    fetchBusinessFunctions();
   }, []);
 
 
@@ -119,6 +128,16 @@ export default function RoleAccessManagementPage() {
     } catch (error) {
       console.error("Error fetching permissions:", error);
       toast.showError("Failed to fetch permissions");
+    }
+  };
+
+  const fetchBusinessFunctions = async () => {
+    try {
+      const result = await referenceDataService.getBusinessFunctions({ is_active: true });
+      const list = result.data || result.results || result || [];
+      setBusinessFunctions(Array.isArray(list) ? list : []);
+    } catch (error) {
+      console.error("Error fetching business functions:", error);
     }
   };
 
@@ -165,6 +184,14 @@ export default function RoleAccessManagementPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
+      // Always fetch business functions for the assign modal scope selector
+      if (businessFunctions.length === 0) {
+        try {
+          const bfData = await roleAccessService.businessFunctions.getAll();
+          setBusinessFunctions(bfData.results || bfData || []);
+        } catch (_) {}
+      }
+
       if (activeTab === "roles") {
         const rolesData = await roleAccessService.roles.getAll({ page: rolesPage });
         setRoles(rolesData.results || []);
@@ -431,12 +458,14 @@ export default function RoleAccessManagementPage() {
 
       await roleAccessService.employeeRoles.bulkAssignRoles({
         employee_ids: selectedEmployees,
-        role_ids: [selectedRole]
+        role_ids: [selectedRole],
+        ...(selectedAssignBF ? { business_function_id: selectedAssignBF } : {}),
       });
 
       setShowAssignModal(false);
       setSelectedEmployees([]);
       setSelectedRole(null);
+      setSelectedAssignBF(null);
       fetchData();
       toast.showSuccess(`Role assigned to ${selectedEmployees.length} employee(s)`);
     } catch (error) {
@@ -460,12 +489,14 @@ export default function RoleAccessManagementPage() {
 
       await roleAccessService.employeeRoles.bulkAssignRoles({
         employee_ids: employeeIds,
-        role_ids: bulkRolesToAssign
+        role_ids: bulkRolesToAssign,
+        scope_business_function_ids: bulkScopeBusinessFunctions,
       });
 
       setShowBulkRoleAssignModal(false);
       setBulkRolesToAssign([]);
       setSelectedEmployeeRows([]);
+      setBulkScopeBusinessFunctions([]);
       fetchData();
       toast.showSuccess(`Assigned ${bulkRolesToAssign.length} role(s) to ${employeeIds.length} employee(s)`);
     } catch (error) {
@@ -648,6 +679,7 @@ export default function RoleAccessManagementPage() {
                     setSelectedRoleBoxes([]);
                     setSelectedEmployeeRows([]);
                     setSearchTerm("");
+                    setPermissionSearch("");
                   }}
                   className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                     activeTab === tab.id
@@ -926,8 +958,48 @@ export default function RoleAccessManagementPage() {
           {/* Permissions Tab */}
           {activeTab === "permissions" && (
             <>
+              {/* Permissions search */}
+              <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm mb-4 px-5 py-3`}>
+                <div className="relative max-w-md">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search permissions by name or codename…"
+                    value={permissionSearch}
+                    onChange={(e) => setPermissionSearch(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2 text-sm rounded-lg border ${
+                      darkMode
+                        ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-almet-sapphire'
+                        : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-almet-sapphire'
+                    } focus:outline-none focus:ring-2 focus:ring-almet-sapphire/20 transition-all`}
+                  />
+                  {permissionSearch && (
+                    <button
+                      onClick={() => setPermissionSearch("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
               <div className="space-y-3">
-                {Object.entries(permissions).map(([category, perms]) => (
+                {Object.entries(permissions)
+                  .map(([category, perms]) => {
+                    const q = permissionSearch.toLowerCase();
+                    const filtered = q
+                      ? perms.filter(p =>
+                          p.name.toLowerCase().includes(q) ||
+                          p.codename.toLowerCase().includes(q) ||
+                          (p.description || "").toLowerCase().includes(q)
+                        )
+                      : perms;
+                    return [category, filtered];
+                  })
+                  .filter(([, perms]) => perms.length > 0)
+                  .map(([category, perms]) => {
+                    const isExpanded = permissionSearch ? true : expandedCategories[category];
+                    return (
                   <div
                     key={category}
                     className={`rounded-xl border shadow-sm ${
@@ -953,10 +1025,10 @@ export default function RoleAccessManagementPage() {
                           </p>
                         </div>
                       </div>
-                      <ChevronDown className={`w-5 h-5 transition-transform ${expandedCategories[category] ? 'rotate-180' : ''} ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                      <ChevronDown className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''} ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                     </button>
 
-                    {expandedCategories[category] && (
+                    {isExpanded && (
                       <div className={`px-5 pb-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
                           {perms.map((perm) => (
@@ -992,8 +1064,18 @@ export default function RoleAccessManagementPage() {
                       </div>
                     )}
                   </div>
-                ))}
+                ); })}
               </div>
+              {permissionSearch && Object.entries(permissions).every(([, perms]) =>
+                !perms.some(p =>
+                  p.name.toLowerCase().includes(permissionSearch.toLowerCase()) ||
+                  p.codename.toLowerCase().includes(permissionSearch.toLowerCase())
+                )
+              ) && (
+                <div className={`text-center py-12 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  No permissions found matching "{permissionSearch}"
+                </div>
+              )}
             </>
           )}
 
@@ -1084,6 +1166,18 @@ export default function RoleAccessManagementPage() {
                                       </>
                                     )}
                                   </div>
+                                  {assignment.is_scoped && assignment.scope_business_functions_detail?.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {assignment.scope_business_functions_detail.map(bf => (
+                                        <span
+                                          key={bf.id}
+                                          className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                                        >
+                                          {bf.code || bf.name}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="text-right">
                                   <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -1207,14 +1301,33 @@ export default function RoleAccessManagementPage() {
                                   <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                                     Assigned {new Date(assignment.assigned_at).toLocaleDateString()}
                                   </p>
+                                  {assignment.is_scoped && assignment.scope_business_functions_detail?.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {assignment.scope_business_functions_detail.map(bf => (
+                                        <span
+                                          key={bf.id}
+                                          className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                                        >
+                                          {bf.code || bf.name}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
-                                <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                  assignment.is_active
-                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
-                                }`}>
-                                  {assignment.is_active ? 'Active' : 'Inactive'}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  {assignment.is_scoped && (
+                                    <span className="px-2 py-1 rounded text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                                      Scoped
+                                    </span>
+                                  )}
+                                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                    assignment.is_active
+                                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                      : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
+                                  }`}>
+                                    {assignment.is_active ? 'Active' : 'Inactive'}
+                                  </span>
+                                </div>
                               </div>
                               <button 
                                 onClick={() => {
@@ -1300,6 +1413,33 @@ export default function RoleAccessManagementPage() {
                   Active Role
                 </label>
               </div>
+
+              {/* Diff preview — only shown in edit mode when something changed */}
+              {editingRole && (roleForm.name !== editingRole.name || roleForm.is_active !== editingRole.is_active) && (
+                <div className={`rounded-lg border p-3 space-y-2 ${darkMode ? 'bg-gray-700/40 border-gray-600' : 'bg-amber-50 border-amber-200'}`}>
+                  <p className={`text-xs font-semibold uppercase tracking-wide ${darkMode ? 'text-amber-400' : 'text-amber-700'}`}>
+                    Preview changes
+                  </p>
+                  {roleForm.name !== editingRole.name && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className={`font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Name:</span>
+                      <span className={`line-through ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{editingRole.name}</span>
+                      <span className={darkMode ? 'text-gray-300' : 'text-gray-400'}>→</span>
+                      <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{roleForm.name || "—"}</span>
+                    </div>
+                  )}
+                  {roleForm.is_active !== editingRole.is_active && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className={`font-medium ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Status:</span>
+                      <span className={`line-through ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>{editingRole.is_active ? "Active" : "Inactive"}</span>
+                      <span className={darkMode ? 'text-gray-300' : 'text-gray-400'}>→</span>
+                      <span className={`font-semibold ${roleForm.is_active ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                        {roleForm.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className={`flex gap-3 p-5 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <button
@@ -1342,6 +1482,7 @@ export default function RoleAccessManagementPage() {
                   setShowAssignModal(false);
                   setSelectedEmployees([]);
                   setSelectedRole(null);
+                  setSelectedAssignBF(null);
                 }}
                 className={`p-1.5 rounded-lg transition-colors ${
                   darkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
@@ -1381,6 +1522,26 @@ export default function RoleAccessManagementPage() {
                   darkMode={darkMode}
                 />
               </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Scope — Business Functions
+                </label>
+                <p className={`text-xs mb-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Leave empty for global access</p>
+                <select
+                  value={selectedAssignBF ?? ''}
+                  onChange={e => setSelectedAssignBF(e.target.value ? Number(e.target.value) : null)}
+                  className={`w-full px-3 py-2.5 text-sm rounded-lg border ${
+                    darkMode
+                      ? 'bg-gray-700 border-gray-600 text-white focus:border-almet-sapphire'
+                      : 'bg-white border-gray-300 text-gray-900 focus:border-almet-sapphire'
+                  } focus:outline-none focus:ring-2 focus:ring-almet-sapphire/20`}
+                >
+                  <option value="">All business functions (global)...</option>
+                  {businessFunctions.map(bf => (
+                    <option key={bf.id} value={bf.id}>{bf.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className={`flex gap-3 p-5 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <button
@@ -1388,6 +1549,7 @@ export default function RoleAccessManagementPage() {
                   setShowAssignModal(false);
                   setSelectedEmployees([]);
                   setSelectedRole(null);
+                  setSelectedAssignBF(null);
                 }}
                 className={`flex-1 px-4 py-2.5 text-sm rounded-lg font-medium transition-colors ${
                   darkMode
@@ -1423,6 +1585,7 @@ export default function RoleAccessManagementPage() {
                 onClick={() => {
                   setShowBulkRoleAssignModal(false);
                   setBulkRolesToAssign([]);
+                  setBulkScopeBusinessFunctions([]);
                 }}
                 className={`p-1.5 rounded-lg transition-colors ${
                   darkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
@@ -1431,31 +1594,54 @@ export default function RoleAccessManagementPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-5">
-              <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            <div className="p-5 space-y-4">
+              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 Assigning to {selectedEmployeeRows.length} employee(s)
               </p>
-              <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                Select Roles to Assign
-              </label>
-              <MultiSelect
-                options={roleOptions}
-                selected={bulkRolesToAssign}
-                onChange={(field, value) => {
-                  setBulkRolesToAssign(prev => 
-                    prev.includes(value) ? prev.filter(id => id !== value) : [...prev, value]
-                  );
-                }}
-                placeholder="Select roles..."
-                fieldName="roles"
-                darkMode={darkMode}
-              />
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Select Roles to Assign
+                </label>
+                <MultiSelect
+                  options={roleOptions}
+                  selected={bulkRolesToAssign}
+                  onChange={(field, value) => {
+                    setBulkRolesToAssign(prev =>
+                      prev.includes(value) ? prev.filter(id => id !== value) : [...prev, value]
+                    );
+                  }}
+                  placeholder="Select roles..."
+                  fieldName="roles"
+                  darkMode={darkMode}
+                />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Scope — Business Functions
+                </label>
+                <p className={`text-xs mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  Leave empty for global access
+                </p>
+                <MultiSelect
+                  options={businessFunctions.map(bf => ({ id: bf.id, value: bf.id, label: `${bf.name}${bf.code ? ` (${bf.code})` : ''}`, name: `${bf.name}${bf.code ? ` (${bf.code})` : ''}` }))}
+                  selected={bulkScopeBusinessFunctions}
+                  onChange={(field, value) => {
+                    setBulkScopeBusinessFunctions(prev =>
+                      prev.includes(value) ? prev.filter(id => id !== value) : [...prev, value]
+                    );
+                  }}
+                  placeholder="All business functions (global)..."
+                  fieldName="bulkScopeBF"
+                  darkMode={darkMode}
+                />
+              </div>
             </div>
             <div className={`flex gap-3 p-5 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <button
                 onClick={() => {
                   setShowBulkRoleAssignModal(false);
                   setBulkRolesToAssign([]);
+                  setBulkScopeBusinessFunctions([]);
                 }}
                 className={`flex-1 px-4 py-2.5 text-sm rounded-lg font-medium transition-colors ${
                   darkMode

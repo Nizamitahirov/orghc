@@ -5,7 +5,7 @@
 //   - Admin    → hamının request-ləri + employee filter
 
 import { useState } from 'react';
-import { Download, Eye, Paperclip, FileText, Filter, X, Calendar, Search } from 'lucide-react';
+import { Download, Eye, Paperclip, FileText, Filter, X, Calendar, Search,Plus , Trash2 } from 'lucide-react';
 import Pagination from '@/components/common/Pagination';
 import SearchableDropdown from '@/components/common/SearchableDropdown';
 
@@ -26,10 +26,18 @@ export default function VacationRecordsTable({
   // ortaq
   handleViewDetails,
   handleViewAttachments,
+  handleDeleteRequest,
   userAccess,
   darkMode,
+
+  // admin manual record
+  onAdminAddRecord,
+  vacationTypes = [],
+  employeeSearchResults = [],
 }) {
   const isPrivileged = userAccess.is_admin || userAccess.is_manager;
+  // Full-scope admin = can_view_all + is_admin (no BF scope restriction)
+  const isFullAdmin = userAccess.is_admin && userAccess.can_view_all;
 
   // Admin/manager üçün server-side filter state-i yuxarıdan gəlir (adminFilters).
   // Employee üçün client-side filter.
@@ -43,15 +51,27 @@ export default function VacationRecordsTable({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // ── Add Record Modal state ────────────────────────────────────
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({
+    employee_id: '',
+    vacation_type_id: '',
+    start_date: '',
+    end_date: '',
+    days_count: '',
+    comment: '',
+  });
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState('');
+
   // ── Data source ──────────────────────────────────────────────
-  // Hər iki mənbədən yalnız request-ləri al
   const rawRecords = isPrivileged
     ? allVacationRecords.filter(r => r.type === 'request')
     : myAllRecords.filter(r => r.type === 'request');
 
   // Employee client-side filter
   const filtered = isPrivileged
-    ? rawRecords   // admin/manager üçün server filter işləyir
+    ? rawRecords
     : rawRecords.filter(r => {
         if (clientFilters.status && !r.status?.toLowerCase().includes(clientFilters.status.toLowerCase())) return false;
         if (clientFilters.vacation_type && !r.vacation_type?.toLowerCase().includes(clientFilters.vacation_type.toLowerCase())) return false;
@@ -122,6 +142,15 @@ export default function VacationRecordsTable({
               </span>
             )}
           </button>
+          {isFullAdmin && (
+            <button
+              onClick={() => { setAddError(''); setAddForm({ employee_id: '', vacation_type_id: '', start_date: '', end_date: '', days_count: '', comment: '' }); setShowAddModal(true); }}
+              className="flex items-center gap-1.5 px-3 py-2 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add Record
+            </button>
+          )}
           <button
             onClick={isPrivileged ? handleExportAllRecords : handleExportMyVacations}
             className="flex items-center gap-1.5 px-3 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-sm"
@@ -131,6 +160,139 @@ export default function VacationRecordsTable({
           </button>
         </div>
       </div>
+
+      {/* ── Add Record Modal ── */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Add Vacation Record</h3>
+              <button onClick={() => setShowAddModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"><X className="w-4 h-4 text-gray-400" /></button>
+            </div>
+            <p className="text-[11px] text-gray-400">Record is immediately approved. No emails sent. Balance is deducted.</p>
+
+            {addError && <p className="text-xs text-red-500">{addError}</p>}
+
+            <div className="space-y-3">
+              {/* Employee */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Employee</label>
+                <SearchableDropdown
+                  options={employeeSearchResults.map(e => ({ value: e.id, label: e.name || e.full_name || String(e.id) }))}
+                  value={addForm.employee_id || null}
+                  onChange={val => setAddForm(p => ({ ...p, employee_id: val ?? '' }))}
+                  placeholder="Select employee…"
+                  searchPlaceholder="Search employee…"
+                  darkMode={darkMode}
+                  portal={true}
+                  allowUncheck={false}
+                />
+              </div>
+
+              {/* Vacation Type */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Vacation Type</label>
+                <select
+                  value={addForm.vacation_type_id}
+                  onChange={e => setAddForm(p => ({ ...p, vacation_type_id: e.target.value }))}
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-almet-sapphire/50"
+                >
+                  <option value="">Select type…</option>
+                  {vacationTypes.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={addForm.start_date}
+                    onChange={e => setAddForm(p => ({ ...p, start_date: e.target.value }))}
+                    className="w-full text-xs px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-almet-sapphire/50"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">End Date</label>
+                  <input
+                    type="date"
+                    value={addForm.end_date}
+                    onChange={e => setAddForm(p => ({ ...p, end_date: e.target.value }))}
+                    className="w-full text-xs px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-almet-sapphire/50"
+                  />
+                </div>
+              </div>
+
+              {/* Days Count */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Days Count</label>
+                <input
+                  type="number"
+                  min="0.5"
+                  step="0.5"
+                  value={addForm.days_count}
+                  onChange={e => setAddForm(p => ({ ...p, days_count: e.target.value }))}
+                  placeholder="e.g. 5"
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-almet-sapphire/50"
+                />
+              </div>
+
+              {/* Comment */}
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Comment (optional)</label>
+                <textarea
+                  rows={2}
+                  value={addForm.comment}
+                  onChange={e => setAddForm(p => ({ ...p, comment: e.target.value }))}
+                  placeholder="e.g. Manually added — no request submitted"
+                  className="w-full text-xs px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-almet-sapphire/50 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="px-4 py-2 text-xs rounded-lg border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={addLoading}
+                onClick={async () => {
+                  setAddError('');
+                  if (!addForm.employee_id || !addForm.vacation_type_id || !addForm.start_date || !addForm.end_date || !addForm.days_count) {
+                    setAddError('All fields except comment are required.');
+                    return;
+                  }
+                  setAddLoading(true);
+                  try {
+                    await onAdminAddRecord({
+                      employee_id: parseInt(addForm.employee_id),
+                      vacation_type_id: parseInt(addForm.vacation_type_id),
+                      start_date: addForm.start_date,
+                      end_date: addForm.end_date,
+                      days_count: parseFloat(addForm.days_count),
+                      comment: addForm.comment,
+                    });
+                    setShowAddModal(false);
+                  } catch (err) {
+                    setAddError(err?.response?.data?.error || 'Failed to add record.');
+                  } finally {
+                    setAddLoading(false);
+                  }
+                }}
+                className="px-4 py-2 text-xs rounded-lg bg-almet-sapphire text-white hover:bg-almet-cloud-burst disabled:opacity-50 transition"
+              >
+                {addLoading ? 'Saving…' : 'Add Record'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Stats ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -186,6 +348,19 @@ export default function VacationRecordsTable({
                   </div>
                 </div>
 
+                {/* Leave Type */}
+                <div>
+                  <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1">Leave Type</label>
+                  <SearchableDropdown
+                    options={vacationTypes.map(t => ({ value: t.id, label: t.name }))}
+                    value={adminFilters.vacation_type_id || null}
+                    onChange={v => setAdminFilters(p => ({ ...p, vacation_type_id: v || '' }))}
+                    placeholder="All Leave Types"
+                    allowUncheck
+                    darkMode={darkMode}
+                  />
+                </div>
+
                 {/* Company */}
                 <div>
                   <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1">Company</label>
@@ -207,6 +382,19 @@ export default function VacationRecordsTable({
                     value={adminFilters.department_id}
                     onChange={v => setAdminFilters(p => ({ ...p, department_id: v || '' }))}
                     placeholder="All Departments"
+                    allowUncheck
+                    darkMode={darkMode}
+                  />
+                </div>
+
+                {/* Leave Type */}
+                <div>
+                  <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1">Leave Type</label>
+                  <SearchableDropdown
+                    options={vacationTypes.map(t => ({ value: t.id, label: t.name }))}
+                    value={adminFilters.vacation_type_id || null}
+                    onChange={v => setAdminFilters(p => ({ ...p, vacation_type_id: v || '' }))}
+                    placeholder="All Leave Types"
                     allowUncheck
                     darkMode={darkMode}
                   />
@@ -276,13 +464,16 @@ export default function VacationRecordsTable({
               </div>
               <div>
                 <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1">Leave Type</label>
-                <input
-                  type="text"
+                <select
                   value={clientFilters.vacation_type}
                   onChange={e => { setClientFilters(p => ({ ...p, vacation_type: e.target.value })); resetPage(); }}
-                  placeholder="e.g. Paid Vacation"
                   className="w-full px-3 py-2 text-xs border outline-0 focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                />
+                >
+                  <option value="">All Types</option>
+                  {vacationTypes.map(t => (
+                    <option key={t.id} value={t.name}>{t.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1">From Date</label>
@@ -400,13 +591,24 @@ export default function VacationRecordsTable({
 
                   {/* Action */}
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleViewDetails(record.id)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-almet-sapphire border border-almet-sapphire/30 rounded-lg hover:bg-almet-sapphire hover:text-white transition-all whitespace-nowrap"
-                    >
-                      <Eye className="w-3 h-3" />
-                      View
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleViewDetails(record.id)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-almet-sapphire border border-almet-sapphire/30 rounded-lg hover:bg-almet-sapphire hover:text-white transition-all whitespace-nowrap"
+                      >
+                        <Eye className="w-3 h-3" />
+                        View
+                      </button>
+                      {userAccess.is_admin && handleDeleteRequest && (
+                        <button
+                          onClick={() => handleDeleteRequest(record)}
+                          className="p-1.5 text-red-500 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                          title="Delete request"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

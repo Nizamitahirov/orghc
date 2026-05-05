@@ -213,104 +213,84 @@ const AssessmentMatrixInner = ({ onNavigateToManagement }) => {
     );
   };
 
-  const NavigationCard = ({ 
-    icon: Icon, 
-    title, 
-    subtitle, 
-    isActive, 
-    onClick, 
-    color, 
+  // Accent hex per card type
+  const NAV_CARDS = {
+    leadership: { accent: '#d97706', label: 'Leadership' },
+    behavioral: { accent: '#7c3aed', label: 'Behavioral' },
+    core:       { accent: '#1d6fa4', label: 'Core' },
+  };
+
+  const NavigationCard = ({
+    icon: Icon,
+    title,
+    subtitle,
+    isActive,
+    onClick,
+    accentHex = '#1d6fa4',
     count
   }) => (
     <div
-      className={`
-        relative rounded-xl text-left transition-all duration-300 group cursor-pointer
-        transform hover:scale-[1.02] active:scale-[0.98]
-        ${isActive
-          ? `bg-gradient-to-br ${color} text-white shadow-xl ring-2 ring-white/20`
-          : `${bgCard} border ${borderColor} ${textPrimary} hover:border-almet-sapphire/50 hover:shadow-lg`
-        }
-      `}
+      className={`relative rounded-xl text-left transition-all duration-300 group cursor-pointer overflow-hidden
+        transform hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.99]
+        ${bgCard} border ${isActive ? '' : borderColor} shadow-sm`}
+      style={isActive ? { borderColor: accentHex } : {}}
       onClick={onClick}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onClick()}
     >
+      {/* Accent top stripe */}
+      <div className="h-1 w-full" style={{ background: accentHex }} />
+
       <div className="p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className={`
-            p-3 rounded-xl transition-all duration-200
-            ${isActive 
-              ? 'bg-white/20 backdrop-blur-sm' 
-              : 'bg-almet-mystic group-hover:bg-almet-sapphire/10'
-            }
-          `}>
-            <Icon className={`w-5 h-5 ${
-              isActive ? 'text-white' : 'text-almet-sapphire'
-            }`} />
+        <div className="flex items-start justify-between mb-4">
+          <div className="p-3 rounded-xl transition-all duration-200"
+            style={{ background: `${accentHex}15` }}>
+            <Icon className="w-5 h-5" style={{ color: accentHex }} />
           </div>
-          <div className="flex items-center gap-2">
-            {count !== undefined && (
-              <span className={`
-                px-3 py-1 rounded-full text-base font-bold transition-all duration-200
-                ${isActive 
-                  ? 'bg-white/20 text-white backdrop-blur-sm' 
-                  : 'bg-almet-mystic text-almet-sapphire group-hover:bg-almet-sapphire/10'
-                }
-              `}>
-                {count}
-              </span>
-            )}
-            <ArrowRight className={`
-              w-4 h-4 transition-all duration-200
-              ${isActive ? 'rotate-0' : 'group-hover:translate-x-1 group-hover:text-almet-sapphire'}
-            `} />
-          </div>
+          {count !== undefined && (
+            <span className="px-3 py-1 rounded-full text-sm font-bold"
+              style={{ background: `${accentHex}15`, color: accentHex }}>
+              {count}
+            </span>
+          )}
         </div>
-        
-        <h3 className="font-bold text-base mb-2">{title}</h3>
-        <p className={`text-xs leading-relaxed ${
-          isActive ? 'text-white/90' : textSecondary
-        }`}>
-          {subtitle}
-        </p>
+
+        <h3 className={`font-bold text-base mb-2 ${textPrimary}`}>{title}</h3>
+        <p className={`text-xs leading-relaxed ${textSecondary}`}>{subtitle}</p>
+
+        <div className="mt-4 flex items-center gap-1 text-xs font-semibold transition-all duration-200"
+          style={{ color: accentHex }}>
+          <span>Open</span>
+          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+        </div>
       </div>
     </div>
   );
 
+  const STAT_ACCENTS = {
+    blue:   '#1d6fa4',
+    green:  '#059669',
+    purple: '#7c3aed',
+    orange: '#d97706',
+    almet:  '#1d6fa4',
+  };
+
   const StatCard = ({ icon: Icon, title, value, subtitle, color = 'blue' }) => {
-    const colors = {
-      blue: 'bg-slate-50 border-slate-200 text-almet-cloud-burst',
-      green: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-      purple: 'bg-violet-50 border-violet-200 text-violet-700',
-      orange: 'bg-amber-50 border-amber-200 text-amber-700',
-      almet: 'bg-blue-50 border-blue-200 text-almet-cloud-burst'
-    };
-
-    const iconColors = {
-      blue: 'bg-slate-100 text-almet-sapphire',
-      green: 'bg-emerald-100 text-emerald-600',
-      purple: 'bg-violet-100 text-violet-600',
-      orange: 'bg-amber-100 text-amber-600',
-      almet: 'bg-blue-100 text-almet-sapphire'
-    };
-
+    const accent = STAT_ACCENTS[color] || STAT_ACCENTS.blue;
     return (
-      <div className={`
-        ${colors[color]} border rounded-xl p-4 shadow-sm 
-        transition-all duration-200 hover:shadow-md hover:scale-[1.01]
-      `}>
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <h3 className="text-xs font-medium uppercase tracking-wide opacity-70">{title}</h3>
-            <div className="text-xl font-bold mt-1 mb-1">{value}</div>
-            {subtitle && (
-              <p className="text-xs leading-tight opacity-80">{subtitle}</p>
-            )}
+      <div className={`${bgCard} border ${borderColor} rounded-xl p-4 shadow-sm
+        transition-all duration-200 hover:shadow-md hover:scale-[1.01] overflow-hidden relative`}>
+        <div className="absolute top-0 left-0 w-1 h-full rounded-l-xl" style={{ background: accent }} />
+        <div className="pl-1">
+          <div className="flex items-center justify-between mb-1">
+            <h3 className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>{title}</h3>
+            <div className="p-1.5 rounded-lg" style={{ background: `${accent}15` }}>
+              <Icon className="w-4 h-4" style={{ color: accent }} />
+            </div>
           </div>
-          <div className={`${iconColors[color]} p-2 rounded-lg`}>
-            <Icon className="w-5 h-5" />
-          </div>
+          <div className={`text-2xl font-bold ${textPrimary}`}>{value}</div>
+          {subtitle && <p className={`text-xs mt-0.5 ${textSecondary}`}>{subtitle}</p>}
         </div>
       </div>
     );
@@ -773,31 +753,32 @@ const EmployeeDashboardView = () => {
               icon={Crown}
               title="Leadership Assessment"
               subtitle="Comprehensive leadership evaluation for senior positions including Manager, Vice Chairman, Director, Vice President, and HOD"
-              color="from-amber-100 via-amber-200 to-amber-300"
+              accentHex={NAV_CARDS.leadership.accent}
               count={dashboardData.leadershipAssessments}
-              isActive={false}
+              isActive={activeView === 'leadership'}
               onClick={() => setActiveView('leadership')}
             />
             <NavigationCard
               icon={Users}
               title="Behavioral Competency Assessment"
               subtitle="Evaluate employee behavioral competencies, soft skills, and interpersonal abilities through structured assessments"
-              color="from-violet-100 via-violet-200 to-violet-300"
+              accentHex={NAV_CARDS.behavioral.accent}
               count={dashboardData.behavioralAssessments}
-              isActive={false}
+              isActive={activeView === 'behavioral'}
               onClick={() => setActiveView('behavioral')}
             />
-            
             <NavigationCard
               icon={Target}
               title="Core Competency Assessment"
               subtitle="Assess technical skills, core competencies, and job-specific requirements for comprehensive employee evaluation"
-              color="from-blue-100 via-blue-200 to-blue-300"
+              accentHex={NAV_CARDS.core.accent}
               count={dashboardData.coreAssessments}
-              isActive={false}
+              isActive={activeView === 'core'}
               onClick={() => setActiveView('core')}
             />
           </div>
+
+         
         </div>
         )}
       </>

@@ -1,16 +1,17 @@
 // Complete Document Library Main Page with Toast & Loading
 
 "use client";
-import { 
+import {
   Search, Building2, Folder, FileText,
   Download, Eye, Plus, Shield, ClipboardList,
-  BookOpen, Trash2,Edit
+  BookOpen, Trash2, Edit
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { useToast } from "@/components/common/Toast";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import ConfirmationModal from "@/components/common/ConfirmationModal";
 import Link from "next/link";
 import { documentService } from "@/services/documentService";
 
@@ -255,31 +256,76 @@ const QuickStatCard = ({ title, value, icon: Icon, color }) => (
   </div>
 );
 
-const RecentDocCard = ({ doc, onView }) => (
-  <div 
-    onClick={() => onView(doc)}
-    className="bg-white dark:bg-almet-cloud-burst rounded-lg p-3 shadow-sm border border-almet-mystic/50 dark:border-almet-san-juan/50 transition-all duration-200 hover:shadow-md cursor-pointer group"
-  >
-    <div className="flex items-start gap-2">
-      <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-        <FileText className="h-4 w-4 text-white" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <h4 className="font-semibold text-[11px] text-almet-cloud-burst dark:text-white mb-1 group-hover:text-almet-sapphire dark:group-hover:text-almet-steel-blue transition-colors truncate">
-          {doc.title}
-        </h4>
-        <div className="flex items-center gap-1.5 mb-1">
-          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-almet-sapphire/10 text-almet-sapphire dark:bg-almet-steel-blue/10 dark:text-almet-steel-blue">
-            {doc.document_type}
-          </span>
-          <span className="text-[9px] text-almet-waterloo dark:text-almet-bali-hai">
-            {doc.file_size_display}
-          </span>
+// ── Document thumbnail helper ──────────────────────────────────────────────
+const DOC_TYPE_CONFIG = {
+  PDF:   { bg: 'bg-red-500',   label: 'PDF',  lines: [1, 0.85, 1, 0.6, 0.9, 0.5] },
+  WORD:  { bg: 'bg-blue-600',  label: 'DOCX', lines: [1, 0.75, 1, 0.65, 0.8, 0.4] },
+  EXCEL: { bg: 'bg-green-600', label: 'XLSX', lines: [1, 1, 0.5, 1, 1, 0.5] },
+  PPT:   { bg: 'bg-orange-500',label: 'PPT',  lines: [1, 0.7, 1, 0.5, 0.9, 0.6] },
+};
+const getDocTypeConfig = (type = '') => {
+  const t = type.toUpperCase();
+  if (t.includes('PDF'))   return DOC_TYPE_CONFIG.PDF;
+  if (t.includes('WORD') || t.includes('DOC')) return DOC_TYPE_CONFIG.WORD;
+  if (t.includes('EXCEL') || t.includes('XLS')) return DOC_TYPE_CONFIG.EXCEL;
+  if (t.includes('PPT') || t.includes('POWER')) return DOC_TYPE_CONFIG.PPT;
+  return { bg: 'bg-almet-sapphire', label: type.slice(0, 4) || 'FILE', lines: [1, 0.8, 1, 0.6, 0.9, 0.5] };
+};
+
+const DocThumbnail = ({ doc }) => {
+  const cfg = getDocTypeConfig(doc.document_type);
+  return (
+    <div className="relative h-28 bg-almet-mystic/20 dark:bg-almet-san-juan/20 flex items-center justify-center overflow-hidden rounded-t-lg border-b border-almet-mystic/30 dark:border-almet-san-juan/30">
+      {/* faint grid pattern */}
+      <div className="absolute inset-0 opacity-30"
+        style={{ backgroundImage: 'radial-gradient(circle, #94a3b8 1px, transparent 1px)', backgroundSize: '14px 14px' }} />
+      {/* mini document page */}
+      <div className="relative w-14 shadow-xl rounded" style={{ height: '72px' }}>
+        {/* color header */}
+        <div className={`${cfg.bg} rounded-t flex items-center justify-center`} style={{ height: '18px' }}>
+          <span className="text-white font-bold" style={{ fontSize: '7px', letterSpacing: '0.05em' }}>{cfg.label}</span>
         </div>
-        <p className="text-[9px] text-almet-waterloo dark:text-almet-bali-hai truncate">
-          {doc.company_name} • {doc.folder_name}
-        </p>
+        {/* body with lines */}
+        <div className="bg-white dark:bg-gray-200 rounded-b flex flex-col justify-center gap-1 px-1.5"
+          style={{ height: '54px' }}>
+          {cfg.lines.map((w, i) => (
+            <div key={i} className="bg-gray-300 dark:bg-gray-400 rounded-full"
+              style={{ height: '2px', width: `${w * 100}%` }} />
+          ))}
+        </div>
       </div>
+      {/* hover overlay */}
+      <div className="absolute inset-0 bg-almet-sapphire/0 group-hover:bg-almet-sapphire/10 transition-colors duration-200 flex items-center justify-center">
+        <Eye className="h-5 w-5 text-almet-sapphire opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+      </div>
+    </div>
+  );
+};
+
+const RecentDocCard = ({ doc, onView }) => (
+  <div
+    onClick={() => onView(doc)}
+    className="bg-white dark:bg-almet-cloud-burst rounded-lg shadow-sm border border-almet-mystic/50 dark:border-almet-san-juan/50 transition-all duration-200 hover:shadow-md cursor-pointer group overflow-hidden"
+  >
+    {/* Thumbnail */}
+    <DocThumbnail doc={doc} />
+
+    {/* Info */}
+    <div className="p-2.5">
+      <h4 className="font-semibold text-[11px] text-almet-cloud-burst dark:text-white mb-1 group-hover:text-almet-sapphire dark:group-hover:text-almet-steel-blue transition-colors line-clamp-2 leading-snug">
+        {doc.title}
+      </h4>
+      <div className="flex items-center gap-1.5 mb-1">
+        <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-almet-sapphire/10 text-almet-sapphire dark:bg-almet-steel-blue/10 dark:text-almet-steel-blue">
+          {doc.document_type}
+        </span>
+        <span className="text-[9px] text-almet-waterloo dark:text-almet-bali-hai">
+          {doc.file_size_display}
+        </span>
+      </div>
+      <p className="text-[9px] text-almet-waterloo dark:text-almet-bali-hai truncate">
+        {doc.company_name} • {doc.folder_name}
+      </p>
     </div>
   </div>
 );
@@ -405,7 +451,7 @@ export default function DocumentLibrary() {
     {
       title: 'Company Policies',
       description: 'Browse all company policies and compliance documents.',
-      href: '/workspace/library',
+      href: '/company-policies',
       icon: Shield,
       color: 'bg-gradient-to-br from-blue-500 to-blue-600',
       badge: 'Required'
@@ -413,14 +459,14 @@ export default function DocumentLibrary() {
     {
       title: 'Procedures',
       description: 'Step-by-step procedures and workflow guides',
-      href: '/workspace/library',
+      href: '/company-procedures',
       icon: ClipboardList,
       color: 'bg-gradient-to-br from-green-500 to-green-600',
     },
     {
       title: 'Training Materials',
       description: 'Learning resources and onboarding materials',
-      href: '/workspace/library',
+      href: '/training',
       icon: BookOpen,
       color: 'bg-gradient-to-br from-purple-500 to-purple-600',
     },
@@ -429,6 +475,30 @@ export default function DocumentLibrary() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // ── Derived / filtered data ──
+  const filteredCompanies = useMemo(() => {
+    if (!searchQuery.trim()) return companies;
+    const q = searchQuery.toLowerCase();
+    return companies.filter(c => c.name.toLowerCase().includes(q));
+  }, [companies, searchQuery]);
+
+  const filteredRecentDocs = useMemo(() => {
+    if (!searchQuery.trim()) return recentDocs;
+    const q = searchQuery.toLowerCase();
+    return recentDocs.filter(d =>
+      d.title?.toLowerCase().includes(q) ||
+      d.company_name?.toLowerCase().includes(q) ||
+      d.folder_name?.toLowerCase().includes(q) ||
+      d.document_type?.toLowerCase().includes(q)
+    );
+  }, [recentDocs, searchQuery]);
+
+  // ── Confirmation modal state ──
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false, title: '', message: '', type: 'danger', onConfirm: () => {}
+  });
+
 // State və handlers
 const [editCompanyModalOpen, setEditCompanyModalOpen] = useState(false);
 const [selectedCompany, setSelectedCompany] = useState(null);
@@ -468,16 +538,24 @@ const handleEditCompany = (company) => {
     }
   };
 
-  const handleDeleteCompany = async (company) => {
-    if (confirm(`Are you sure you want to delete "${company.name}"?`)) {
-      try {
-        await documentService.deleteCompany(company.id);
-        showSuccess('Company deleted successfully!');
-        loadData();
-      } catch (error) {
-        showError('Failed to delete company: ' + error.message);
+  const handleDeleteCompany = (company) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Company',
+      message: `Are you sure you want to delete "${company.name}"? This action cannot be undone.`,
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await documentService.deleteCompany(company.id);
+          showSuccess('Company deleted successfully!');
+          loadData();
+        } catch (error) {
+          showError('Failed to delete company: ' + error.message);
+        } finally {
+          setConfirmModal(p => ({ ...p, isOpen: false }));
+        }
       }
-    }
+    });
   };
 
   if (loading) {
@@ -567,43 +645,71 @@ const handleEditCompany = (company) => {
 
         {/* Companies */}
         <div>
-          <h2 className={`text-xs font-bold ${textPrimary} mb-2 uppercase tracking-wide`}>All Companies</h2>
-          {companies.length > 0 ? (
+          <div className="flex items-center justify-between mb-2">
+            <h2 className={`text-xs font-bold ${textPrimary} uppercase tracking-wide`}>
+              All Companies
+              {searchQuery && (
+                <span className="ml-2 font-normal text-almet-waterloo dark:text-almet-bali-hai normal-case">
+                  — {filteredCompanies.length} result{filteredCompanies.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </h2>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-[10px] text-almet-sapphire dark:text-almet-steel-blue hover:underline flex items-center gap-1"
+              >
+                <Search className="h-3 w-3" /> Clear search
+              </button>
+            )}
+          </div>
+          {filteredCompanies.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {companies.map((company) => (
-                // Render
-<CompanyCard 
-  key={company.id} 
-  company={company}
-  onDelete={handleDeleteCompany}
-  onEdit={handleEditCompany}
-/>
-
-
+              {filteredCompanies.map((company) => (
+                <CompanyCard
+                  key={company.id}
+                  company={company}
+                  onDelete={handleDeleteCompany}
+                  onEdit={handleEditCompany}
+                />
               ))}
             </div>
-          ) : (
+          ) : companies.length === 0 ? (
             <div className="text-center py-12 bg-white dark:bg-almet-cloud-burst rounded-lg border border-dashed border-almet-mystic dark:border-almet-san-juan">
               <Building2 className="h-12 w-12 text-almet-waterloo dark:text-almet-bali-hai mx-auto mb-2" />
               <p className={`${textSecondary} text-[11px] mb-1`}>No companies yet</p>
-              <button 
+              <button
                 onClick={() => setCreateCompanyModalOpen(true)}
                 className="text-almet-sapphire dark:text-almet-steel-blue text-[10px] font-semibold hover:underline"
               >
                 Create your first company
               </button>
             </div>
+          ) : (
+            <div className="text-center py-12 bg-white dark:bg-almet-cloud-burst rounded-lg border border-dashed border-almet-mystic dark:border-almet-san-juan">
+              <Search className="h-8 w-8 text-almet-waterloo dark:text-almet-bali-hai mx-auto mb-2" />
+              <p className={`${textSecondary} text-[11px] mb-1`}>No companies match "{searchQuery}"</p>
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-almet-sapphire dark:text-almet-steel-blue text-[10px] font-semibold hover:underline"
+              >
+                Clear search
+              </button>
+            </div>
           )}
         </div>
 
         {/* Recent Documents */}
-        {recentDocs.length > 0 && (
+        {filteredRecentDocs.length > 0 && (
           <div>
-            <h2 className={`text-xs font-bold ${textPrimary} mb-2 uppercase tracking-wide`}>Recently Updated</h2>
+            <h2 className={`text-xs font-bold ${textPrimary} mb-2 uppercase tracking-wide`}>
+              Recently Updated
+              {searchQuery && <span className="ml-1 font-normal text-almet-waterloo dark:text-almet-bali-hai normal-case">— {filteredRecentDocs.length} result{filteredRecentDocs.length !== 1 ? 's' : ''}</span>}
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-              {recentDocs.map((doc) => (
-                <RecentDocCard 
-                  key={doc.id} 
+              {filteredRecentDocs.map((doc) => (
+                <RecentDocCard
+                  key={doc.id}
                   doc={doc}
                   onView={handleViewDocument}
                 />
@@ -620,14 +726,23 @@ const handleEditCompany = (company) => {
       />
 
       <EditCompanyModal
-  isOpen={editCompanyModalOpen}
-  onClose={() => {
-    setEditCompanyModalOpen(false);
-    setSelectedCompany(null);
-  }}
-  company={selectedCompany}
-  onSuccess={loadData}
-/>
+        isOpen={editCompanyModalOpen}
+        onClose={() => {
+          setEditCompanyModalOpen(false);
+          setSelectedCompany(null);
+        }}
+        company={selectedCompany}
+        onSuccess={loadData}
+      />
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(p => ({ ...p, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+      />
     </DashboardLayout>
   );
 }

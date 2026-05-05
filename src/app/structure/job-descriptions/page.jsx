@@ -692,10 +692,10 @@ const handlePageChange = (page) => {
     }
   };
 
-  const handleDownloadSinglePDF = async (jobId) => {
+  const handleDownloadSinglePDF = async (jobId, employeeId = null, assignmentId = null) => {
     try {
       setActionLoading(true);
-      await jobDescriptionService.downloadJobDescriptionPDF(jobId);
+      await jobDescriptionService.downloadJobDescriptionPDF(jobId, employeeId, assignmentId);
       showSuccess('PDF downloaded successfully');
     } catch (error) {
       console.error('Error downloading job description PDF:', error);
@@ -1051,6 +1051,19 @@ const handleEdit = async (job) => {
     showError('Error loading job description. Please try again.');
   } finally {
     setActionLoading(false);
+  }
+};
+
+const handleDuplicate = async (job) => {
+  try {
+    await handleEdit(job);
+    // After edit loads the form, clear editingJob and prefix the title
+    setEditingJob(null);
+    setFormData(prev => ({ ...prev, job_title: `[Copy] ${prev.job_title}` }));
+    showInfo(`Duplicating "${job.job_title}" — edit and save to create a new copy`);
+  } catch (error) {
+    console.error('❌ Error duplicating job:', error);
+    showError('Error duplicating job description. Please try again.');
   }
 };
 
@@ -1474,6 +1487,7 @@ const handleEdit = async (job) => {
   userAccess={userAccess}
   onJobEdit={handleEdit}
   onJobDelete={handleDelete}
+  onJobDuplicate={handleDuplicate}
   onViewAssignments={handleViewAssignments}
   onDirectSubmission={handleDirectSubmissionForApproval}
   onDownloadPDF={handleDownloadSinglePDF}
@@ -1518,6 +1532,7 @@ const handleEdit = async (job) => {
                     handleBackToOverview();
                   }}
                   onUpdate={() => {
+                    if (editingJob?.id) jobDescriptionService.invalidatePdfCache(editingJob.id);
                     fetchJobDescriptions();
                     fetchStats();
                     resetForm();

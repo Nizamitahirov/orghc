@@ -76,6 +76,11 @@ export const orgChartAPI = {
     return orgChartApi.get(`/org-chart/detail/${id}/`);
   },
 
+  getManagerTeam: (managerId, params = {}) => {
+    const queryString = buildQueryParams(params);
+    return orgChartApi.get(`/org-chart/manager/${managerId}/team/${queryString ? `?${queryString}` : ''}`);
+  },
+
   getFullTreeWithVacancies: (params = {}) => {
     const queryString = buildQueryParams(params);
     return orgChartApi.get(`/org-chart/tree/${queryString ? `?${queryString}` : ''}`);

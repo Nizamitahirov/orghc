@@ -71,14 +71,16 @@ const HeadcountHeader = ({
         
         const canViewAll = response.access_info?.can_view_all || false;
         const isManager = response.access_info?.is_manager || false;
-        
+        const canViewArchive = response.access_info?.can_view_archive || canViewAll;
+
         setAccessInfo({
           canViewAll,
-          isManager
+          isManager,
+          canViewArchive
         });
-        
-        // Only users with can_view_all are considered admins
-        setIsAdmin(canViewAll);
+
+        // Admins (global or scoped) can see archive/add employee
+        setIsAdmin(canViewArchive);
         
       } catch (error) {
         console.error('Failed to check admin access:', error);

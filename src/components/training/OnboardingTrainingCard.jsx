@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Clock, CheckCircle, FileText } from 'lucide-react';
+import { BookOpen, Clock, CheckCircle, FileText, Layers } from 'lucide-react';
 
 const OnboardingTrainingCard = ({ assignment, darkMode, onClick }) => {
   const getStatusColor = (status) => {
@@ -62,9 +62,31 @@ const OnboardingTrainingCard = ({ assignment, darkMode, onClick }) => {
                   <Clock className="h-3 w-3" />
                   {getDaysRemaining()}
                 </span>
+                {assignment.total_materials > 0 && (
+                  <span className="flex items-center gap-1">
+                    <Layers className="h-3 w-3" />
+                    {assignment.materials_completed_count || 0}/{assignment.total_materials} materials
+                  </span>
+                )}
               </div>
-              
-          
+
+              {/* Progress bar */}
+              {assignment.status !== 'COMPLETED' && (
+                <div className="mb-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-almet-waterloo dark:text-almet-bali-hai">Progress</span>
+                    <span className="text-[10px] font-bold text-almet-sapphire dark:text-almet-steel-blue">
+                      {assignment.progress_percentage || 0}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-almet-mystic dark:bg-almet-san-juan rounded-full h-1.5">
+                    <div
+                      className="h-1.5 rounded-full bg-gradient-to-r from-almet-sapphire to-almet-astral transition-all duration-500"
+                      style={{ width: `${assignment.progress_percentage || 0}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

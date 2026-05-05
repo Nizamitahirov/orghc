@@ -44,8 +44,6 @@ const AdvancedFilterPanel = ({
   const {
     formattedEmployees = [],
     loading: employeesLoading = {},
-    fetchEmployees,
-    statistics = {}
   } = useEmployees();
 
   // ========================================
@@ -127,19 +125,18 @@ const AdvancedFilterPanel = ({
       fetchEmployeeStatuses?.(),
       fetchEmployeeTags?.(),
       fetchContractConfigs?.(),
-      fetchEmployees?.({ limit: 5000 })
     ].filter(Boolean);
     
     try {
       await Promise.allSettled(promises);
      
     } catch (error) {
-      console.error('❌ ADVANCED FILTER: Reference data initialization failed:', error);
+      console.error('\u274c ADVANCED FILTER: Reference data initialization failed:', error);
     }
   }, [
     fetchBusinessFunctions, fetchDepartments, fetchUnits, fetchJobFunctions,
     fetchPositionGroups, fetchEmployeeStatuses, fetchEmployeeTags, 
-    fetchContractConfigs, fetchEmployees
+    fetchContractConfigs
   ]);
 
   useEffect(() => {
@@ -161,18 +158,23 @@ const AdvancedFilterPanel = ({
           if (key === 'department') {
             const expandedValues = [];
             value.forEach(dept => {
-              if (dept.includes(',')) {
-                expandedValues.push(...dept.split(','));
+              const deptStr = String(dept);
+              if (deptStr.includes(',')) {
+                expandedValues.push(...deptStr.split(',').map(v => v.trim()));
               } else {
-                expandedValues.push(dept);
+                expandedValues.push(deptStr);
               }
             });
+            // Normalize to strings for consistent comparison
             const cleanValues = expandedValues.filter(v => v !== null && v !== undefined && v !== '');
             if (cleanValues.length > 0) {
               cleanedFilters[key] = cleanValues;
             }
           } else {
-            const cleanValues = value.filter(v => v !== null && v !== undefined && v !== '');
+            // Normalize IDs to strings for consistent type comparison
+            const cleanValues = value
+              .filter(v => v !== null && v !== undefined && v !== '')
+              .map(v => String(v));
             if (cleanValues.length > 0) {
               cleanedFilters[key] = cleanValues;
             }
@@ -594,7 +596,7 @@ const AdvancedFilterPanel = ({
                 />
                 {filters.employee_search && filters.employee_search.length > 0 && (
                   <div className={`mt-2 text-xs ${textMuted}`}>
-                    ⚠️ {filters.employee_search.length} employee(s) selected. Click "Apply Filters" to search.
+                    \u26a0\ufe0f {filters.employee_search.length} employee(s) selected. Click "Apply Filters" to search.
                   </div>
                 )}
               </div>
@@ -608,7 +610,7 @@ const AdvancedFilterPanel = ({
                   options={businessFunctionOptionsForMultiSelect}
                   selected={filters.business_function}
                   onChange={handleMultiSelectChangeAdapter}
-                  placeholder="Select Companys..."
+                  placeholder="Select Companies..."
                   fieldName="business_function"
                   darkMode={darkMode}
                 />
@@ -763,7 +765,7 @@ const AdvancedFilterPanel = ({
                   options={positionGroupOptionsForMultiSelect}
                   selected={filters.position_group}
                   onChange={handleMultiSelectChangeAdapter}
-                  placeholder="Select Hierarchys..."
+                  placeholder="Select Hierarchies..."
                   fieldName="position_group"
                   darkMode={darkMode}
                 />

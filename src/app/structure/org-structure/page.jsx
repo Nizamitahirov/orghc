@@ -1,21 +1,34 @@
-// app/org-chart/page.jsx - COMPLETE VERSION with Back Button & Persistence
+// app/org-chart/page.jsx
 'use client'
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { RefreshCw, Building2 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { useOrgChart } from '@/hooks/useOrgChart';
 import jobDescriptionService from '@/services/jobDescriptionService';
 
-// Import all components
 import OrgChartHeader from '@/components/orgchart/OrgChartHeader';
 import OrgChartFilters from '@/components/orgchart/OrgChartFilters';
 import EmployeeModal from '@/components/orgchart/EmployeeModal';
 import JobDescriptionModal from '@/components/orgchart/JobDescriptionModal';
-import GridView from '@/components/orgchart/OrgChartGridView';
-import { ReactFlowProvider } from 'reactflow';
-import TreeView from '@/components/orgchart/OrgChartTreeView';
-import { exportToPNG, exportToPDF } from '@/utils/orgChartExport';
+
+// Heavy components (ReactFlow + dagre) — lazy loaded to keep initial bundle small
+const GridView = dynamic(() => import('@/components/orgchart/OrgChartGridView'), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-96 text-gray-400">Loading chart...</div>,
+});
+
+// TreeView wrapped with ReactFlowProvider in a dedicated server-safe wrapper file
+const TreeViewWithProvider = dynamic(
+  () => import('@/components/orgchart/OrgChartTreeViewWrapper'),
+  {
+    ssr: false,
+    loading: () => <div className="flex items-center justify-center h-96 text-gray-400">Loading chart...</div>,
+  }
+);
+
+import { exportToPNG, exportToPDF, exportToPrint } from '@/utils/orgChartExport';
 
 const OrgChart = () => {
     const { darkMode } = useTheme();
@@ -73,14 +86,14 @@ const OrgChart = () => {
     const textMuted = darkMode ? "text-gray-500" : "text-almet-bali-hai";
     const textHeader = darkMode ? "text-gray-100" : "text-almet-cloud-burst";
 
-    // Select styles for react-select
-    const selectStyles = {
+    // Select styles for react-select — memoized so OrgChartFilters doesn't re-render on every keystroke
+    const selectStyles = useMemo(() => ({
         control: (provided, state) => ({
             ...provided,
             backgroundColor: darkMode ? '#334155' : '#ffffff',
             borderColor: darkMode ? '#475569' : '#d1d5db',
             color: darkMode ? '#e2e8f0' : '#374151',
-            minHeight: '38px',
+            minHeight: '34px',
             boxShadow: state.isFocused ? (darkMode ? '0 0 0 1px #30539b' : '0 0 0 1px #30539b') : 'none',
             '&:hover': {
                 borderColor: darkMode ? '#64748b' : '#9ca3af'
@@ -116,7 +129,7 @@ const OrgChart = () => {
         multiValueLabel: (provided) => ({
             ...provided,
             color: darkMode ? '#e2e8f0' : '#374151',
-            fontSize: '12px'
+            fontSize: '10px'
         }),
         multiValueRemove: (provided) => ({
             ...provided,
@@ -138,7 +151,7 @@ const OrgChart = () => {
             ...provided,
             color: darkMode ? '#94a3b8' : '#9ca3af'
         })
-    };
+    }), [darkMode]);
 
     // Save selected company to localStorage whenever it changes
     useEffect(() => {
@@ -191,13 +204,6 @@ const companyOptions = useMemo(() => {
         }
     });
     
-    //  Log if we found case variants
-    companyCountsMap.forEach((data, key) => {
-        if (data.variants.size > 1) {
-            console.log(`⚠️ Found case variants for "${key}":`, Array.from(data.variants));
-        }
-    });
-    
     // Add "All Companies" option at the beginning
     const options = [
         {
@@ -229,61 +235,30 @@ const companyOptions = useMemo(() => {
 
 // app/org-chart/page.jsx -  FIXED: Case-insensitive company filter
 
-//  FIXED: Company filtered data - case-insensitive matching
+// Company filtered data — fallback to orgChart when fullTree not yet loaded
 const companyFilteredOrgChart = useMemo(() => {
-    if (!selectedCompany || !fullTree) return [];
-    
+    const dataSource = (fullTree && fullTree.length > 0) ? fullTree : orgChart;
+    if (!selectedCompany || !dataSource || dataSource.length === 0) return [];
 
-    // Show all if "ALL" is selected
-    if (selectedCompany === 'ALL') {
-        return fullTree;
-    }
-    
-    //  Helper function to get business function value
+    if (selectedCompany === 'ALL') return dataSource;
+
     const getBusinessFunction = (item) => {
         if (!item) return null;
-        
-        // Try all possible field names
-        return item.business_function || 
-               item.business_function_name || 
+        return item.business_function ||
+               item.business_function_name ||
                item.department?.business_function ||
                null;
     };
-    
-    //  FIXED: Case-insensitive matching
+
     const selectedCompanyLower = String(selectedCompany).toLowerCase().trim();
-    
-    //  Filter with case-insensitive business function matching
-    const filtered = fullTree.filter(item => {
+
+    return dataSource.filter(item => {
         if (!item) return false;
-        
-        const businessFunction = getBusinessFunction(item);
-        
-        // Handle null/undefined
-        if (!businessFunction) {
-            console.log(`⚠️ No business function for: ${item.name || item.employee_id}`);
-            return false;
-        }
-        
-        //  Case-insensitive comparison
-        const businessFunctionLower = String(businessFunction).toLowerCase().trim();
-        const matches = businessFunctionLower === selectedCompanyLower;
-        
-        if (!matches) {
-            console.log(`❌ Filtered out: ${item.name || item.employee_id} - BF: ${businessFunction}`);
-        }
-        
-        return matches;
+        const bf = getBusinessFunction(item);
+        if (!bf) return false;
+        return String(bf).toLowerCase().trim() === selectedCompanyLower;
     });
-    
-    // Count breakdown
-    const employees = filtered.filter(e => !e.employee_details?.is_vacancy && !e.is_vacancy);
-    const vacancies = filtered.filter(e => e.employee_details?.is_vacancy || e.is_vacancy);
-    
- 
-    
-    return filtered;
-}, [fullTree, selectedCompany]);
+}, [fullTree, orgChart, selectedCompany]);
 
 const searchFilteredOrgChart = useMemo(() => {
     if (!companyFilteredOrgChart || companyFilteredOrgChart.length === 0) {
@@ -351,6 +326,32 @@ const searchFilteredOrgChart = useMemo(() => {
 
     return filtered;
 }, [companyFilteredOrgChart, filters.search]);
+
+// Lazy-visible nodes: only render root + children of expanded nodes when chart is large
+const LAZY_THRESHOLD = 150;
+const lazyVisibleNodes = useMemo(() => {
+    if (!searchFilteredOrgChart || searchFilteredOrgChart.length <= LAZY_THRESHOLD) {
+        return searchFilteredOrgChart;
+    }
+    const visibleIds = new Set();
+    // Always include roots
+    searchFilteredOrgChart.forEach((emp) => {
+        if (!emp.line_manager_id && !emp.manager_id && !emp.parent_id) {
+            visibleIds.add(String(emp.employee_id));
+        }
+    });
+    // Include expanded nodes and their direct children
+    const expandedSet = new Set(expandedNodes.map(String));
+    searchFilteredOrgChart.forEach((emp) => {
+        const parentId = String(emp.line_manager_id || emp.manager_id || emp.parent_id || "");
+        if (expandedSet.has(parentId) || expandedSet.has(String(emp.employee_id))) {
+            visibleIds.add(String(emp.employee_id));
+        }
+    });
+    return searchFilteredOrgChart.filter((emp) => visibleIds.has(String(emp.employee_id)));
+}, [searchFilteredOrgChart, expandedNodes]);
+
+const isLazyMode = searchFilteredOrgChart.length > LAZY_THRESHOLD;
 
 //  FIXED: Vacant count
 const vacantCount = useMemo(() => {
@@ -546,17 +547,18 @@ const companySummary = useMemo(() => {
         }
     };
 
-const [exportLoading, setExportLoading] = useState(null); // null | 'png' | 'pdf'
-
+const [exportLoading, setExportLoading] = useState(null); // null | 'png' | 'pdf' | 'print'
 
 const handleExportToPNG = useCallback(() => {
     exportToPNG({ darkMode, selectedCompany, setExportLoading });
 }, [darkMode, selectedCompany]);
 
-
-// ─── 4. handleExportToPDF callback əlavə et ───────────────────────────────────
 const handleExportToPDF = useCallback(() => {
     exportToPDF({ darkMode, selectedCompany, setExportLoading, summary: companySummary });
+}, [darkMode, selectedCompany, companySummary]);
+
+const handlePrint = useCallback(() => {
+    exportToPrint({ darkMode, selectedCompany, setExportLoading, summary: companySummary });
 }, [darkMode, selectedCompany, companySummary]);
 
 
@@ -642,18 +644,19 @@ const handleExportToPDF = useCallback(() => {
 
     // Show company selection screen if no company selected
     if (!selectedCompany) {
+        const maxCount = Math.max(...companyOptions.filter(c => !c.isAll).map(c => c.count), 1);
         return (
             <DashboardLayout>
                 <div className={`h-full ${bgApp} flex items-center justify-center p-6 org-chart-container`}>
                     <div className={`${bgCard} rounded-2xl shadow-2xl p-8 max-w-2xl w-full border ${borderColor}`}>
                         <div className="text-center mb-8">
-                            <div className="w-20 h-20 bg-gradient-to-br from-almet-sapphire to-almet-cloud-burst rounded-2xl flex items-center justify-center shadow-lg mx-auto mb-6">
-                                <Building2 className="w-10 h-10 text-white" />
+                            <div className="w-16 h-16 bg-gradient-to-br from-almet-sapphire to-almet-cloud-burst rounded-2xl flex items-center justify-center shadow-lg mx-auto mb-4">
+                                <Building2 className="w-8 h-8 text-white" />
                             </div>
-                            <h1 className={`text-3xl font-bold ${textHeader} mb-3`}>
+                            <h1 className={`text-2xl font-bold ${textHeader} mb-2`}>
                                 Organizational Chart
                             </h1>
-                            <p className={`${textSecondary} text-lg mb-8`}>
+                            <p className={`${textSecondary} text-sm`}>
                                 Select a company to view its organizational structure
                             </p>
                         </div>
@@ -664,30 +667,58 @@ const handleExportToPDF = useCallback(() => {
                                 <p className={`${textSecondary}`}>Loading companies...</p>
                             </div>
                         ) : (
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 {companyOptions.map((company) => (
                                     <button
                                         key={company.value}
                                         onClick={() => setSelectedCompany(company.value)}
-                                        className={`w-full p-4 ${bgApp} hover:bg-almet-sapphire hover:text-white ${textHeader} rounded-xl border ${
-                                            company.isAll ? 'border-almet-sapphire border-2' : borderColor
-                                        } transition-all duration-200 hover:shadow-lg hover:scale-[1.02] text-left flex items-center justify-between group ${
-                                            company.isAll ? 'bg-gradient-to-r from-almet-sapphire/10 to-almet-cloud-burst/10' : ''
+                                        className={`w-full text-left rounded-xl border transition-all duration-150 hover:shadow-md hover:scale-[1.01] group overflow-hidden ${
+                                            company.isAll
+                                                ? 'border-almet-sapphire bg-gradient-to-r from-almet-sapphire/8 to-almet-cloud-burst/5 hover:from-almet-sapphire hover:to-almet-cloud-burst'
+                                                : `${borderColor} ${bgApp} hover:border-almet-sapphire/50 hover:bg-almet-sapphire hover:text-white`
                                         }`}
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <Building2 className={`w-5 h-5 ${
-                                                company.isAll ? 'text-almet-sapphire' : 'text-almet-sapphire'
-                                            } group-hover:text-white transition-colors`} />
-                                            <span className={`font-semibold text-base ${
-                                                company.isAll ? 'text-almet-sapphire group-hover:text-white' : ''
+                                        <div className="px-4 py-3 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+                                                    company.isAll
+                                                        ? 'bg-almet-sapphire/15 group-hover:bg-white/20'
+                                                        : 'bg-almet-sapphire/10 group-hover:bg-white/20'
+                                                }`}>
+                                                    <Building2 className={`w-4 h-4 transition-colors ${
+                                                        company.isAll ? 'text-almet-sapphire group-hover:text-white' : 'text-almet-sapphire group-hover:text-white'
+                                                    }`} />
+                                                </div>
+                                                <div>
+                                                    <span className={`font-semibold text-sm block ${
+                                                        company.isAll ? 'text-almet-sapphire group-hover:text-white' : `${textHeader} group-hover:text-white`
+                                                    }`}>
+                                                        {company.isAll ? 'All Companies' : company.value}
+                                                    </span>
+                                                    {!company.isAll && (
+                                                        <span className={`text-xs ${textMuted} group-hover:text-white/70`}>
+                                                            {company.count} employee{company.count !== 1 ? 's' : ''}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <span className={`text-xs font-bold px-2.5 py-1 rounded-full transition-colors ${
+                                                company.isAll
+                                                    ? 'bg-almet-sapphire/15 text-almet-sapphire group-hover:bg-white/20 group-hover:text-white'
+                                                    : `${darkMode ? 'bg-slate-700 text-gray-300' : 'bg-gray-100 text-gray-600'} group-hover:bg-white/20 group-hover:text-white`
                                             }`}>
-                                                {company.isAll ? 'All Companies' : company.value}
+                                                {company.count}
                                             </span>
                                         </div>
-                                        <span className={`${textMuted} group-hover:text-white text-sm`}>
-                                            {company.count} employees
-                                        </span>
+                                        {/* Relative size bar */}
+                                        {!company.isAll && (
+                                            <div className={`h-0.5 ${darkMode ? 'bg-slate-700' : 'bg-gray-100'} group-hover:bg-white/20`}>
+                                                <div
+                                                    className="h-full bg-almet-sapphire/40 group-hover:bg-white/40 transition-all duration-300"
+                                                    style={{ width: `${Math.round((company.count / maxCount) * 100)}%` }}
+                                                />
+                                            </div>
+                                        )}
                                     </button>
                                 ))}
                             </div>
@@ -700,6 +731,20 @@ const handleExportToPDF = useCallback(() => {
 
     return (
         <DashboardLayout>
+            {/* Export loading overlay */}
+            {exportLoading && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] flex items-center justify-center">
+                    <div className="bg-white dark:bg-almet-cloud-burst rounded-2xl p-8 shadow-2xl flex flex-col items-center gap-4 border border-almet-mystic dark:border-almet-san-juan">
+                        <div className="w-12 h-12 rounded-full border-4 border-almet-sapphire border-t-transparent animate-spin" />
+                        <p className="text-sm font-bold text-almet-cloud-burst dark:text-white">
+                            Exporting {exportLoading === 'png' ? 'PNG image' : 'PDF document'}…
+                        </p>
+                        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                            Please wait, this may take a few seconds
+                        </p>
+                    </div>
+                </div>
+            )}
             <div ref={containerRef} className={`${isFullscreen ? 'fixed inset-0 z-50' : 'h-full'} ${bgApp} flex flex-col org-chart-container`}>
                 {/* Header with Company Selector and Back Button */}
                 <OrgChartHeader
@@ -716,10 +761,10 @@ const handleExportToPDF = useCallback(() => {
                     updateFilter={updateFilter}
                     setViewMode={setViewMode}
                     setShowFilters={setShowFilters}
-                     handleExportToPNG={handleExportToPNG}
-    handleExportToPDF={handleExportToPDF}   // ← YENİ
-    exportLoading={exportLoading}    
-                    
+                    handleExportToPNG={handleExportToPNG}
+                    handleExportToPDF={handleExportToPDF}
+                    handlePrint={handlePrint}
+                    exportLoading={exportLoading}
                     toggleFullscreen={toggleFullscreen}
                     fetchFullTreeWithVacancies={fetchFullTreeWithVacancies}
                     hasActiveFilters={hasActiveFilters}
@@ -741,24 +786,33 @@ const handleExportToPDF = useCallback(() => {
                     isFullscreen={isFullscreen}
                 />
 
+                {/* Performance banner for large charts */}
+                {isLazyMode && (
+                    <div className="flex items-center justify-between gap-3 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 text-xs">
+                        <span className="text-amber-700 dark:text-amber-300">
+                            ⚡ Large chart ({searchFilteredOrgChart.length} nodes) — showing expanded levels only for performance. Click nodes to expand.
+                        </span>
+                        <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                            {lazyVisibleNodes.length} / {searchFilteredOrgChart.length} visible
+                        </span>
+                    </div>
+                )}
+
                 {/* Main Chart Container */}
                 <div className="relative overflow-hidden flex-grow">
                     {viewMode === 'tree' ? (
-                        <ReactFlowProvider>
-                            <TreeView
-                                filteredOrgChart={searchFilteredOrgChart}
-                                expandedNodes={expandedNodes}
-                                layoutDirection={layoutDirection}
-                                setLayoutDirection={setLayoutDirection}
-                                toggleExpandedNode={toggleExpandedNode}
-                                setSelectedEmployee={setSelectedEmployee}
-                                navigateToEmployee={navigateToEmployee}
-                                orgChart={searchFilteredOrgChart}
-                                setExpandedNodes={setExpandedNodes}
-                                isLoading={isLoading}
-                                darkMode={darkMode}
-                            />
-                        </ReactFlowProvider>
+                        <TreeViewWithProvider
+                            filteredOrgChart={lazyVisibleNodes}
+                            expandedNodes={expandedNodes}
+                            layoutDirection={layoutDirection}
+                            setLayoutDirection={setLayoutDirection}
+                            toggleExpandedNode={toggleExpandedNode}
+                            setSelectedEmployee={setSelectedEmployee}
+                            navigateToEmployee={navigateToEmployee}
+                            setExpandedNodes={setExpandedNodes}
+                            isLoading={isLoading}
+                            darkMode={darkMode}
+                        />
                     ) : (
                         <GridView
                             filteredOrgChart={searchFilteredOrgChart}

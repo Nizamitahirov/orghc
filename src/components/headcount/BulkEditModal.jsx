@@ -174,6 +174,16 @@ const BulkEditModal = ({
     return managerOptions.find(manager => manager.value === selectedLineManagerId);
   }, [managerOptions, selectedLineManagerId]);
 
+  // Dirty state: selected manager is different from all current managers
+  const isDirty = useMemo(() => {
+    if (!selectedLineManagerId) return false;
+    if (!selectedEmployeeData || selectedEmployeeData.length === 0) return true;
+    const allSameManager = selectedEmployeeData.every(
+      emp => emp.line_manager_id?.toString() === selectedLineManagerId
+    );
+    return !allSameManager;
+  }, [selectedLineManagerId, selectedEmployeeData]);
+
   // Analyze current line manager situation
   const currentLineManagerAnalysis = useMemo(() => {
     if (!selectedEmployeeData || selectedEmployeeData.length === 0) {
@@ -227,6 +237,11 @@ const BulkEditModal = ({
   const handleAssignLineManager = async () => {
     if (!selectedLineManagerId) {
       showError('Please select a line manager');
+      return;
+    }
+
+    if (!isDirty) {
+      showError('No changes detected — the selected manager is already assigned to all employees');
       return;
     }
 
@@ -457,7 +472,12 @@ const BulkEditModal = ({
         {/* Footer */}
         <div className={`px-4 py-3 border-t ${borderColor} bg-gray-50/50 dark:bg-gray-800/30 flex items-center justify-between`}>
           <div className="flex items-center">
-            {selectedEmployees.length > 0 && (
+            {selectedEmployees.length > 0 && selectedLineManagerId && !isDirty ? (
+              <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                No changes — this manager is already assigned
+              </span>
+            ) : selectedEmployees.length > 0 && (
               <span className={`text-xs ${textMuted}`}>
                 {selectedEmployees.length} employee{selectedEmployees.length !== 1 ? 's' : ''} will be updated
               </span>
@@ -473,9 +493,9 @@ const BulkEditModal = ({
             </button>
             <button
               onClick={handleAssignLineManager}
-              disabled={isProcessing || !selectedLineManagerId || selectedEmployees.length === 0 || isLoadingAllEmployees}
+              disabled={isProcessing || !selectedLineManagerId || !isDirty || selectedEmployees.length === 0 || isLoadingAllEmployees}
               className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                isProcessing || !selectedLineManagerId || selectedEmployees.length === 0 || isLoadingAllEmployees
+                isProcessing || !selectedLineManagerId || !isDirty || selectedEmployees.length === 0 || isLoadingAllEmployees
                   ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                   : 'bg-almet-sapphire hover:bg-almet-astral text-white'
               }`}

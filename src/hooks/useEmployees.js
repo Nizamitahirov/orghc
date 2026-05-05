@@ -278,12 +278,11 @@ export const useEmployees = () => {
     
     return Promise.all([
       dispatch(fetchBusinessFunctions()),
-      dispatch(fetchJobFunctions()), 
+      dispatch(fetchJobFunctions()),
       dispatch(fetchPositionGroups()),
       dispatch(fetchEmployeeStatuses()),
       dispatch(fetchEmployeeTags())
     ]).catch(error => {
-      console.error('❌ Failed to load filter options:', error);
       isInitialized.current = false;
       throw error;
     });

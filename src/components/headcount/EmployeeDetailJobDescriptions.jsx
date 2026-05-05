@@ -1,6 +1,7 @@
 // components/headcount/EmployeeDetailJobDescriptions.jsx
 'use client'
 import React, { useState, useEffect, useMemo } from 'react';
+import { capitalizeAcronyms } from '@/utils/formatText';
 import {
   FileText, Clock, CheckCircle, XCircle, AlertCircle, User, Eye, Users,
   RotateCcw, CheckSquare, Download, X, Building, Briefcase, Target,
@@ -67,7 +68,7 @@ const CommentBubble = ({ who, text, color }) => (
 // ─── ASSIGNMENT CARD ──────────────────────────────────────────────────────────
 const AssignmentCard = ({
   assignment, showManagerActions, detailLoading,
-  onView, onApprove, onReject,
+  onView, onApprove, onReject, employeeId,
   bgCard, borderColor, textPrimary, textMuted, bgAccent
 }) => {
   const canMgr = showManagerActions && assignment.can_approve_as_manager;
@@ -93,8 +94,8 @@ const AssignmentCard = ({
           </div>
           <div className="flex-1 min-w-0">
             <p className={`text-xs font-bold ${textPrimary} leading-tight line-clamp-2`}
-               title={assignment.job_title}>
-              {assignment.job_title}
+               title={capitalizeAcronyms(assignment.job_title)}>
+              {capitalizeAcronyms(assignment.job_title)}
             </p>
             <p className={`text-[10px] ${textMuted} mt-0.5`}>
               {assignment.business_function}{assignment.department ? ` · ${assignment.department}` : ''}
@@ -152,7 +153,7 @@ const AssignmentCard = ({
               <Eye size={10} /> View
             </button>
             <button
-              onClick={() => jobDescriptionService.downloadJobDescriptionPDF(assignment.job_description_id)}
+              onClick={() => jobDescriptionService.downloadJobDescriptionPDF(assignment.job_description_id, employeeId)}
               className="flex items-center gap-1 px-2.5 py-1.5 text-gray-500 hover:bg-gray-100
                 dark:hover:bg-almet-comet/40 rounded-lg transition-colors text-[10px] font-medium"
             >
@@ -205,7 +206,7 @@ const CompactCard = ({
           <FileText size={13} />
         </div>
         <div className="min-w-0">
-          <p className={`text-xs font-semibold ${textPrimary} truncate`}>{assignment.job_title}</p>
+          <p className={`text-xs font-semibold ${textPrimary} truncate`}>{capitalizeAcronyms(assignment.job_title)}</p>
           <p className={`text-[10px] ${textMuted} truncate`}>
             {assignment.is_vacancy ? 'Vacant' : assignment.employee_name} · {assignment.department}
           </p>
@@ -244,7 +245,7 @@ const ApprovalModal = ({ assignment, type, comments, onChange, onConfirm, onCanc
         </h3>
 
         <div className={`p-3 rounded-xl mb-4 bg-gray-50 dark:bg-almet-comet/30 border ${borderColor} space-y-1.5`}>
-          <p className={`text-xs font-bold ${textPrimary}`}>{assignment.job_title}</p>
+          <p className={`text-xs font-bold ${textPrimary}`}>{capitalizeAcronyms(assignment.job_title)}</p>
           <div className="flex items-center gap-1.5">
             {assignment.is_vacancy
               ? <UserVacant size={11} className="text-orange-500" />
@@ -433,7 +434,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
   const teamPending = teamSummary?.pending_line_manager || 0;
 
   // ── shared card props ──────────────────────────────────────────────────────
-  const cardProps = { detailLoading, onView: fetchJobDetail, onApprove: openApprove, onReject: openReject, ...theme };
+  const cardProps = { detailLoading, onView: fetchJobDetail, onApprove: openApprove, onReject: openReject, employeeId, ...theme };
 
   if (loading) return (
     <div className={`${bgCard} rounded-xl border ${borderColor} p-6`}>
@@ -671,7 +672,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
         <JobViewModal
           job={jobDetail}
           onClose={() => setJobDetail(null)}
-          onDownloadPDF={() => jobDescriptionService.downloadJobDescriptionPDF(jobDetail.id)}
+          onDownloadPDF={() => jobDescriptionService.downloadJobDescriptionPDF(jobDetail.id, employeeId)}
           darkMode={darkMode}
         />
       )}

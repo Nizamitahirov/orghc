@@ -556,22 +556,33 @@ const updateAssignmentPreview = async () => {
 
  
 
-    // 🔥 Enhanced validation with helpful error messages
+    // Enhanced validation with helpful error messages
     if (!businessFunctionId || !departmentId || !jobFunctionId || !positionGroupId) {
       const missingFields = [];
       if (!businessFunctionId) missingFields.push(`Business Function "${formData.business_function}"`);
       if (!departmentId) missingFields.push(`Department "${formData.department}"`);
       if (!jobFunctionId) missingFields.push(`Job Function "${formData.job_function}"`);
       if (!positionGroupId) missingFields.push(`Position Group "${formData.position_group}"`);
-      
-      const errorMsg = `Cannot find IDs for: ${missingFields.join(', ')}\n\n` +
-        `This means no employees currently exist with these exact organizational values.\n\n` +
-        `Possible solutions:\n` +
-        `1. Check if the organizational structure has changed\n` +
-        `2. Update the job's organizational information to match current records\n` +
-        `3. Ensure at least one employee exists with this combination`;
-      
-      throw new Error(errorMsg);
+
+      const warningMsg = `No employees found for: ${missingFields.join(', ')}. The organizational structure may not have employees with this combination yet.`;
+
+      setPreviewLoading(false);
+      setPreviewError(warningMsg);
+      setAssignmentPreview({
+        strategy: 'no_match',
+        employeeCount: 0,
+        vacancyCount: 0,
+        totalCount: 0,
+        requiresSelection: false,
+        previewMessage: warningMsg,
+        records: [],
+        employees: [],
+        criteria: {}
+      });
+      if (onAssignmentPreviewUpdate) {
+        onAssignmentPreviewUpdate(null);
+      }
+      return;
     }
 
     // Ensure all IDs are integers
@@ -731,7 +742,7 @@ const areAllRequiredFieldsFilled = () => {
     formData.department,
     formData.job_function,
     formData.position_group,
-    dropdownData.employees
+    dropdownData.employees?.length
   ]);
 
   useEffect(() => {

@@ -11,6 +11,8 @@ import {
   Plus,
   Edit2,
   Trash2,
+  Lock,
+  Info,
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 
@@ -191,34 +193,58 @@ export default function CompaniesView({
                   <Building2 className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex items-center gap-1">
-                  {/*  Manual company-lər üçün edit/delete buttonları - only if admin */}
-                  {company.type === 'policy_company' && userAccess?.is_admin && (
-                    <>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditCompany(company);
-                        }}
-                        className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
-                          darkMode ? "hover:bg-gray-700 text-gray-400" : "hover:bg-gray-200 text-gray-500"
-                        }`}
-                        title="Edit Company"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteCompany(company);
-                        }}
-                        className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
-                          darkMode ? "hover:bg-red-900/30 text-red-400" : "hover:bg-red-100 text-red-500"
-                        }`}
-                        title="Delete Company"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </>
+                  {/* Admin controls */}
+                  {userAccess?.is_admin && (
+                    company.type === 'policy_company' ? (
+                      // Manual company — full edit/delete
+                      <>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onEditCompany(company); }}
+                          className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
+                            darkMode ? "hover:bg-gray-700 text-gray-400" : "hover:bg-gray-200 text-gray-500"
+                          }`}
+                          title="Edit Company"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onDeleteCompany(company); }}
+                          className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
+                            darkMode ? "hover:bg-red-900/30 text-red-400" : "hover:bg-red-100 text-red-500"
+                          }`}
+                          title="Delete Company"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      // Auto-generated — show lock icon with tooltip explaining why
+                      <div className="relative group/lock opacity-0 group-hover:opacity-100 transition-all">
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className={`p-1.5 rounded-lg cursor-default ${
+                            darkMode ? "text-gray-600" : "text-gray-400"
+                          }`}
+                          title=""
+                        >
+                          <Lock className="w-3.5 h-3.5" />
+                        </div>
+                        {/* Tooltip */}
+                        <div className={`
+                          absolute right-0 top-8 z-20 w-52 p-2.5 rounded-lg shadow-xl text-[10px] leading-snug pointer-events-none
+                          opacity-0 group-hover/lock:opacity-100 transition-opacity duration-150
+                          ${darkMode ? "bg-gray-900 border border-gray-700 text-gray-300" : "bg-white border border-gray-200 text-gray-600"}
+                        `}>
+                          <div className="flex items-start gap-1.5">
+                            <Info className="w-3 h-3 shrink-0 mt-0.5 text-almet-sapphire" />
+                            <span>
+                              This entry is <strong>auto-generated</strong> from the Organisation Chart.
+                              To rename or remove it, update the corresponding Business Function in the org settings.
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )
                   )}
                   <ChevronRight 
                     onClick={() => onSelectCompany(company)}
@@ -230,15 +256,21 @@ export default function CompaniesView({
               </div>
 
               <div onClick={() => onSelectCompany(company)}>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <h3 className={`text-base font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
                     {company.name}
                   </h3>
-                  {company.type === 'policy_company' && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  {company.type === 'policy_company' ? (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
                       darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'
                     }`}>
                       Manual
+                    </span>
+                  ) : (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-1 ${
+                      darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                      <Lock className="w-2.5 h-2.5" /> Org Structure
                     </span>
                   )}
                 </div>

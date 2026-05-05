@@ -97,7 +97,8 @@ export default function ContractProbationPage() {
       setLoading(true);
       const info = await resignationExitService.getCurrentUser();
       setUserRole(info);
-      const admin = info.is_admin;
+      const admin   = info.is_admin;
+      const manager = info.is_manager;
       setIsAdmin(admin);
 
       const cfgRes = await apiService.getContractConfigs();
@@ -106,7 +107,7 @@ export default function ContractProbationPage() {
       cfgs.forEach(c => { cfgMap[c.contract_type] = { probation_days: c.probation_days||0, display_name: c.display_name||c.contract_type }; });
       setContractCfgs(cfgMap);
 
-      if (admin) await loadProbation(cfgMap);
+      if (admin || manager) await loadProbation(cfgMap);
       await loadRenewals();
       await loadReviews();
     } catch (e) { console.error(e); }
@@ -163,7 +164,7 @@ export default function ContractProbationPage() {
 
   if (loading) return <LoadingSpinner message="Loading Contract & Probation Management…"/>;
 
-  if (!isAdmin && renewals.length===0 && reviews.length===0)
+  if (!isAdmin && !userRole?.is_manager && renewals.length===0 && reviews.length===0)
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -173,7 +174,7 @@ export default function ContractProbationPage() {
             </div>
             <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">Access Denied</p>
             <p className="text-xs text-gray-400 mb-4">You don't have permission to view this page.</p>
-            <button onClick={() => window.location.href='/resignation-exit'}
+            <button onClick={() => window.location.href='/requests/resignation'}
               className="px-3 py-1.5 bg-almet-sapphire text-white rounded-lg text-xs font-semibold hover:bg-almet-astral transition-colors">
               Go Back
             </button>
@@ -222,7 +223,7 @@ export default function ContractProbationPage() {
               <p className="text-xs text-white/60">Monitor probation periods, contract renewals, and reviews</p>
             </div>
             {isAdmin && (
-              <button onClick={() => window.location.href='/resignation-exit/question-management'}
+              <button onClick={() => window.location.href='/requests/resignation/question-management'}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-lg text-xs font-semibold transition-colors">
                 <Settings size={13}/> Questions
               </button>

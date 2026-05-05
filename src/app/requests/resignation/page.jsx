@@ -442,7 +442,7 @@ export default function ResignationExitManagement() {
 
         {showModal && <>
           {modalType === 'submit_resignation'    && <ResignationSubmissionModal onClose={closeModal} onSuccess={onSuccess} currentEmployee={currentUser}/>}
-          {modalType === 'resignation_detail' && selectedItem && <ResignationDetailModal resignation={selectedItem} onClose={closeModal} onSuccess={onSuccess} userRole={userRole}/>}
+          {modalType === 'resignation_detail' && selectedItem && <ResignationDetailModal resignation={selectedItem} onClose={closeModal} onSuccess={onSuccess} userRole={userRole} currentUser={currentUser}/>}
           {modalType === 'exit_interview'     && selectedItem && (
             selectedItem.status === 'COMPLETED'
               ? <ViewExitInterviewModal interview={selectedItem} onClose={closeModal}/>

@@ -6,8 +6,8 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { assetService } from "@/services/assetService";
 import {
   Package, Users, CheckCircle, Wrench,
-  Archive, ChevronRight, Loader, UserMinus,
- AlertTriangle,
+  Archive, Inbox, ChevronRight, Loader, UserMinus,
+  AlertTriangle,
 } from "lucide-react";
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
@@ -110,7 +110,7 @@ export default function AssetDashboardPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <StatCard icon={Package}     label="Total"      value={total}    colorClass="text-almet-cloud-burst dark:text-almet-steel-blue" bgClass="bg-almet-mystic dark:bg-almet-cloud-burst/20" />
           <StatCard icon={CheckCircle} label="In Use"     value={inUse}    colorClass="text-emerald-600 dark:text-emerald-400"           bgClass="bg-emerald-50 dark:bg-emerald-900/20" />
-          <StatCard icon={Archive}     label="In Stock"   value={inStock}  colorClass="text-gray-500 dark:text-gray-400"                 bgClass="bg-gray-100 dark:bg-gray-800" />
+          <StatCard icon={Inbox}       label="In Stock"   value={inStock}  colorClass="text-gray-500 dark:text-gray-400"                 bgClass="bg-gray-100 dark:bg-gray-800" />
           <StatCard icon={Wrench}      label="In Repair"  value={inRepair} colorClass="text-blue-600 dark:text-blue-400"                 bgClass="bg-blue-50 dark:bg-blue-900/20" />
           <StatCard icon={Archive}     label="Archived"   value={archived} colorClass="text-orange-600 dark:text-orange-400"             bgClass="bg-orange-50 dark:bg-orange-900/20" />
         </div>

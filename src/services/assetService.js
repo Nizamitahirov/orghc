@@ -43,6 +43,20 @@ const get = (url, params = {}) =>
     })
     .then((r) => r.data);
 
+// Fetch every page and return a flat array of all results
+export const fetchAll = async (url, params = {}, pageSize = 200) => {
+  let results = [];
+  let page = 1;
+  while (true) {
+    const res = await get(url, { ...params, page, page_size: pageSize });
+    const items = res.results ?? res;
+    results = results.concat(items);
+    if (!res.next || !Array.isArray(res.results)) break;
+    page++;
+  }
+  return results;
+};
+
 const post  = (url, data = {}) => api.post(url, data).then((r) => r.data);
 const put   = (url, data = {}) => api.put(url, data).then((r) => r.data);
 const patch = (url, data = {}) => api.patch(url, data).then((r) => r.data);
@@ -163,6 +177,17 @@ export const transferService = {
   myPending: ()            => get("/assets/transfers/my-pending/"),
   // Body: { accepted: boolean, reason?: string }
   respond:   (id, data)    => post(`/assets/transfers/${id}/respond/`, data),
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HANDOVER (Tehvil Aktı)  —  /assets/handovers/
+// ══════════════════════════════════════════════════════════════════════════════
+export const handoverService = {
+  list:      (params = {}) => get("/assets/handovers/", params),
+  detail:    (id)          => get(`/assets/handovers/${id}/`),
+  myPending: ()            => get("/assets/handovers/my-pending/"),
+  // Body: { notes?: string }
+  accept:    (id, data={}) => post(`/assets/handovers/${id}/accept/`, data),
 };
 
 // ══════════════════════════════════════════════════════════════════════════════

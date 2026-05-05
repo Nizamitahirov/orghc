@@ -1,5 +1,5 @@
 // src/components/headcount/SearchBar.jsx - COMPLETELY FIXED: Search functionality with proper type handling
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo } from "react";
 import { Search, X, Clock } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 
@@ -239,4 +239,4 @@ const SearchBar = ({
   );
 };
 
-export default SearchBar;
+export default memo(SearchBar);

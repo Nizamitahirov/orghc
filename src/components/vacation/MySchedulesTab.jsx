@@ -2,10 +2,10 @@
 
 import {
   Download, Edit, Trash, Check, Eye, Calendar,
-  CheckCircle, XCircle, Clock, AlertCircle, Info,
-  CalendarDays, Users
+  CheckCircle, XCircle, Clock, Info,
+  CalendarDays, Users, Filter, X, Search
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { VacationService } from '@/services/vacationService';
 import Pagination from '@/components/common/Pagination';
 import PlanningStatisticsModal from './PlanningStatisticsModal';
@@ -34,6 +34,49 @@ export default function MySchedulesTab({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // ── Filter state ──────────────────────────────────────────
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    employee_name: '',
+    business_function: '',
+    start_date: '',
+    end_date: '',
+  });
+
+  const resetFilters = () => {
+    setFilters({ employee_name: '', business_function: '', start_date: '', end_date: '' });
+    setCurrentPage(1);
+  };
+
+  const activeFilterCount = Object.values(filters).filter(v => v !== '').length;
+
+  // ── Derive unique business functions from current tab's data ──
+  const businessFunctionOptions = useMemo(() => {
+    const raw = scheduleTabs[activeSubTab] || [];
+    const set = new Set(raw.map(s => s.business_function_name).filter(Boolean));
+    return [...set].sort();
+  }, [scheduleTabs, activeSubTab]);
+
+  // ── Filtered + paginated data ─────────────────────────────
+  const filteredSchedules = useMemo(() => {
+    const raw = scheduleTabs[activeSubTab] || [];
+    return raw.filter(s => {
+      if (filters.employee_name && !s.employee_name?.toLowerCase().includes(filters.employee_name.toLowerCase())) return false;
+      if (filters.business_function && s.business_function_name !== filters.business_function) return false;
+      if (filters.start_date && s.start_date < filters.start_date) return false;
+      if (filters.end_date && s.end_date > filters.end_date) return false;
+      return true;
+    });
+  }, [scheduleTabs, activeSubTab, filters]);
+
+  const totalPages = Math.ceil(filteredSchedules.length / itemsPerPage);
+  const paginated = filteredSchedules.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const canDeleteSchedule = () => userAccess.is_admin;
+  const canRegisterSchedule = s => userAccess.is_admin && s.status === 'SCHEDULED';
+  const canApproveSchedule = s =>
+    (userAccess.is_manager || userAccess.is_admin) && s.status === 'PENDING_MANAGER';
+
   const subTabs = [
     { key: 'upcoming', label: 'My Upcoming', description: 'Your planned vacations', count: scheduleTabs.upcoming?.length || 0 },
     ...(userAccess.is_manager || userAccess.is_admin
@@ -46,15 +89,6 @@ export default function MySchedulesTab({
       count: scheduleTabs.all?.length || 0
     },
   ];
-
-  const currentSchedules = scheduleTabs[activeSubTab] || [];
-  const totalPages = Math.ceil(currentSchedules.length / itemsPerPage);
-  const paginated = currentSchedules.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-  const canDeleteSchedule = () => userAccess.is_admin;
-  const canRegisterSchedule = s => userAccess.is_admin && s.status === 'SCHEDULED';
-  const canApproveSchedule = s =>
-    (userAccess.is_manager || userAccess.is_admin) && s.status === 'PENDING_MANAGER';
 
   const getStatusBadge = (status, display) => {
     const cfg = {
@@ -118,7 +152,7 @@ export default function MySchedulesTab({
         {subTabs.map(tab => (
           <button
             key={tab.key}
-            onClick={() => { setActiveSubTab(tab.key); setCurrentPage(1); }}
+            onClick={() => { setActiveSubTab(tab.key); setCurrentPage(1); resetFilters(); }}
             className={`rounded-xl border p-3 text-left transition-all ${
               activeSubTab === tab.key
                 ? 'bg-almet-sapphire border-almet-sapphire text-white shadow-md'
@@ -142,17 +176,134 @@ export default function MySchedulesTab({
 
       {/* ── Table Card ── */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic/50 dark:border-almet-comet shadow-sm overflow-hidden">
-        {currentSchedules.length === 0 ? (
+
+        {/* ── Filter Bar ── */}
+        <div className="px-4 py-3 border-b border-almet-mystic/30 dark:border-almet-comet/30 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+              {filteredSchedules.length} record{filteredSchedules.length !== 1 ? 's' : ''}
+              {activeFilterCount > 0 && ` (filtered from ${scheduleTabs[activeSubTab]?.length || 0})`}
+            </span>
+            {activeFilterCount > 0 && (
+              <button
+                onClick={resetFilters}
+                className="flex items-center gap-1 text-xs text-red-500 hover:text-red-600 transition-colors"
+              >
+                <X className="w-3 h-3" /> Clear filters
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setShowFilters(p => !p)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border transition-all ${
+              showFilters || activeFilterCount > 0
+                ? 'bg-almet-sapphire text-white border-almet-sapphire'
+                : 'border-almet-bali-hai/40 dark:border-almet-comet text-almet-waterloo dark:text-almet-bali-hai hover:border-almet-sapphire/50'
+            }`}
+          >
+            <Filter className="w-3 h-3" />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="ml-0.5 w-4 h-4 rounded-full bg-white text-almet-sapphire text-[10px] font-bold flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* ── Filter Panel ── */}
+        {showFilters && (
+          <div className="px-4 py-4 bg-almet-mystic/20 dark:bg-gray-700/30 border-b border-almet-mystic/30 dark:border-almet-comet/30">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+
+              {/* Employee name */}
+              <div>
+                <label className="block text-[11px] font-medium text-almet-comet dark:text-almet-bali-hai mb-1">
+                  Employee
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-almet-waterloo/60" />
+                  <input
+                    type="text"
+                    value={filters.employee_name}
+                    onChange={e => { setFilters(p => ({ ...p, employee_name: e.target.value })); setCurrentPage(1); }}
+                    placeholder="Search name..."
+                    className="w-full pl-8 pr-3 py-2 text-xs border border-almet-bali-hai/30 dark:border-almet-comet rounded-lg bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white outline-none focus:ring-1 focus:ring-almet-sapphire/50"
+                  />
+                  {filters.employee_name && (
+                    <button onClick={() => setFilters(p => ({ ...p, employee_name: '' }))} className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                      <X className="w-3 h-3 text-almet-waterloo/60 hover:text-red-500" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Business function (company) */}
+              <div>
+                <label className="block text-[11px] font-medium text-almet-comet dark:text-almet-bali-hai mb-1">
+                  Company
+                </label>
+                <select
+                  value={filters.business_function}
+                  onChange={e => { setFilters(p => ({ ...p, business_function: e.target.value })); setCurrentPage(1); }}
+                  className="w-full px-3 py-2 text-xs border border-almet-bali-hai/30 dark:border-almet-comet rounded-lg bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white outline-none focus:ring-1 focus:ring-almet-sapphire/50"
+                >
+                  <option value="">All companies</option>
+                  {businessFunctionOptions.map(bf => (
+                    <option key={bf} value={bf}>{bf}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Start date from */}
+              <div>
+                <label className="block text-[11px] font-medium text-almet-comet dark:text-almet-bali-hai mb-1">
+                  Start date (from)
+                </label>
+                <input
+                  type="date"
+                  value={filters.start_date}
+                  onChange={e => { setFilters(p => ({ ...p, start_date: e.target.value })); setCurrentPage(1); }}
+                  className="w-full px-3 py-2 text-xs border border-almet-bali-hai/30 dark:border-almet-comet rounded-lg bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white outline-none focus:ring-1 focus:ring-almet-sapphire/50"
+                />
+              </div>
+
+              {/* End date to */}
+              <div>
+                <label className="block text-[11px] font-medium text-almet-comet dark:text-almet-bali-hai mb-1">
+                  End date (to)
+                </label>
+                <input
+                  type="date"
+                  value={filters.end_date}
+                  onChange={e => { setFilters(p => ({ ...p, end_date: e.target.value })); setCurrentPage(1); }}
+                  className="w-full px-3 py-2 text-xs border border-almet-bali-hai/30 dark:border-almet-comet rounded-lg bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white outline-none focus:ring-1 focus:ring-almet-sapphire/50"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {filteredSchedules.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16 px-4 text-center">
             <div className="w-16 h-16 bg-almet-mystic/30 dark:bg-gray-700 rounded-full flex items-center justify-center">
               <Calendar className="w-8 h-8 text-almet-waterloo/40 dark:text-almet-bali-hai/40" />
             </div>
-            <p className="text-sm font-medium text-almet-waterloo dark:text-almet-bali-hai">No schedules yet</p>
-            <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 max-w-xs">
-              {activeSubTab === 'upcoming'
-                ? 'Go to the "Planning" tab to schedule your vacation dates for the year.'
-                : 'No schedules found for this view.'}
+            <p className="text-sm font-medium text-almet-waterloo dark:text-almet-bali-hai">
+              {activeFilterCount > 0 ? 'No schedules match your filters' : 'No schedules yet'}
             </p>
+            <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 max-w-xs">
+              {activeFilterCount > 0
+                ? 'Try adjusting or clearing the filters above.'
+                : activeSubTab === 'upcoming'
+                  ? 'Go to the "Planning" tab to schedule your vacation dates for the year.'
+                  : 'No schedules found for this view.'}
+            </p>
+            {activeFilterCount > 0 && (
+              <button onClick={resetFilters} className="text-xs text-almet-sapphire hover:underline">
+                Clear all filters
+              </button>
+            )}
           </div>
         ) : (
           <>
@@ -160,7 +311,7 @@ export default function MySchedulesTab({
               <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
                 <thead className="bg-gray-50 dark:bg-gray-700/50">
                   <tr>
-                    {['Employee', 'Leave Type', 'Start Date', 'End Date', 'Days', 'Status', 'Edits Used', 'Actions'].map(h => (
+                    {['Employee', 'Company', 'Leave Type', 'Start Date', 'End Date', 'Days', 'Status', 'Edits Used', 'Actions'].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
                         {h}
                       </th>
@@ -172,6 +323,12 @@ export default function MySchedulesTab({
                     <tr key={schedule.id} className="hover:bg-almet-mystic/10 dark:hover:bg-gray-700/30 transition-colors">
                       <td className="px-4 py-3">
                         <p className="text-xs font-medium text-almet-cloud-burst dark:text-white">{schedule.employee_name}</p>
+                        {schedule.department && (
+                          <p className="text-[10px] text-almet-waterloo dark:text-almet-bali-hai mt-0.5">{schedule.department}</p>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                        {schedule.business_function_name || '—'}
                       </td>
                       <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
                         {schedule.vacation_type_name}
@@ -256,12 +413,12 @@ export default function MySchedulesTab({
               </table>
             </div>
 
-            {currentSchedules.length > itemsPerPage && (
+            {filteredSchedules.length > itemsPerPage && (
               <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 p-4">
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
-                  totalItems={currentSchedules.length}
+                  totalItems={filteredSchedules.length}
                   itemsPerPage={itemsPerPage}
                   onPageChange={setCurrentPage}
                   darkMode={darkMode}

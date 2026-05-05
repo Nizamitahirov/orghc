@@ -1,6 +1,7 @@
 // src/components/headcount/HeadcountTable.jsx - COMPLETE FIXED VERSION
 "use client";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTheme } from "../common/ThemeProvider";
 import { useToast } from "../common/Toast";
 import { useEmployees } from "../../hooks/useEmployees";
@@ -23,12 +24,15 @@ import BulkUploadForm from "./BulkUploadForm";
 import { AdvancedMultipleSortingSystem } from "./MultipleSortingSystem";
 import LineManagerModal from "./LineManagerAssignModal";
 import TagManagementModal from "./TagManagementModalsingle";
+import DeleteExitModal from "./DeleteExitModal";
 import { employeeAPI } from '../../store/api/employeeAPI';
 
-const HeadcountTable = ({ businessFunctionFilter = null }) => {
+const HeadcountTable = ({ businessFunctionFilter = null, onCompanyChange = null }) => {
   const { darkMode } = useTheme();
   const { showSuccess, showError, showWarning, showInfo } = useToast();
-  const [activeTab, setActiveTab] = useState('employees');
+  const searchParams = useSearchParams();
+  const initialTab = searchParams?.get('tab') || 'employees';
+  const [activeTab, setActiveTab] = useState(initialTab);
   
   const {
     formattedEmployees,
@@ -91,16 +95,14 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   const [showLineManagerModal, setShowLineManagerModal] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
   const [currentModalEmployee, setCurrentModalEmployee] = useState(null);
+  const [deleteExitModal, setDeleteExitModal] = useState({ open: false, type: 'soft', employee: null });
+  const [isDeletingEmployee, setIsDeletingEmployee] = useState(false);
   const [allEmployeesForModal, setAllEmployeesForModal] = useState(null);
   const [fetchingAllEmployees, setFetchingAllEmployees] = useState(false);
   
   const [colorSystemInitialized, setColorSystemInitialized] = useState(false);
   const [currentColorMode, setCurrentColorMode] = useState('null');
   const [defaultSortingApplied, setDefaultSortingApplied] = useState(false);
-  const [isWrapperFilterApplied, setIsWrapperFilterApplied] = useState(false);
-
-  //  NEW: Refs to lock business_function filter
-  const lockedBusinessFunction = useRef(null);
   const initialized = useRef(false);
   const lastFetchTime = useRef(0);
   const debounceRef = useRef(null);
@@ -297,13 +299,8 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       page_size: pagination.pageSize || 25
     };
 
-    //  CRITICAL: USE THE LOCKED VALUE FROM REF - NEVER CHANGES
-    if (lockedBusinessFunction.current !== null) {
-      params.business_function = String(lockedBusinessFunction.current);
- 
-    } else if (!isWrapperFilterApplied && localFilters.business_function?.length > 0) {
+    if (localFilters.business_function?.length > 0) {
       params.business_function = localFilters.business_function.join(',');
-   
     }
 
     if (localFilters.search?.trim()) {
@@ -365,11 +362,10 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
 
     return params;
   }, [
-    localFilters, 
-    pagination.page, 
-    pagination.pageSize, 
-    sorting, 
-    isWrapperFilterApplied
+    localFilters,
+    pagination.page,
+    pagination.pageSize,
+    sorting
   ]);
 
   const apiParamsChanged = useMemo(() => {
@@ -391,14 +387,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     if (abortControllerRef.current) {
     
       abortControllerRef.current.abort();
-    }
-    
-    //  CRITICAL: If locked, params MUST have business_function
-    if (lockedBusinessFunction.current !== null && !params.business_function) {
-      console.error('❌ BLOCKED: Lock exists but no business_function in params!');
-      console.error('Locked value:', lockedBusinessFunction.current);
-      console.error('Params:', params);
-      return;
     }
     
     const paramsStr = JSON.stringify(params);
@@ -430,54 +418,25 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     }, delay);
   }, [fetchEmployees]);
 
-  //  WRAPPER FILTER EFFECT - Set business_function ID AND LOCK IT
+  //  WRAPPER FILTER EFFECT - Pre-select business_function from wrapper on mount/change
   useEffect(() => {
-    if (!businessFunctions || businessFunctions.length === 0) {
-      return;
-    }
+    if (!businessFunctions || businessFunctions.length === 0) return;
 
     if (businessFunctionFilter) {
       const bf = businessFunctions.find(b => b.code === businessFunctionFilter);
-      
       if (bf) {
         const bfId = Number(bf.id || bf.value);
-        
-  
-        
-        //  LOCK IT IN REF - THIS NEVER CHANGES
-        lockedBusinessFunction.current = bfId;
-        
         setLocalFilters(prev => {
           const currentIds = prev.business_function.map(id => Number(id));
-          
-          if (currentIds.length === 1 && currentIds[0] === bfId) {
-            return prev;
-          }
-          
-          return {
-            ...prev,
-            business_function: [bfId]
-          };
+          if (currentIds.length === 1 && currentIds[0] === bfId) return prev;
+          return { ...prev, business_function: [bfId] };
         });
-        
-        setIsWrapperFilterApplied(true);
       }
     } else {
-      // Clear the lock
-      lockedBusinessFunction.current = null;
-      
       setLocalFilters(prev => {
-        if (prev.business_function.length === 0) {
-          return prev;
-        }
-        
-        return {
-          ...prev,
-          business_function: []
-        };
+        if (prev.business_function.length === 0) return prev;
+        return { ...prev, business_function: [] };
       });
-      
-      setIsWrapperFilterApplied(false);
     }
   }, [businessFunctionFilter, businessFunctions]);
 
@@ -492,16 +451,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         return;
       }
       
-      //  CRITICAL: If wrapper filter exists, wait for lock to be set
-      if (businessFunctionFilter) {
-        if (lockedBusinessFunction.current === null) {
-          return;
-        }
-       
-      }
-      
       try {
-     
         initialized.current = true;
         clearErrors();
         
@@ -532,29 +482,12 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     showError
   ]);
 
-  //  DATA FETCHING EFFECT - Check the lock
+  //  DATA FETCHING EFFECT
   useEffect(() => {
-    if (!initialized.current) {
-      return;
-    }
-
-    //  CRITICAL: If lock exists, business_function MUST be in params
-    if (lockedBusinessFunction.current !== null) {
-      const params = buildApiParams();
-      if (!params.business_function) {
-        console.error('❌ CRITICAL: Lock exists but no business_function in params!');
-        console.error('Locked value:', lockedBusinessFunction.current);
-        return;
-      }
-    }
-
-    if (!apiParamsChanged) {
-      return;
-    }
+    if (!initialized.current) return;
+    if (!apiParamsChanged) return;
 
     const params = buildApiParams();
-    
-  
     debouncedFetchEmployees(params);
   }, [
     apiParamsChanged, 
@@ -639,14 +572,11 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   }, [setCurrentPage]);
 
   const handleBusinessFunctionChange = useCallback((selectedBFs) => {
-    if (isWrapperFilterApplied) {
-      showWarning('Company is filtered by company selection');
-      return;
-    }
-    
-    setLocalFilters(prev => ({ ...prev, business_function: Array.isArray(selectedBFs) ? selectedBFs : [] }));
+    const newBFs = Array.isArray(selectedBFs) ? selectedBFs : [];
+    setLocalFilters(prev => ({ ...prev, business_function: newBFs }));
     setCurrentPage(1);
-  }, [isWrapperFilterApplied, showWarning, setCurrentPage]);
+    if (onCompanyChange) onCompanyChange(newBFs);
+  }, [setCurrentPage, onCompanyChange]);
 
   const handlePositionGroupChange = useCallback((selectedPGs) => {
     setLocalFilters(prev => ({ ...prev, position_group: Array.isArray(selectedPGs) ? selectedPGs : [] }));
@@ -671,26 +601,14 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   }, [setCurrentPage]);
 
   const handleClearFilter = useCallback((key) => {
-    if (key === 'business_function' && isWrapperFilterApplied) {
-      showWarning('Company is filtered by company selection');
-      return;
-    }
-    
     setLocalFilters(prev => {
       const newFilters = { ...prev };
-      
-      if (Array.isArray(prev[key])) {
-        newFilters[key] = [];
-      } else {
-        newFilters[key] = "";
-      }
-      
+      newFilters[key] = Array.isArray(prev[key]) ? [] : "";
       return newFilters;
     });
-    
+    if (key === 'business_function' && onCompanyChange) onCompanyChange([]);
     setCurrentPage(1);
-
-  }, [isWrapperFilterApplied, showWarning, setCurrentPage]);
+  }, [setCurrentPage, onCompanyChange]);
 
   const handleClearAllFilters = useCallback(() => {
     const clearedFilters = {
@@ -700,7 +618,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       job_title_search: "",
       status: [],
       department: [],
-      business_function: isWrapperFilterApplied ? localFilters.business_function : [],
+      business_function: [],
       position_group: [],
       tags: [],
       grading_level: [],
@@ -723,7 +641,8 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     clearFilters();
     setCurrentPage(1);
     showSuccess('All filters cleared');
-  }, [isWrapperFilterApplied, localFilters.business_function, clearFilters, setCurrentPage, showSuccess]);
+    if (onCompanyChange) onCompanyChange([]);
+  }, [clearFilters, setCurrentPage, showSuccess, onCompanyChange]);
 
   // Selection handlers
   const handleEmployeeToggle = useCallback((employeeId) => {
@@ -795,7 +714,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   const handleActionMenuClose = useCallback(() => {
     setIsActionMenuOpen(false);
   }, []);
-
   const handleExport = useCallback(async (exportOptions) => {
     try {
       setIsExporting(true);
@@ -849,6 +767,23 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     }
   }, [selectedEmployees, buildApiParams, showSuccess, showError]);
 
+  const handleBulkAction = useCallback(async (action, options = {}) => {
+    try {
+      if (action === 'export') {
+        await handleExport({
+          type: options.type || 'selected',
+          format: options.format || 'excel',
+          include_fields: options.include_fields || 'all',
+        });
+      }
+      // softDelete and hardDelete are handled internally by ActionMenu
+    } catch (error) {
+      console.error('Bulk action error:', error);
+      showError(`Action failed: ${error.message || 'Unknown error'}`);
+    }
+  }, [handleExport, showError]);
+
+
   const handleQuickExport = useCallback(async (format) => {
     await handleExport({
       type: selectedEmployees.length > 0 ? "selected" : "filtered",
@@ -896,7 +831,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         page_size: 10000
       };
       
-      const response = await fetchEmployees(params);
+      const response = await employeeAPI.getAll(params);
       
       let employees = [];
       
@@ -984,70 +919,15 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
           break;
 
         case "softDelete": {
-          const employeeName =
-            employee?.name || employee?.employee_name || `Employee ${employeeId}`;
-
-          if (confirm(
-            `Soft delete ${employeeName}?\n\nThis will create a vacant position and allow future restoration.`
-          )) {
-            try {
-              const reason = prompt(
-                "Please provide a reason for soft deletion (optional):"
-              );
-              const terminationDateInput = prompt(
-                "Enter termination date (YYYY-MM-DD) or leave blank for today:"
-              );
-              const termination_date =
-                terminationDateInput?.trim() || undefined;
-
-              await archiveEmployeesService.bulkSoftDeleteEmployees(
-                [employeeId],
-                reason,
-                termination_date     // ← YENİ
-              );
-              await refreshAllData(true);
-              showSuccess(`${employeeName} soft deleted successfully`);
-            } catch (error) {
-              console.error('Individual soft delete failed:', error);
-              showError(`Failed to soft delete ${employeeName}: ${error.message}`);
-            }
-          }
+          const employeeName = employee?.name || employee?.employee_name || `Employee ${employeeId}`;
+          setDeleteExitModal({ open: true, type: 'soft', employee: { id: employeeId, name: employeeName } });
           break;
         }
-        
+
         case "delete":
         case "hardDelete": {
-          const empName =
-            employee?.name || employee?.employee_name || `Employee ${employeeId}`;
-          const hardConfirm = prompt(
-            `⚠️ WARNING: PERMANENT DELETION\n\nType "DELETE" to permanently delete ${empName}:`
-          );
-
-          if (hardConfirm === "DELETE") {
-            try {
-              const notes = prompt(
-                "Please provide notes for this deletion (optional but recommended):"
-              );
-              const terminationDateInput = prompt(
-                "Enter termination date (YYYY-MM-DD) or leave blank for today:"
-              );
-              const termination_date =
-                terminationDateInput?.trim() || undefined;
-
-              await archiveEmployeesService.bulkHardDeleteEmployees(
-                [employeeId],
-                notes,
-                true,
-                termination_date     // ← YENİ
-              );
-              await refreshAllData(true);
-              showSuccess(`${empName} permanently deleted`);
-            } catch (error) {
-              showError(`Failed to delete ${empName}: ${error.message}`);
-            }
-          } else if (hardConfirm !== null) {
-            showWarning('Deletion cancelled. You must type "DELETE" exactly to confirm.');
-          }
+          const empName = employee?.name || employee?.employee_name || `Employee ${employeeId}`;
+          setDeleteExitModal({ open: true, type: 'hard', employee: { id: employeeId, name: empName } });
           break;
         }
         case "viewTeam":
@@ -1143,6 +1023,31 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     setCurrentModalEmployee(null);
   }, []);
 
+  const handleDeleteExitConfirm = useCallback(async ({ exitType, terminationDate, notes }) => {
+    const { employee, type } = deleteExitModal;
+    if (!employee) return;
+    setIsDeletingEmployee(true);
+    try {
+      if (type === 'soft') {
+        await archiveEmployeesService.bulkSoftDeleteEmployees(
+          [employee.id], notes, terminationDate, exitType
+        );
+        showSuccess(`${employee.name} employment ended successfully`);
+      } else {
+        await archiveEmployeesService.bulkHardDeleteEmployees(
+          [employee.id], notes, true, terminationDate, exitType
+        );
+        showSuccess(`${employee.name} permanently deleted`);
+      }
+      setDeleteExitModal({ open: false, type: 'soft', employee: null });
+      await refreshAllData(true);
+    } catch (error) {
+      showError(`Failed: ${error.message}`);
+    } finally {
+      setIsDeletingEmployee(false);
+    }
+  }, [deleteExitModal, refreshAllData, showSuccess, showError]);
+
   // Active filters
   const activeFilters = useMemo(() => {
     const filters = [];
@@ -1175,8 +1080,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     if (localFilters.business_function?.length > 0) {
       filters.push({ 
         key: "business_function", 
-        label: `Company: ${localFilters.business_function.length} selected`,
-        isWrapperFilter: isWrapperFilterApplied
+        label: `Company: ${localFilters.business_function.length} selected`
       });
     }
     if (localFilters.position_group?.length > 0) {
@@ -1261,7 +1165,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
 
     
     return filters;
-  }, [localFilters, isWrapperFilterApplied]);
+  }, [localFilters]);
 
   useEffect(() => {
     return () => {
@@ -1423,7 +1327,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
                 onPageChange={handlePageChange}        
                 onPageSizeChange={handlePageSizeChange} 
                 loading={loading.employees}
-                preserveFilters={isWrapperFilterApplied}
+                preserveFilters={false}
                 darkMode={darkMode}
                 showQuickJump={true}
                 showPageSizeSelector={true}
@@ -1460,7 +1364,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     onToggleExportModal: handleToggleExportModal,
     isExporting: loading.exporting || false,
     hasActiveFilters: activeFilters.length > 0,
-    filteredCount: formattedEmployees.length,
+    filteredCount: pagination.count || pagination.totalItems || formattedEmployees.length,
     totalEmployees: statistics.total_employees || 0,
     darkMode
   }), [
@@ -1488,27 +1392,47 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   ]);
 
   if (error?.employees && activeTab === 'employees') {
+    const isAccessDenied = error.employees?.status === 403 || error.employees?.message === 'Access Denied';
     return (
       <div className="container mx-auto pt-3 max-w-full">
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
-          <div className="text-red-600 dark:text-red-400">
-            <h3 className="text-lg font-semibold mb-2">Failed to Load Data</h3>
-            <p className="text-sm mb-4">
-              {error?.employees?.message || 'Failed to load employee data'}
-            </p>
-            <button 
-              onClick={() => {
-                initialized.current = false;
-                lastApiParamsRef.current = null;
-                lockedBusinessFunction.current = null;
-           
-                window.location.reload();
-              }}
-              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
+        <div className={`border rounded-lg p-10 text-center ${
+          isAccessDenied
+            ? 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800'
+            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+        }`}>
+          {isAccessDenied ? (
+            <>
+              <div className="text-5xl mb-4">🔒</div>
+              <h3 className={`text-lg font-semibold mb-2 ${darkMode ? 'text-blue-300' : 'text-blue-700'}`}>
+                Access Restricted
+              </h3>
+              <p className={`text-sm mb-1 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
+                You do not have permission to view this company&apos;s headcount data.
+              </p>
+              <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                Contact your HR administrator to request access.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className={`text-red-600 dark:text-red-400`}>
+                <h3 className="text-lg font-semibold mb-2">Failed to Load Data</h3>
+                <p className="text-sm mb-4">
+                  {error?.employees?.message || 'Failed to load employee data'}
+                </p>
+                <button
+                  onClick={() => {
+                    initialized.current = false;
+                    lastApiParamsRef.current = null;
+                    window.location.reload();
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                >
+                  Try Again
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -1546,7 +1470,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
               onClose={() => setIsExportModalOpen(false)}
               onExport={handleExport}
               totalEmployees={statistics.total_employees}
-              filteredCount={formattedEmployees.length}
+              filteredCount={pagination.count || pagination.totalItems || formattedEmployees.length}
               selectedEmployees={selectedEmployees}
               darkMode={darkMode}
             />
@@ -1588,6 +1512,15 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
               darkMode={darkMode}
             />
           )}
+
+          <DeleteExitModal
+            isOpen={deleteExitModal.open}
+            onClose={() => setDeleteExitModal({ open: false, type: 'soft', employee: null })}
+            onConfirm={handleDeleteExitConfirm}
+            deleteType={deleteExitModal.type}
+            employeeName={deleteExitModal.employee?.name || ''}
+            isProcessing={isDeletingEmployee}
+          />
         </>
       )}
     </div>

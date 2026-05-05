@@ -1,7 +1,11 @@
+"use client";
 import { Settings } from "lucide-react";
 import Link from "next/link";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const ComingSoon = () => {
+  const { t } = useLanguage();
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-4">
       <div className="text-center max-w-md">
@@ -9,16 +13,16 @@ const ComingSoon = () => {
           <Settings size={24} className="text-white animate-spin-slow" />
         </div>
         <h2 className="text-xl font-bold mb-2 text-gray-800 dark:text-white">
-          Coming Soon
+          {t('home.upcomingEvents')}
         </h2>
         <p className="text-gray-500 dark:text-almet-bali-hai text-sm mb-4">
-          We're currently developing this feature. It will be available soon.
+          {t('common.loading')}
         </p>
         <Link
           href="/"
           className="bg-almet-sapphire text-white px-3 py-1.5 rounded-md hover:bg-almet-astral dark:hover:bg-almet-sapphire/90 transition-colors inline-block text-sm"
         >
-          Return to Home
+          {t('common.back')}
         </Link>
       </div>
     </div>

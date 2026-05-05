@@ -155,7 +155,7 @@ export default function OverviewView({ context }) {
                   value={selectedFilters.business_function}
                   onChange={(value) => setSelectedFilters(prev => ({ ...prev, business_function: value }))}
                   placeholder="All"
-                  searchPlaceholder="Search Companys..."
+                  searchPlaceholder="Search Companies..."
                   darkMode={darkMode}
                   className="w-full"
                 />

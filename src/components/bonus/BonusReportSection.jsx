@@ -1,31 +1,31 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Download, TrendingUp, Users, CheckCircle,
   ChevronUp, ChevronDown, X, Eye,
   Target, Brain, FileText, BarChart2, PieChart,
-  AlertTriangle,
+  AlertTriangle, DollarSign,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart as RechartsPie, Pie, Cell,
   CartesianGrid,
 } from "recharts";
-import { bonusRecordService, downloadBlob } from "@/services/bonusService";
+import { bonusRecordService, exchangeRateService, downloadBlob } from "@/services/bonusService";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
-  DRAFT:      { label: "Draft",      bg: "bg-slate-100",  text: "text-slate-500",  dot: "bg-slate-400",  hex: "#94a3b8" },
-  CALCULATED: { label: "Calculated", bg: "bg-blue-50",    text: "text-blue-600",   dot: "bg-blue-500",   hex: "#3b82f6" },
-  APPROVED:   { label: "Approved",   bg: "bg-emerald-50", text: "text-emerald-600",dot: "bg-emerald-500",hex: "#10b981" },
-  PAID:       { label: "Paid",       bg: "bg-violet-50",  text: "text-violet-600", dot: "bg-violet-500", hex: "#8b5cf6" },
+  DRAFT:      { label: "Not Started",      bg: "bg-slate-100",  text: "text-slate-500",  dot: "bg-slate-400",  hex: "#94a3b8" },
+  CALCULATED: { label: "Ready to Approve", bg: "bg-blue-50",    text: "text-blue-600",   dot: "bg-blue-500",   hex: "#3b82f6" },
+  APPROVED:   { label: "Approved",         bg: "bg-emerald-50", text: "text-emerald-600",dot: "bg-emerald-500",hex: "#10b981" },
+  PAID:       { label: "Paid",             bg: "bg-violet-50",  text: "text-violet-600", dot: "bg-violet-500", hex: "#8b5cf6" },
 };
 
 const STATUS_CONFIG_DARK = {
-  DRAFT:      { label: "Draft",      bg: "bg-slate-800",      text: "text-slate-400",   dot: "bg-slate-500",   hex: "#94a3b8" },
-  CALCULATED: { label: "Calculated", bg: "bg-blue-500/15",    text: "text-blue-400",    dot: "bg-blue-500",    hex: "#3b82f6" },
-  APPROVED:   { label: "Approved",   bg: "bg-emerald-500/15", text: "text-emerald-400", dot: "bg-emerald-500", hex: "#10b981" },
-  PAID:       { label: "Paid",       bg: "bg-violet-500/15",  text: "text-violet-400",  dot: "bg-violet-500",  hex: "#8b5cf6" },
+  DRAFT:      { label: "Not Started",      bg: "bg-slate-800",      text: "text-slate-400",   dot: "bg-slate-500",   hex: "#94a3b8" },
+  CALCULATED: { label: "Ready to Approve", bg: "bg-blue-500/15",    text: "text-blue-400",    dot: "bg-blue-500",    hex: "#3b82f6" },
+  APPROVED:   { label: "Approved",         bg: "bg-emerald-500/15", text: "text-emerald-400", dot: "bg-emerald-500", hex: "#10b981" },
+  PAID:       { label: "Paid",             bg: "bg-violet-500/15",  text: "text-violet-400",  dot: "bg-violet-500",  hex: "#8b5cf6" },
 };
 
 const COMPONENT_COLORS = {
@@ -34,24 +34,52 @@ const COMPONENT_COLORS = {
   competencies: "#a78bfa",
 };
 
+// Semi-transparent fill variants for chart area fills / backgrounds
+const COMPONENT_COLORS_SOFT = {
+  company:      "rgba(78,125,181,0.15)",
+  objectives:   "rgba(245,158,11,0.15)",
+  competencies: "rgba(167,139,250,0.15)",
+};
+
 const fmt     = v => parseFloat(v || 0).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtShrt = v => {
   const n = parseFloat(v || 0);
   return n >= 1000 ? (n / 1000).toFixed(1) + "k" : n.toFixed(0);
 };
+const CURRENCY_SYMBOLS = { GBP: '£', USD: '$', EUR: '€', AZN: '₼', TRY: '₺', RUB: '₽' };
+const currSym = (code) => CURRENCY_SYMBOLS[code] || code || '₼';
+
+function convertAmount(value, fromCurrency, toCurrency, rates) {
+  const v = parseFloat(value || 0);
+  if (!fromCurrency || fromCurrency === toCurrency || !rates?.length) return v;
+  const getRate = (from, to) => {
+    const d = rates.find(r => r.from_currency === from && r.to_currency === to);
+    if (d) return parseFloat(d.rate);
+    const inv = rates.find(r => r.from_currency === to && r.to_currency === from);
+    if (inv && parseFloat(inv.rate) !== 0) return 1 / parseFloat(inv.rate);
+    return null;
+  };
+  const direct = getRate(fromCurrency, toCurrency);
+  if (direct !== null) return v * direct;
+  // 2-hop through AZN (CBAR rates are all AZN-based)
+  const toAzn = getRate(fromCurrency, 'AZN');
+  const aznTo = getRate('AZN', toCurrency);
+  if (toAzn !== null && aznTo !== null) return v * toAzn * aznTo;
+  return v;
+}
 
 // ─── Custom Tooltip ───────────────────────────────────────────────────────────
 function ChartTooltip({ active, payload, label, dark }) {
   if (!active || !payload?.length) return null;
   return (
     <div className={`px-3 py-2.5 rounded-xl border shadow-xl text-xs
-      ${dark ? "bg-[#1a1a1a] border-[#2e2e2e] text-white" : "bg-white border-gray-200 text-gray-800"}`}>
+      ${dark ? "bg-almet-cloud-burst border-almet-comet text-white" : "bg-white border-gray-200 text-gray-800"}`}>
       {label && <p className="font-bold mb-1.5 opacity-70">{label}</p>}
       {payload.map((p, i) => (
         <div key={i} className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full" style={{ background: p.color }} />
           <span className="opacity-70">{p.name}:</span>
-          <span className="font-bold">{fmt(p.value)} ₼</span>
+          <span className="font-bold">{fmt(p.value)}</span>
         </div>
       ))}
     </div>
@@ -61,17 +89,27 @@ function ChartTooltip({ active, payload, label, dark }) {
 // ─── Section wrapper ──────────────────────────────────────────────────────────
 function Section({ title, icon: Icon, iconColor, iconBg, children, dark, action }) {
   return (
-    <div className={`rounded-2xl border overflow-hidden
-      ${dark ? "bg-[#0f0f0f] border-[#1e1e1e]" : "bg-white border-gray-100 shadow-sm"}`}>
+    <div className={`rounded-2xl border overflow-hidden transition-shadow hover:shadow-md
+      ${dark
+        ? "bg-almet-cloud-burst border-almet-comet shadow-sm"
+        : "bg-white border-gray-100 shadow-sm"}`}>
       <div className={`flex items-center justify-between px-5 py-3.5 border-b
-        ${dark ? "border-[#1a1a1a] bg-[#0a0a0a]" : "border-gray-100 bg-gray-50/60"}`}>
+        ${dark
+          ? "border-almet-comet/60 bg-almet-cloud-burst/80"
+          : "border-gray-100 bg-gradient-to-r from-gray-50/80 to-white"}`}>
         <div className="flex items-center gap-2.5">
-          <div className={`p-1.5 rounded-lg ${iconBg || (dark ? "bg-[#1a1a1a]" : "bg-almet-mystic")}`}>
+          <div className={`p-1.5 rounded-lg ${iconBg || (dark ? "bg-almet-san-juan/50" : "bg-almet-mystic")}`}>
             <Icon size={13} className={iconColor} />
           </div>
-          <span className={`text-sm font-bold ${dark ? "text-white" : "text-almet-cloud-burst"}`}>{title}</span>
+          <span className={`text-[13px] font-semibold tracking-tight ${dark ? "text-white" : "text-almet-cloud-burst"}`}>
+            {title}
+          </span>
         </div>
-        {action && <div className={`text-xs ${dark ? "text-gray-500" : "text-almet-bali-hai"}`}>{action}</div>}
+        {action && (
+          <div className={`text-xs font-medium ${dark ? "text-almet-bali-hai" : "text-almet-waterloo"}`}>
+            {action}
+          </div>
+        )}
       </div>
       <div className="p-5">{children}</div>
     </div>
@@ -87,6 +125,7 @@ function DetailDrawer({ record, dark, onClose, onApprove }) {
   const text = dark ? "text-white" : "text-almet-cloud-burst";
   const sub  = dark ? "text-gray-500" : "text-almet-bali-hai";
   const row  = dark ? "border-[#1e1e1e]" : "border-gray-100";
+  const cur  = currSym(record.salary_currency);
 
   const isZeroBonus   = record.notes?.startsWith("[ZERO]");
   const zeroBonusText = isZeroBonus ? record.notes.replace("[ZERO] ", "") : null;
@@ -118,7 +157,7 @@ function DetailDrawer({ record, dark, onClose, onApprove }) {
         { key: "weight_pct",       label: "Weight",    fmt: v => `${v}%` },
         { key: "rating_name",      label: "Rating"    },
         { key: "bonus_salary_pct", label: "% Salary",  fmt: v => v != null ? `${v}%` : "—" },
-        { key: "bonus_amount",     label: "Bonus (₼)", fmt },
+        { key: "bonus_amount",     label: `Bonus (${cur})`, fmt },
       ],
     },
     {
@@ -131,7 +170,7 @@ function DetailDrawer({ record, dark, onClose, onApprove }) {
         { key: "adjusted_weight_pct", label: "Adj. Weight", fmt: v => `${parseFloat(v).toFixed(1)}%` },
         { key: "rating_name",         label: "Rating"      },
         { key: "bonus_salary_pct",    label: "% Salary",    fmt: v => v != null ? `${v}%` : "—" },
-        { key: "bonus_amount",        label: "Bonus (₼)",   fmt },
+        { key: "bonus_amount",        label: `Bonus (${cur})`,   fmt },
       ],
     },
     {
@@ -144,7 +183,7 @@ function DetailDrawer({ record, dark, onClose, onApprove }) {
         { key: "group_percentage", label: "Score",     fmt: v => `${parseFloat(v).toFixed(1)}%` },
         { key: "rating_name",      label: "Rating"    },
         { key: "bonus_salary_pct", label: "% Salary",  fmt: v => v != null ? `${v}%` : "—" },
-        { key: "bonus_amount",     label: "Bonus (₼)", fmt },
+        { key: "bonus_amount",     label: `Bonus (${cur})`, fmt },
       ],
     },
   ];
@@ -160,7 +199,7 @@ function DetailDrawer({ record, dark, onClose, onApprove }) {
           ${dark ? "bg-[#0e0e0e] border-[#1e1e1e]" : "bg-white border-gray-100"}`}>
           <div>
             <h2 className={`text-base font-bold ${text}`}>{record.employee_name}</h2>
-            <p className={`text-xs mt-0.5 ${sub}`}>{record.employee_id_code} · {record.position}</p>
+            <p className={`text-xs mt-0.5 ${sub}`}>{record.employee_id_code} · {record.job_title || record.position || "—"}</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handlePdf} disabled={downloading}
@@ -193,7 +232,7 @@ function DetailDrawer({ record, dark, onClose, onApprove }) {
                 <p className={`text-xs ${sub}`}>Total Bonus</p>
                 {/*  Red when zero bonus */}
                 <p className={`text-lg font-bold tabular-nums ${isZeroBonus ? "text-red-500" : "text-emerald-500"}`}>
-                  {fmt(record.total_bonus)} ₼
+                  {cur}{fmt(record.total_bonus)}
                 </p>
                 <p className={`text-xs mt-0.5 ${sub}`}>{bonusPct}% of effective salary</p>
               </div>
@@ -208,7 +247,7 @@ function DetailDrawer({ record, dark, onClose, onApprove }) {
                 return (
                   <div key={label} className={`p-2.5 rounded-lg ${dark ? "bg-[#1a1a1a]" : "bg-white"}`}>
                     <p className={`text-xs ${sub} mb-1`}>{label}</p>
-                    <p className={`text-sm font-bold tabular-nums ${t}`}>{fmt(v)} ₼</p>
+                    <p className={`text-sm font-bold tabular-nums ${t}`}>{cur}{fmt(v)}</p>
                     <div className={`mt-1.5 h-1 rounded-full ${dark ? "bg-[#2a2a2a]" : "bg-gray-100"}`}>
                       <div className={`h-full rounded-full ${bar}`} style={{ width: `${pct}%` }} />
                     </div>
@@ -241,10 +280,10 @@ function DetailDrawer({ record, dark, onClose, onApprove }) {
             <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${sub}`}>Salary Details</p>
             <div className="grid grid-cols-2 gap-2 mb-2">
               {[
-                ["Yearly Salary",   fmt(record.yearly_salary) + " ₼"],
+                ["Yearly Salary",   cur + fmt(record.yearly_salary)],
                 ["Worked Months",   record.worked_months],
-                ["Prorata Salary",  fmt(record.prorata_salary) + " ₼"],
-                ["Adjusted Salary", record.adjusted_yearly_salary ? fmt(record.adjusted_yearly_salary) + " ₼" : "—"],
+                ["Prorata Salary",  cur + fmt(record.prorata_salary)],
+                ["Adjusted Salary", record.adjusted_yearly_salary ? cur + fmt(record.adjusted_yearly_salary) : "—"],
               ].map(([label, val]) => (
                 <div key={label} className={`p-2.5 rounded-lg ${dark ? "bg-[#1a1a1a]" : "bg-white border border-gray-100"}`}>
                   <p className={`text-xs ${sub}`}>{label}</p>
@@ -257,7 +296,7 @@ function DetailDrawer({ record, dark, onClose, onApprove }) {
                 Effective Salary {record.use_adjusted_salary && <span className="opacity-70 ml-1">· Adjusted applied</span>}
               </p>
               <p className={`text-base font-bold tabular-nums mt-0.5 ${dark ? "text-emerald-400" : "text-emerald-600"}`}>
-                {fmt(record.effective_salary)} ₼
+                {cur}{fmt(record.effective_salary)}
               </p>
             </div>
           </div>
@@ -271,7 +310,7 @@ function DetailDrawer({ record, dark, onClose, onApprove }) {
                   <div className={`p-1.5 rounded-lg ${iconBg}`}><Icon size={12} className={color} /></div>
                   <span className={`text-sm font-semibold ${text}`}>{label}</span>
                 </div>
-                <span className={`text-sm font-bold tabular-nums ${color}`}>{fmt(total)} ₼</span>
+                <span className={`text-sm font-bold tabular-nums ${color}`}>{cur}{fmt(total)}</span>
               </div>
               {rows.length > 0 ? (
                 <div className="overflow-x-auto">
@@ -309,12 +348,43 @@ function DetailDrawer({ record, dark, onClose, onApprove }) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function BonusReportSection({ records, bonusYear, dark, onExcelExport }) {
-  const [sortKey, setSortKey]       = useState("total_bonus");
-  const [sortDir, setSortDir]       = useState("desc");
-  const [filter, setFilter]         = useState("ALL");
-  const [exporting, setExporting]   = useState(false);
-  const [drawerRecord, setDrawer]   = useState(null);
-  const [activeView, setActiveView] = useState("dashboard");
+  const baseCurrency = bonusYear?.base_currency || records[0]?.salary_currency || "AZN";
+
+  const [sortKey,       setSortKey]       = useState("total_bonus");
+  const [sortDir,       setSortDir]       = useState("desc");
+  const [filter,        setFilter]        = useState("ALL");
+  const [bfFilter,      setBfFilter]      = useState("ALL");
+  const [exporting,     setExporting]     = useState(false);
+  const [drawerRecord,  setDrawer]        = useState(null);
+  const [activeView,    setActiveView]    = useState("dashboard");
+  const [exchangeRates, setExchangeRates] = useState([]);
+  const [displayCurrency, setDisplayCurrency] = useState(baseCurrency);
+
+  // Load live exchange rates from CBAR (no DB)
+  useEffect(() => {
+    exchangeRateService.liveRates()
+      .then(({ data }) => setExchangeRates(data.rates ?? []))
+      .catch(() => setExchangeRates([]));
+  }, []);
+
+  // Update default display currency when bonusYear changes
+  useEffect(() => {
+    setDisplayCurrency(bonusYear?.base_currency || records[0]?.salary_currency || "AZN");
+  }, [bonusYear?.base_currency]);
+
+  // Available currencies
+  const availableCurrencies = useMemo(() => {
+    const currencies = new Set([baseCurrency]);
+    records.forEach(r => { if (r.salary_currency) currencies.add(r.salary_currency); });
+    exchangeRates.forEach(r => { currencies.add(r.from_currency); currencies.add(r.to_currency); });
+    return Array.from(currencies).filter(Boolean);
+  }, [records, exchangeRates, baseCurrency]);
+
+  // Convert a value from a record's native currency to displayCurrency
+  const conv = (value, fromCurrency) =>
+    convertAmount(value, fromCurrency || baseCurrency, displayCurrency, exchangeRates);
+
+  const cur = currSym(displayCurrency);
 
   const sc   = (s) => dark ? (STATUS_CONFIG_DARK[s] || STATUS_CONFIG_DARK.DRAFT) : (STATUS_CONFIG[s] || STATUS_CONFIG.DRAFT);
   const text  = dark ? "text-white" : "text-almet-cloud-burst";
@@ -325,10 +395,12 @@ export default function BonusReportSection({ records, bonusYear, dark, onExcelEx
   const approved = useMemo(() => records.filter(r => r.status === "APPROVED"), [records]);
 
   const kpis = useMemo(() => {
-    const pool = approved.reduce((s, r) => s + parseFloat(r.total_bonus || 0), 0);
+    const pool = approved.reduce((s, r) =>
+      s + conv(r.total_bonus || 0, r.salary_currency), 0);
     const avgB = approved.length ? pool / approved.length : 0;
     return { pool, avgB, approvedCount: approved.length };
-  }, [approved]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [approved, displayCurrency, exchangeRates]);
 
   const componentPie = useMemo(() => [
     { name: "Company Targets", value: parseFloat(approved.reduce((s, r) => s + parseFloat(r.company_targets_bonus || 0), 0).toFixed(2)), color: COMPONENT_COLORS.company      },
@@ -367,7 +439,7 @@ export default function BonusReportSection({ records, bonusYear, dark, onExcelEx
   const positionBreakdown = useMemo(() => {
     const map = {};
     approved.forEach(r => {
-      const pos = r.position || "Unknown";
+      const pos = r.job_title || r.position || "Unknown";
       if (!map[pos]) map[pos] = { count: 0, total: 0 };
       map[pos].count++;
       map[pos].total += parseFloat(r.total_bonus || 0);
@@ -383,14 +455,21 @@ export default function BonusReportSection({ records, bonusYear, dark, onExcelEx
     return m;
   }, [records]);
 
+  const bfOptions = useMemo(() => {
+    const names = [...new Set(records.map(r => r.business_function_name).filter(Boolean))].sort();
+    return names;
+  }, [records]);
+
   const displayed = useMemo(() => {
-    let list = filter === "ALL" ? records : records.filter(r => r.status === filter);
+    let list = records;
+    if (filter !== "ALL") list = list.filter(r => r.status === filter);
+    if (bfFilter !== "ALL") list = list.filter(r => r.business_function_name === bfFilter);
     return [...list].sort((a, b) => {
       const va = parseFloat(a[sortKey] || 0), vb = parseFloat(b[sortKey] || 0);
       const sv = isNaN(va) ? String(a[sortKey] || "").localeCompare(String(b[sortKey] || "")) : va - vb;
       return sortDir === "asc" ? sv : -sv;
     });
-  }, [records, sortKey, sortDir, filter]);
+  }, [records, sortKey, sortDir, filter, bfFilter]);
 
   const handleSort = key => {
     if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
@@ -402,7 +481,13 @@ export default function BonusReportSection({ records, bonusYear, dark, onExcelEx
 
   const handleExcel = async () => {
     setExporting(true);
-    try { await onExcelExport(); } finally { setExporting(false); }
+    try {
+      const params = { bonus_year: bonusYear?.id };
+      if (filter !== "ALL")    params.status             = filter;
+      if (bfFilter !== "ALL")  params.business_function  = records.find(r => r.business_function_name === bfFilter)?.business_function;
+      const { data } = await bonusRecordService.exportExcel(params);
+      downloadBlob(data, `bonus_${bonusYear?.year || "report"}.xlsx`);
+    } finally { setExporting(false); }
   };
 
   const openDrawer = async (row) => {
@@ -424,22 +509,22 @@ export default function BonusReportSection({ records, bonusYear, dark, onExcelEx
   [displayed]);
 
   const filterBtns = [
-    { key: "ALL",        label: "All"        },
-    { key: "DRAFT",      label: "Draft"      },
-    { key: "CALCULATED", label: "Calculated" },
-    { key: "APPROVED",   label: "Approved"   },
-    { key: "PAID",       label: "Paid"       },
+    { key: "ALL",        label: "All"              },
+    { key: "DRAFT",      label: "Not Started"      },
+    { key: "CALCULATED", label: "Ready to Approve" },
+    { key: "APPROVED",   label: "Approved"         },
+    { key: "PAID",       label: "Paid"             },
   ];
 
   const tableCols = [
-    { key: "employee_id_code",      label: "Badge"        },
     { key: "employee_name",         label: "Employee"     },
-    { key: "position",              label: "Position"     },
-    { key: "effective_salary",      label: "Eff. Salary",  right: true },
-    { key: "company_targets_bonus", label: "Company",      right: true },
-    { key: "objectives_bonus",      label: "Objectives",   right: true },
-    { key: "competencies_bonus",    label: "Competencies", right: true },
-    { key: "total_bonus",           label: "Total Bonus",  right: true },
+    { key: "job_title",             label: "Job Title",   render: r => r.job_title || r.position || "—" },
+    { key: "salary_currency",       label: "Currency",    noSort: true },
+    { key: "effective_salary",      label: `Eff. Salary (Gross) ${cur}`, right: true },
+    { key: "company_targets_bonus", label: `Targets ${cur}`,  right: true },
+    { key: "objectives_bonus",      label: `Objectives ${cur}`, right: true },
+    { key: "competencies_bonus",    label: `Competencies ${cur}`, right: true },
+    { key: "total_bonus",           label: `Total Bonus ${cur}`, right: true },
     { key: "status",                label: "Status"       },
     { key: "_action",               label: "",             noSort: true },
   ];
@@ -462,7 +547,23 @@ export default function BonusReportSection({ records, bonusYear, dark, onExcelEx
               {bonusYear?.year} · {records.length} employees · {kpis.approvedCount} approved
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Currency selector */}
+            {availableCurrencies.length > 1 && (
+              <div className={`flex items-center gap-1 rounded-xl border px-2.5 py-1.5
+                ${dark ? "border-[#2a2a2a] bg-[#111]" : "border-gray-200 bg-gray-50"}`}>
+                <DollarSign size={11} className={dark ? "text-gray-500" : "text-almet-bali-hai"} />
+                <span className={`text-[10px] mr-1 ${dark ? "text-gray-500" : "text-gray-400"}`}>Display in:</span>
+                {availableCurrencies.map(c => (
+                  <button key={c} onClick={() => setDisplayCurrency(c)}
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold transition
+                      ${displayCurrency === c
+                        ? "bg-almet-sapphire text-white"
+                        : dark ? "text-gray-500 hover:text-gray-300" : "text-gray-400 hover:text-gray-700"}`}
+                  >{c}</button>
+                ))}
+              </div>
+            )}
             <div className={`flex items-center rounded-xl border p-0.5
               ${dark ? "border-[#2a2a2a] bg-[#111]" : "border-gray-200 bg-gray-100"}`}>
               {[
@@ -525,7 +626,7 @@ export default function BonusReportSection({ records, bonusYear, dark, onExcelEx
                             dataKey="value" paddingAngle={3}>
                             {componentPie.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                           </Pie>
-                          <Tooltip formatter={v => fmt(v) + " ₼"} contentStyle={{
+                          <Tooltip formatter={v => cur + fmt(v)} contentStyle={{
                             background: dark ? "#1a1a1a" : "#fff",
                             border: dark ? "1px solid #2e2e2e" : "1px solid #e5e7eb",
                             borderRadius: 12, fontSize: 11,
@@ -586,7 +687,7 @@ export default function BonusReportSection({ records, bonusYear, dark, onExcelEx
                                 {count}
                               </span>
                             </div>
-                            <span className="text-xs font-bold text-emerald-500">{fmtShrt(avg)} ₼</span>
+                            <span className="text-xs font-bold text-emerald-500">{cur}{fmtShrt(avg)}</span>
                           </div>
                           <div className={`h-1.5 rounded-full overflow-hidden ${dark ? "bg-[#222]" : "bg-gray-100"}`}>
                             <div className="h-full rounded-full bg-emerald-500 transition-all duration-700" style={{ width: `${pct}%` }} />
@@ -607,7 +708,7 @@ export default function BonusReportSection({ records, bonusYear, dark, onExcelEx
             {/* Filters */}
             <div className={`flex items-center gap-2 px-5 py-3.5 border-b flex-wrap
               ${dark ? "border-[#1e1e1e] bg-[#0a0a0a]" : "border-gray-100 bg-gray-50/60"}`}>
-              <span className={`text-xs font-semibold mr-1 ${sub}`}>Filter:</span>
+              <span className={`text-xs font-semibold mr-1 ${sub}`}>Status:</span>
               {filterBtns.map(({ key, label }) => (
                 <button key={key} onClick={() => setFilter(key)}
                   className={`px-3 py-1 rounded-lg text-xs font-semibold transition
@@ -619,6 +720,26 @@ export default function BonusReportSection({ records, bonusYear, dark, onExcelEx
                   {key !== "ALL" && <span className="ml-1 opacity-60">({statusDist[key] || 0})</span>}
                 </button>
               ))}
+              {bfOptions.length > 0 && (
+                <>
+                  <div className={`w-px h-4 mx-1 ${dark ? "bg-white/10" : "bg-gray-200"}`} />
+                  <span className={`text-xs font-semibold ${sub}`}>Company:</span>
+                  <button onClick={() => setBfFilter("ALL")}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition
+                      ${bfFilter === "ALL"
+                        ? dark ? "bg-amber-500/20 text-amber-300" : "bg-amber-500 text-white"
+                        : dark ? "bg-[#1a1a1a] text-gray-400 hover:text-white" : "bg-white text-almet-waterloo hover:bg-almet-mystic border border-gray-200"}`}
+                  >All</button>
+                  {bfOptions.map(bf => (
+                    <button key={bf} onClick={() => setBfFilter(bf)}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold transition
+                        ${bfFilter === bf
+                          ? dark ? "bg-amber-500/20 text-amber-300" : "bg-amber-500 text-white"
+                          : dark ? "bg-[#1a1a1a] text-gray-400 hover:text-white" : "bg-white text-almet-waterloo hover:bg-almet-mystic border border-gray-200"}`}
+                    >{bf}</button>
+                  ))}
+                </>
+              )}
               <span className={`ml-auto text-xs ${sub}`}>{displayed.length} records</span>
             </div>
 
@@ -659,23 +780,35 @@ export default function BonusReportSection({ records, bonusYear, dark, onExcelEx
                           ${isCalculated ? "cursor-pointer" : ""}`}
                         onClick={() => isCalculated && openDrawer(r)}
                       >
-                        <td className={`px-4 py-3 font-mono text-xs ${sub}`}>{r.employee_id_code}</td>
+                     
                         <td className={`px-4 py-3 font-bold whitespace-nowrap ${text}`}>{r.employee_name}</td>
                         <td className="px-4 py-3">
                           <span className={`text-xs px-2 py-0.5 rounded-md font-semibold
                             ${dark ? "bg-almet-sapphire/15 text-almet-steel-blue" : "bg-almet-mystic text-almet-sapphire"}`}>
-                            {r.position || "—"}
+                            {r.job_title || r.position || "—"}
                           </span>
                         </td>
-                        <td className={`px-4 py-3 text-right text-xs font-mono ${sub}`}>{fmt(r.effective_salary)}</td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="text-xs font-mono text-almet-steel-blue">{fmt(r.company_targets_bonus)}</span>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs px-2 py-0.5 rounded-md font-mono font-semibold
+                            ${dark ? "bg-[#1a1a1a] text-gray-400" : "bg-gray-100 text-gray-600"}`}>
+                            {r.salary_currency || "AZN"}
+                          </span>
+                        </td>
+                        <td className={`px-4 py-3 text-right text-xs font-mono ${sub}`}>
+                          <span title="Gross salary">
+                            {cur}{fmt(conv(r.effective_salary, r.salary_currency))}
+                          </span>
+                          <span className={`ml-1 text-[9px] font-bold px-1 rounded
+                            ${dark ? "bg-amber-500/20 text-amber-400" : "bg-amber-100 text-amber-600"}`}>G</span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <span className="text-xs font-mono text-amber-500">{fmt(r.objectives_bonus)}</span>
+                          <span className="text-xs font-mono text-almet-steel-blue">{cur}{fmt(conv(r.company_targets_bonus, r.salary_currency))}</span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <span className="text-xs font-mono text-violet-500">{fmt(r.competencies_bonus)}</span>
+                          <span className="text-xs font-mono text-amber-500">{cur}{fmt(conv(r.objectives_bonus, r.salary_currency))}</span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-xs font-mono text-violet-500">{cur}{fmt(conv(r.competencies_bonus, r.salary_currency))}</span>
                         </td>
 
                         {/*  Total bonus cell — red badge when zero */}
@@ -690,7 +823,7 @@ export default function BonusReportSection({ records, bonusYear, dark, onExcelEx
                             </span>
                           ) : (
                             <span className={`text-sm font-bold tabular-nums ${isCalculated ? "text-emerald-500" : sub}`}>
-                              {fmt(r.total_bonus)}
+                              {cur}{fmt(conv(r.total_bonus, r.salary_currency))}
                             </span>
                           )}
                         </td>
@@ -752,7 +885,7 @@ export default function BonusReportSection({ records, bonusYear, dark, onExcelEx
                     Competencies: <b>{fmt(displayed.reduce((s, r) => s + parseFloat(r.competencies_bonus || 0), 0))}</b>
                   </span>
                   <span className="text-emerald-500 font-bold text-sm">
-                    Total: {fmt(displayed.reduce((s, r) => s + parseFloat(r.total_bonus || 0), 0))} ₼
+                    Total: {cur}{fmt(displayed.reduce((s, r) => s + parseFloat(r.total_bonus || 0), 0))}
                   </span>
                 </div>
               </div>

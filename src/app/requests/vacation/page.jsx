@@ -53,7 +53,8 @@ export default function VacationRequestsPage() {
     access_level: '',
     accessible_count: 0,
     employee_id: null,
-    employee_name: ''
+    employee_name: '',
+    can_view_planning_schedule: true
   });
   
   // Data states
@@ -584,6 +585,21 @@ const handleSaveEdit = async () => {
     }
   };
 
+  // Admin: delete vacation request
+  const handleDeleteRequest = async (record) => {
+    if (!userAccess.is_admin) return;
+    if (!confirm(`Delete vacation request #${record.request_id || record.id}? This cannot be undone.`)) return;
+    try {
+      await VacationService.deleteVacationRequest(record.id);
+      showSuccess('Vacation request deleted');
+      fetchAllVacationRecords();
+      fetchMyAllRecords();
+    } catch (error) {
+      console.error('Delete request error:', error);
+      showError(error?.response?.data?.error || 'Failed to delete request');
+    }
+  };
+
   // Only admin can delete schedules (even after registration)
   const handleDeleteSchedule = async (scheduleId) => {
     if (!userAccess.is_admin) {
@@ -695,10 +711,10 @@ const handleSaveEdit = async () => {
   // Export handlers - Based on access level
   const handleExportAllRecords = async () => {
     try {
-      const blob = await VacationService.exportAllVacationRecords(filters);
-      const filename = userAccess.can_view_all 
-        ? 'all_vacation_records.xlsx' 
-        : 'team_vacation_records.xlsx';
+      const blob = await VacationService.exportAllVacationRecords({ ...filters, export_type: 'requests' });
+      const filename = userAccess.can_view_all
+        ? 'all_vacation_requests.xlsx'
+        : 'team_vacation_requests.xlsx';
       VacationHelpers.downloadBlobFile(blob, filename);
       showSuccess('Export completed successfully');
     } catch (error) {
@@ -720,8 +736,8 @@ const handleSaveEdit = async () => {
 
   const handleExportSchedules = async () => {
     try {
-      const blob = await VacationService.exportAllVacationRecords();
-      VacationHelpers.downloadBlobFile(blob, 'schedules.xlsx');
+      const blob = await VacationService.exportAllVacationRecords({ export_type: 'schedules' });
+      VacationHelpers.downloadBlobFile(blob, 'vacation_schedules.xlsx');
       showSuccess('Export completed');
     } catch (error) {
       console.error('Export error:', error);
@@ -847,18 +863,24 @@ useEffect(() => {
   
 const getAvailableTabs = () => {
   const tabs = [
-    { key: 'request',          label: 'New Request',       icon: FileText  },
-    { key: 'planning',         label: 'Planning',          icon: CalendarIcon },
+    { key: 'request', label: 'New Request', icon: FileText },
   ];
+
+  if (userAccess.can_view_planning_schedule !== false) {
+    tabs.push({ key: 'planning', label: 'Planning', icon: CalendarIcon });
+  }
 
   if (userAccess.is_manager || userAccess.is_admin) {
     tabs.push({ key: 'approval', label: 'Approval', icon: CheckCircle });
   }
 
-  tabs.push({ key: 'schedules',        label: 'My Schedules',      icon: Calendar  });
-  tabs.push({ key: 'vacation-records', label: 'Vacation Records',  icon: FileText  }); // ✅ YENİ — vahid tab
-  tabs.push({ key: 'calendar',         label: 'Calendar',          icon: Calendar  });
-  tabs.push({ key: 'balances',         label: 'Balances',          icon: TrendingUp });
+  if (userAccess.can_view_planning_schedule !== false) {
+    tabs.push({ key: 'schedules', label: 'My Schedules', icon: Calendar });
+  }
+
+  tabs.push({ key: 'vacation-records', label: 'Vacation Records', icon: FileText });
+  tabs.push({ key: 'calendar',         label: 'Calendar',         icon: Calendar  });
+  tabs.push({ key: 'balances',         label: 'Balances',         icon: TrendingUp });
 
   return tabs;
 };
@@ -946,9 +968,10 @@ const getAvailableTabs = () => {
         {/* Content */}
         {activeTab === 'request' && balances && (
   <div className="space-y-5">
-    <VacationStats 
-      balances={balances} 
+    <VacationStats
+      balances={balances}
       allowNegativeBalance={vacationSettings.allow_negative_balance}
+      employeeName={userAccess.employee_name || ''}
     />
 
 
@@ -962,6 +985,7 @@ const getAvailableTabs = () => {
       setRequester={setRequester}
       employeeSearchResults={employeeSearchResults}
       vacationTypes={vacationTypes}
+      isUKEmployee={isUKEmployee}
       hrRepresentatives={hrRepresentatives}
       darkMode={darkMode}
       handleStartDateChange={handleStartDateChange}
@@ -975,7 +999,7 @@ const getAvailableTabs = () => {
   </div>
 )}
 
-{activeTab === 'schedules' && (
+{activeTab === 'schedules' && userAccess.can_view_planning_schedule !== false && (
   <MySchedulesTab
     userAccess={userAccess}
     scheduleTabs={scheduleTabs}
@@ -1003,7 +1027,7 @@ const getAvailableTabs = () => {
         )}
 
        
-{activeTab === 'planning' && (
+{activeTab === 'planning' && userAccess.can_view_planning_schedule !== false && (
   <PlanningVacationTab
     darkMode={darkMode}
     userAccess={userAccess}
@@ -1033,8 +1057,19 @@ const getAvailableTabs = () => {
     // ortaq
     handleViewDetails={handleViewDetails}
     handleViewAttachments={handleViewAttachments}
+    handleDeleteRequest={handleDeleteRequest}
     userAccess={userAccess}
     darkMode={darkMode}
+
+    // admin manual record
+    vacationTypes={vacationTypes}
+    employeeSearchResults={employeeSearchResults}
+    onAdminAddRecord={async (data) => {
+      await VacationService.adminAddVacationRecord(data);
+      showSuccess('Vacation record added successfully.');
+      fetchAllVacationRecords();
+      fetchDashboard();
+    }}
   />
 )}
 

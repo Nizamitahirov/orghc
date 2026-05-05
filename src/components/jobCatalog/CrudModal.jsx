@@ -108,7 +108,7 @@ export default function CrudModal({ context, darkMode }) {
                 {/* Bulk Creation Mode */}
                 <div className="mb-3">
                   <label className={labelClass}>
-                    Companys * 
+                    Companies * 
                     <span className="text-[10px] text-gray-500 dark:text-almet-bali-hai ml-1">
                       (Select multiple for bulk creation)
                     </span>
@@ -121,7 +121,7 @@ export default function CrudModal({ context, darkMode }) {
                     }))}
                     selected={formData.business_function_ids || []}
                     onChange={handleMultiSelectChange}
-                    placeholder="Select Companys"
+                    placeholder="Select Companies"
                     fieldName="business_function_ids"
                     darkMode={darkMode}
                   />
@@ -133,7 +133,7 @@ export default function CrudModal({ context, darkMode }) {
                     <div className="flex items-start gap-2">
                       <Info size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                       <span className="text-[10px] text-blue-800 dark:text-blue-200">
-                        This department will be created for <strong>{formData.business_function_ids.length}</strong> Companys
+                        This department will be created for <strong>{formData.business_function_ids.length}</strong> Companies
                       </span>
                     </div>
                   </div>
@@ -149,7 +149,7 @@ export default function CrudModal({ context, darkMode }) {
                     value={formData.business_function || ''}
                     onChange={(value) => setFormData({...formData, business_function: value})}
                     placeholder="Select Company"
-                    searchPlaceholder="Search Companys..."
+                    searchPlaceholder="Search Companies..."
                     allowUncheck={false}
                     darkMode={darkMode}
                     portal={true}

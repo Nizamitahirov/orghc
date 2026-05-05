@@ -11,11 +11,12 @@ import EvalScaleTab       from "@/components/bonus/settings/EvalScaleTab";
 import ObjectiveWeightTab from "@/components/bonus/settings/ObjectiveWeightTab";
 import CompetencyTab      from "@/components/bonus/settings/CompetencyTab";
 import SalarySetupTab     from "@/components/bonus/settings/SalarySetupTab";
+import ExchangeRateTab    from "@/components/bonus/settings/ExchangeRateTab";
 import BonusYearSelector  from "@/components/bonus/BonusYearSelector";
 import { useToast } from "@/components/common/Toast";
 import {
   ArrowLeft, Calendar, ShieldCheck, Target,
-  TrendingUp, Sliders, Brain, DollarSign, ChevronRight,
+  TrendingUp, Sliders, Brain, DollarSign, ChevronRight, ArrowLeftRight,
 } from "lucide-react";
 
 const TABS = [
@@ -25,7 +26,8 @@ const TABS = [
   { id: "eval-scale",  label: "Evaluation Scale",  icon: TrendingUp,  iconColor: "text-amber-400",  iconBg: (d) => d ? "bg-amber-500/10"  : "bg-amber-50",   dot: "bg-amber-400",     needsYear: true  },
   { id: "objective",   label: "Objective Weight",  icon: Sliders,     iconColor: "text-rose-400",   iconBg: (d) => d ? "bg-rose-500/10"   : "bg-rose-50",    dot: "bg-rose-400",     needsYear: true  },
   { id: "competency",  label: "Competency Config", icon: Brain,       iconColor: "text-indigo-400", iconBg: (d) => d ? "bg-indigo-500/10" : "bg-indigo-50",  dot: "bg-indigo-400",       needsYear: true  },
-  { id: "salary",      label: "Salary Setup",      icon: DollarSign,  iconColor: "text-teal-400",   iconBg: (d) => d ? "bg-teal-500/10"   : "bg-teal-50",    dot: "bg-teal-400",         needsYear: true  },
+  { id: "salary",      label: "Salary Setup",      icon: DollarSign,     iconColor: "text-teal-400",   iconBg: (d) => d ? "bg-teal-500/10"   : "bg-teal-50",    dot: "bg-teal-400",    needsYear: true  },
+  { id: "fx-rates",    label: "Exchange Rates",    icon: ArrowLeftRight, iconColor: "text-orange-400", iconBg: (d) => d ? "bg-orange-500/10" : "bg-orange-50",  dot: "bg-orange-400",  needsYear: true  },
 ];
 
 export default function BonusSettingsPage() {
@@ -220,6 +222,7 @@ export default function BonusSettingsPage() {
                   {tab === "objective"   && <ObjectiveWeightTab dark={dark} bonusYear={selectedYear} />}
                   {tab === "competency"  && <CompetencyTab dark={dark} bonusYear={selectedYear} />}
                   {tab === "salary"      && <SalarySetupTab dark={dark} bonusYear={selectedYear} />}
+                  {tab === "fx-rates"    && <ExchangeRateTab dark={dark} bonusYear={selectedYear} />}
                 </div>
               </div>
             )}

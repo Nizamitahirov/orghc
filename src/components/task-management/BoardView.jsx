@@ -33,7 +33,7 @@ function PriorityBadge({ priority }) {
   );
 }
 
-function KanbanCard({ task, onClick, darkMode }) {
+function KanbanCard({ task, onClick, darkMode, onDragStart, onDragEnd, isDragging }) {
   const bgCard = darkMode ? 'bg-gray-800' : 'bg-white';
   const txt = darkMode ? 'text-white' : 'text-gray-900';
   const txtMut = darkMode ? 'text-gray-500' : 'text-gray-400';
@@ -46,8 +46,13 @@ function KanbanCard({ task, onClick, darkMode }) {
 
   return (
     <div
+      draggable
+      onDragStart={(e) => onDragStart(e, task)}
+      onDragEnd={onDragEnd}
       onClick={() => onClick(task)}
-      className={`${bgCard} border ${brd} rounded-xl p-3 cursor-pointer hover:shadow-lg hover:border-almet-sapphire/40 transition-all duration-200 group relative`}
+      className={`${bgCard} border ${brd} rounded-xl p-3 cursor-grab active:cursor-grabbing hover:shadow-lg hover:border-almet-sapphire/40 transition-all duration-200 group relative ${
+        isDragging ? 'opacity-40 scale-95 rotate-1' : ''
+      }`}
     >
       <div className="flex items-start justify-between mb-2">
         <PriorityBadge priority={task.priority} />
@@ -109,6 +114,50 @@ export default function BoardView({ tasks, selectedTeam, selectedFolder, onTaskC
   const { showSuccess, showError } = useToast();
   const [quickAddCol, setQuickAddCol] = useState(null);
   const [quickAddTitle, setQuickAddTitle] = useState('');
+  const [dragOverCol, setDragOverCol] = useState(null);
+  const [draggingId, setDraggingId] = useState(null);
+
+  const handleDragStart = (e, task) => {
+    setDraggingId(task.id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', JSON.stringify({ taskId: task.id, fromStatus: task.status }));
+  };
+
+  const handleDragOver = (e, colKey) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverCol(colKey);
+  };
+
+  const handleDragLeave = (e) => {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDragOverCol(null);
+    }
+  };
+
+  const handleDrop = async (e, newStatus) => {
+    e.preventDefault();
+    setDragOverCol(null);
+    setDraggingId(null);
+    try {
+      const { taskId, fromStatus } = JSON.parse(e.dataTransfer.getData('text/plain'));
+      if (fromStatus === newStatus) return;
+      const r = await taskService.updateTask(taskId, { status: newStatus });
+      if (r.success) {
+        showSuccess('Task moved');
+        if (onTaskCreated) onTaskCreated();
+      } else {
+        showError(r.error || 'Failed to move task');
+      }
+    } catch {
+      showError('Failed to move task');
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDragOverCol(null);
+    setDraggingId(null);
+  };
 
   const bgCard = darkMode ? 'bg-gray-800' : 'bg-white';
   const txt = darkMode ? 'text-white' : 'text-gray-900';
@@ -141,9 +190,19 @@ export default function BoardView({ tasks, selectedTeam, selectedFolder, onTaskC
   return (
     <div className="grid grid-cols-4 gap-4 min-h-0">
       {tasksByStatus.map(col => (
-        <div key={col.key} className="flex flex-col min-w-0">
+        <div
+          key={col.key}
+          className="flex flex-col min-w-0"
+          onDragOver={(e) => handleDragOver(e, col.key)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, col.key)}
+        >
           {/* Column header */}
-          <div className={`flex items-center justify-between px-3 py-2 mb-3 rounded-xl ${bgCard} border ${brd} shadow-sm`}>
+          <div className={`flex items-center justify-between px-3 py-2 mb-3 rounded-xl border shadow-sm transition-all ${
+            dragOverCol === col.key
+              ? 'bg-almet-sapphire/10 border-almet-sapphire/50 shadow-almet-sapphire/20'
+              : `${bgCard} ${brd}`
+          }`}>
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: col.color }} />
               <span className={`text-xs font-bold ${txt} uppercase tracking-wide`}>{col.label}</span>
@@ -159,8 +218,10 @@ export default function BoardView({ tasks, selectedTeam, selectedFolder, onTaskC
             </div>
           </div>
 
-          {/* Cards */}
-          <div className="flex-1 space-y-2.5">
+          {/* Cards drop zone */}
+          <div className={`flex-1 space-y-2.5 min-h-[60px] rounded-xl transition-all ${
+            dragOverCol === col.key ? 'bg-almet-sapphire/5 ring-2 ring-dashed ring-almet-sapphire/30' : ''
+          }`}>
             {quickAddCol === col.key && (
               <div className={`${bgCard} border-2 border-dashed border-almet-sapphire/40 rounded-xl p-3 shadow-sm`}>
                 <input
@@ -191,7 +252,15 @@ export default function BoardView({ tasks, selectedTeam, selectedFolder, onTaskC
             )}
 
             {col.tasks.map(t => (
-              <KanbanCard key={t.id} task={t} onClick={onTaskClick} darkMode={darkMode} />
+              <KanbanCard
+                key={t.id}
+                task={t}
+                onClick={onTaskClick}
+                darkMode={darkMode}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                isDragging={draggingId === t.id}
+              />
             ))}
 
             {col.tasks.length === 0 && quickAddCol !== col.key && (

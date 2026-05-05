@@ -1,16 +1,16 @@
 // src/app/asset-management/assignments/page.jsx
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { assetService, employeeService } from "@/services/assetService";
+import { assetService, employeeService, fetchAll } from "@/services/assetService";
 import { useToast } from "@/components/common/Toast";
 import Pagination from "@/components/common/Pagination";
 import SearchableDropdown from "@/components/common/SearchableDropdown";
 import {
   Search, Plus, Loader, Package,
   CheckCircle, XCircle, LogIn, MessageSquare, X,
-  Clock, Users, AlertCircle, ArrowLeft,
+  Clock, Users, AlertCircle, ArrowLeft, ChevronDown,
 } from "lucide-react";
 
 // ── Status Badge ──────────────────────────────────────────────────────────────
@@ -26,8 +26,149 @@ const StatusBadge = ({ status }) => {
   return <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${s.cls}`}>{s.label}</span>;
 };
 
+// ── Asset Multi-Select Dropdown ───────────────────────────────────────────────
+const AssetMultiSelect = ({ assets = [], selectedIds = [], onChange, placeholder = "Choose assets…" }) => {
+  const [open, setOpen]       = useState(false);
+  const [search, setSearch]   = useState("");
+  const containerRef          = useRef(null);
+
+  const filtered = search.trim()
+    ? assets.filter(a =>
+        a.asset_name?.toLowerCase().includes(search.toLowerCase()) ||
+        a.serial_number?.toLowerCase().includes(search.toLowerCase())
+      )
+    : assets;
+
+  const toggle = id =>
+    onChange(selectedIds.includes(id) ? selectedIds.filter(x => x !== id) : [...selectedIds, id]);
+
+  const clearAll = (e) => { e.stopPropagation(); onChange([]); };
+
+  useEffect(() => {
+    const handle = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+        setSearch("");
+      }
+    };
+    if (open) document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  const label = selectedIds.length === 0
+    ? placeholder
+    : selectedIds.length === 1
+      ? assets.find(a => a.id === selectedIds[0])?.asset_name ?? "1 asset selected"
+      : `${selectedIds.length} assets selected`;
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-sm transition-all
+          ${open
+            ? "border-almet-steel-blue ring-2 ring-almet-steel-blue/20 bg-white dark:bg-gray-800"
+            : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-almet-steel-blue/50"
+          }`}
+      >
+        <span className={selectedIds.length === 0 ? "text-gray-400" : "text-gray-900 dark:text-white font-medium"}>
+          {label}
+        </span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {selectedIds.length > 0 && (
+            <span
+              onClick={clearAll}
+              className="text-xs text-gray-400 hover:text-red-500 transition-colors cursor-pointer px-1"
+              title="Clear all"
+            >
+              <X size={12} />
+            </span>
+          )}
+          <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        </div>
+      </button>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg overflow-hidden">
+          {/* Search */}
+          <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+            <div className="relative">
+              <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                autoFocus
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search by name or serial…"
+                className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-almet-steel-blue/50"
+              />
+            </div>
+          </div>
+
+          {/* List */}
+          <div className="max-h-52 overflow-y-auto">
+            {assets.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-gray-400 gap-1.5">
+                <Package size={18} className="opacity-40" />
+                <p className="text-xs">No assets in stock</p>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="py-6 text-center text-xs text-gray-400">
+                No results for "{search}"
+              </div>
+            ) : filtered.map(a => {
+              const checked = selectedIds.includes(a.id);
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => toggle(a.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors
+                    ${checked
+                      ? "bg-almet-mystic dark:bg-almet-cloud-burst/10"
+                      : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    }`}
+                >
+                  <span className={`w-4 h-4 shrink-0 rounded flex items-center justify-center border-2 transition-colors
+                    ${checked
+                      ? "bg-almet-cloud-burst border-almet-cloud-burst"
+                      : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                    }`}>
+                    {checked && <CheckCircle size={10} className="text-white" strokeWidth={3} />}
+                  </span>
+                  <span className="text-sm text-gray-800 dark:text-gray-200 flex-1 truncate">{a.asset_name}</span>
+                  <span className="text-xs text-gray-400 font-mono shrink-0">{a.serial_number}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Footer */}
+          {selectedIds.length > 0 && (
+            <div className="px-4 py-2.5 border-t border-gray-100 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-900/40 flex items-center justify-between">
+              <span className="text-xs text-almet-sapphire dark:text-almet-steel-blue font-semibold">
+                ✓ {selectedIds.length} selected
+              </span>
+              <button
+                type="button"
+                onClick={() => { setOpen(false); setSearch(""); }}
+                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-medium"
+              >
+                Done
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ── Shared ────────────────────────────────────────────────────────────────────
-const inputCls = "w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-steel-blue/50 focus:border-almet-steel-blue transition-colors placeholder:text-gray-400";
+const inputCls ="w-full border border-gray-200 dark:border-gray-700 rounded-xl px-3.5 py-2.5 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-steel-blue/50 focus:border-almet-steel-blue transition-colors placeholder:text-gray-400";
 
 const ModalShell = ({ title, subtitle, onClose, children, footer }) => (
   <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-40 p-4">
@@ -79,9 +220,6 @@ const AssignModal = ({ availableAssets, employees, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
 
-  const toggle = id =>
-    setForm(p => ({ ...p, asset_ids: p.asset_ids.includes(id) ? p.asset_ids.filter(x => x !== id) : [...p.asset_ids, id] }));
-
   const employeeOptions = employees.map(e => ({ value: String(e.id), label: `${e.name} (${e.employee_id})` }));
 
   const submit = async () => {
@@ -115,26 +253,12 @@ const AssignModal = ({ availableAssets, employees, onClose, onSuccess }) => {
         <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
           2 · Select Assets <span className="text-red-500">*</span>
         </label>
-        <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden max-h-44 overflow-y-auto">
-          {availableAssets.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-              <Package size={20} className="mb-1.5 opacity-50" />
-              <p className="text-xs">No assets in stock</p>
-            </div>
-          ) : availableAssets.map(a => (
-            <label key={a.id} className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors ${form.asset_ids.includes(a.id) ? "bg-almet-mystic dark:bg-almet-cloud-burst/10" : "hover:bg-gray-50 dark:hover:bg-gray-800"}`}>
-              <input type="checkbox" className="accent-almet-cloud-burst w-4 h-4"
-                checked={form.asset_ids.includes(a.id)} onChange={() => toggle(a.id)} />
-              <span className="text-sm text-gray-800 dark:text-gray-200 flex-1">{a.asset_name}</span>
-              <span className="text-xs text-gray-400 font-mono">{a.serial_number}</span>
-            </label>
-          ))}
-        </div>
-        {form.asset_ids.length > 0 && (
-          <p className="text-xs text-almet-sapphire dark:text-almet-steel-blue font-medium mt-1.5">
-            ✓ {form.asset_ids.length} asset(s) selected
-          </p>
-        )}
+        <AssetMultiSelect
+          assets={availableAssets}
+          selectedIds={form.asset_ids}
+          onChange={ids => setForm(p => ({ ...p, asset_ids: ids }))}
+          placeholder="Choose assets…"
+        />
       </div>
 
       <div>
@@ -325,11 +449,11 @@ export default function AssignmentsContent() {
 
   useEffect(() => {
     Promise.all([
-      assetService.list({ status: "IN_STOCK", page_size: 200 }),
-      employeeService.list({ page_size: 500 }),
-    ]).then(([aRes, eRes]) => {
-      setAvailable(aRes.results ?? aRes);
-      setEmployees(eRes.results ?? eRes);
+      fetchAll("/assets/assets/", { status: "IN_STOCK" }),
+      fetchAll("/employees/"),
+    ]).then(([allAssets, allEmployees]) => {
+      setAvailable(allAssets);
+      setEmployees(allEmployees);
     }).catch(console.error);
   }, []);
 
@@ -338,8 +462,8 @@ export default function AssignmentsContent() {
   const onActionSuccess = msg => {
     setShowAssign(false); setCheckInAsset(null); setClarifyAsset(null);
     loadAssets();
-    assetService.list({ status: "IN_STOCK", page_size: 200 })
-      .then(r => setAvailable(r.results ?? r)).catch(console.error);
+    fetchAll("/assets/assets/", { status: "IN_STOCK" })
+      .then(all => setAvailable(all)).catch(console.error);
     showSuccess(msg);
   };
 

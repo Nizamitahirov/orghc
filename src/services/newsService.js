@@ -269,6 +269,49 @@ updateNews: async (id, data) => {
     } catch (error) {
       throw error.response?.data || error;
     }
+  },
+
+  getComments: async (newsId) => {
+    try {
+      const response = await api.get(`/news/${newsId}/comments/`);
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  addComment: async (newsId, content) => {
+    try {
+      const response = await api.post(`/news/${newsId}/comments/`, { content });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  deleteComment: async (newsId, commentId) => {
+    try {
+      await api.delete(`/news/${newsId}/comments/${commentId}/`);
+    } catch (error) {
+      throw error.response?.data || error;
+    }
+  },
+
+  markRead: async (newsId) => {
+    try {
+      await api.post(`/news/${newsId}/mark_read/`);
+    } catch {
+      // silent
+    }
+  },
+
+  getUnreadCount: async () => {
+    try {
+      const response = await api.get('/news/unread_count/');
+      return response.data.unread_count || 0;
+    } catch {
+      return 0;
+    }
   }
 };
 

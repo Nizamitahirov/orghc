@@ -8,10 +8,11 @@ import {
   useEffect,
   useCallback,
   useRef,
+  useMemo,
 } from "react";
 import { PublicClientApplication } from "@azure/msal-browser";
 import { useRouter } from "next/navigation";
-import { msalConfig, loginRequest, graphRequest } from "./authConfig";
+import { msalConfig, loginRequest, loginRequestWithPrompt, graphRequest } from "./authConfig";
 
 const AuthContext = createContext();
 
@@ -32,10 +33,8 @@ export function AuthProvider({ children }) {
   const setStorageItem = useCallback((key, value) => {
     try {
       localStorage.setItem(key, value);
-      console.log(` Stored ${key}`);
       return true;
-    } catch (error) {
-      console.error(`❌ Storage error for ${key}:`, error);
+    } catch {
       return false;
     }
   }, []);
@@ -43,8 +42,7 @@ export function AuthProvider({ children }) {
   const getStorageItem = useCallback((key) => {
     try {
       return localStorage.getItem(key);
-    } catch (error) {
-      console.error(`❌ Read error for ${key}:`, error);
+    } catch {
       return null;
     }
   }, []);
@@ -52,8 +50,8 @@ export function AuthProvider({ children }) {
   const removeStorageItem = useCallback((key) => {
     try {
       localStorage.removeItem(key);
-    } catch (error) {
-      console.error(`❌ Remove error for ${key}:`, error);
+    } catch {
+      // storage unavailable
     }
   }, []);
 
@@ -61,31 +59,22 @@ export function AuthProvider({ children }) {
   const validateTokenWithBackend = async (token, retries = 2) => {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-
-        
         const response = await fetch(`${BACKEND_URL}/me/`, {
           method: 'GET',
-          headers: { 
+          headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           signal: AbortSignal.timeout(10000),
         });
-        
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
-        const data = await response.json();
-        console.log(" Token valid, user data:", data);
-        return data;
+
+        return await response.json();
       } catch (error) {
-        console.error(`❌ Validation attempt ${attempt + 1} failed:`, error.message);
-        
-        if (attempt === retries) {
-          throw error;
-        }
-        
+        if (attempt === retries) throw error;
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
@@ -93,8 +82,6 @@ export function AuthProvider({ children }) {
 
   //  Clear authentication
   const clearAuth = useCallback(async () => {
-   
-    
     removeStorageItem("accessToken");
     removeStorageItem("refreshToken");
     removeStorageItem("graphAccessToken");
@@ -108,44 +95,35 @@ export function AuthProvider({ children }) {
         if (accounts.length > 0) {
           await msalInstance.clearCache();
         }
-      } catch (error) {
-        console.error("❌ MSAL cache clear error:", error);
+      } catch {
+        // cache clear failed, continue logout
       }
     }
   }, [msalInstance, removeStorageItem]);
 
   //  Refresh Graph token
   const refreshGraphToken = useCallback(async (accountToRefresh) => {
-    if (!msalInstance || !accountToRefresh) {
-      console.warn("⚠️ Cannot refresh Graph token - missing instance or account");
-      return;
-    }
+    if (!msalInstance || !accountToRefresh) return;
 
     try {
       const expiry = getStorageItem("graphTokenExpiry");
       const now = new Date();
 
       if (!expiry || new Date(expiry) <= now) {
-       
-
         const graphTokenResponse = await msalInstance.acquireTokenSilent({
           ...graphRequest,
           account: accountToRefresh,
         });
 
         setStorageItem("graphAccessToken", graphTokenResponse.accessToken);
-        const newExpiry = new Date(Date.now() + 3600 * 1000).toISOString();
-        setStorageItem("graphTokenExpiry", newExpiry);
-
-     
-      } 
-    } catch (error) {
-      console.error("❌ Failed to refresh Graph token:", error);
+        setStorageItem("graphTokenExpiry", new Date(Date.now() + 3600 * 1000).toISOString());
+      }
+    } catch {
+      // graph token refresh failed silently — will retry on next interval
     }
   }, [msalInstance, getStorageItem, setStorageItem]);
 
-  // Mövcud refreshBackendToken funksiyasını genişləndir
-const refreshBackendToken = useCallback(async () => {
+  const refreshBackendToken = useCallback(async () => {
   const refreshToken = getStorageItem("refreshToken");
   if (!refreshToken) {
     await logout();
@@ -153,7 +131,6 @@ const refreshBackendToken = useCallback(async () => {
   }
 
   try {
-    // 1. Backend JWT refresh
     const response = await fetch(`${BACKEND_URL}/auth/refresh/`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -164,11 +141,9 @@ const refreshBackendToken = useCallback(async () => {
     if (!response.ok) throw new Error(`Refresh failed: ${response.status}`);
 
     const data = await response.json();
-    if (data.access) {
-      setStorageItem("accessToken", data.access);
-    }
+    if (data.access) setStorageItem("accessToken", data.access);
+    if (data.refresh) setStorageItem("refreshToken", data.refresh);
 
-    // 2. Graph token-i də yenilə (eyni zamanda)
     if (msalInstance) {
       const accounts = msalInstance.getAllAccounts();
       if (accounts.length > 0) {
@@ -177,29 +152,22 @@ const refreshBackendToken = useCallback(async () => {
             ...graphRequest,
             account: accounts[0],
           });
-          
           setStorageItem("graphAccessToken", graphTokenResponse.accessToken);
           setStorageItem("graphTokenExpiry", new Date(Date.now() + 3600 * 1000).toISOString());
-          
-          // Backend-ə yeni graph token-i göndər (opsional amma tövsiyə olunur)
           await updateGraphTokenOnBackend(data.access, graphTokenResponse.accessToken);
-          
-        } catch (graphError) {
-          console.warn("⚠️ Graph token silent refresh failed:", graphError);
-          // Graph token refresh fail olsa belə, JWT refresh uğurludur
+        } catch {
+          // graph token refresh failed, JWT refresh still succeeded
         }
       }
     }
 
     return data.access;
-  } catch (error) {
-    console.error("❌ Token refresh failed:", error);
+  } catch {
     await logout();
     return null;
   }
 }, [getStorageItem, setStorageItem, msalInstance]);
 
-// Backend-ə yeni graph token göndər
 const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
   try {
     await fetch(`${BACKEND_URL}/auth/update-graph-token/`, {
@@ -211,110 +179,55 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
       body: JSON.stringify({ graph_access_token: graphToken }),
       signal: AbortSignal.timeout(5000),
     });
-  } catch (e) {
-    console.warn("Graph token backend update failed:", e);
+  } catch {
+    // non-critical, backend will use existing graph token
   }
 };
 
   //  Authenticate with backend
   const authenticateWithBackend = async (idToken, graphToken, msalAccount) => {
-    try {
-    
-      
+    if (!idToken) throw new Error("No ID token available");
 
-      if (!idToken) {
-        throw new Error("No ID token available");
-      }
+    const response = await fetch(`${BACKEND_URL}/auth/microsoft/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        id_token: idToken,
+        graph_access_token: graphToken || null,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
 
-      const response = await fetch(`${BACKEND_URL}/auth/microsoft/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          id_token: idToken,
-          graph_access_token: graphToken || null,
-        }),
-        signal: AbortSignal.timeout(15000),
-      });
-
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ Backend error response:", errorText);
-        
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { error: errorText };
-        }
-        
-        throw new Error(errorData.error || `Backend returned ${response.status}`);
-      }
-
-      const backendData = await response.json();
-      console.log("📥 Backend response:", backendData);
-
-      if (backendData.success) {
-        const accessToken = backendData.access;
-        const refreshToken = backendData.refresh;
-        
-        if (!accessToken || !refreshToken) {
-          throw new Error("Backend didn't return tokens");
-        }
-        
-      
-
-        
-        // Store JWT tokens
-        const accessStored = setStorageItem("accessToken", accessToken);
-        const refreshStored = setStorageItem("refreshToken", refreshToken);
-        
-        if (!accessStored || !refreshStored) {
-          throw new Error("Failed to store JWT tokens");
-        }
-        
-        // Store Graph token
-        if (graphToken) {
-          setStorageItem("graphAccessToken", graphToken);
-          const expiryTime = new Date(Date.now() + 3600 * 1000).toISOString();
-          setStorageItem("graphTokenExpiry", expiryTime);
-        }
-        
-        // Verify storage
-        const verifyAccess = getStorageItem("accessToken");
-        const verifyRefresh = getStorageItem("refreshToken");
-        
-        if (!verifyAccess || !verifyRefresh) {
-          throw new Error("JWT token storage verification failed");
-        }
-        
-       
-        
-        setAccount({
-          ...msalAccount,
-          ...backendData.user,
-        });
-
-        return true;
-      }
-
-      throw new Error(backendData.error || "Backend authentication failed");
-      
-    } catch (error) {
-      console.error("❌ Backend authentication error:", error);
-      
-      if (error.name === 'AbortError') {
-        console.error("  - Request timeout");
-      } else if (error.message.includes('fetch')) {
-        console.error("  - Network error - cannot reach backend");
-        console.error(`  - Check if backend is running at: ${BACKEND_URL}`);
-      }
-      
-      throw error;
+    if (!response.ok) {
+      const errorText = await response.text();
+      let errorData;
+      try { errorData = JSON.parse(errorText); } catch { errorData = { error: errorText }; }
+      throw new Error(errorData.error || `Backend returned ${response.status}`);
     }
+
+    const backendData = await response.json();
+
+    if (backendData.success) {
+      const { access: accessToken, refresh: refreshToken } = backendData;
+      if (!accessToken || !refreshToken) throw new Error("Backend didn't return tokens");
+
+      const accessStored = setStorageItem("accessToken", accessToken);
+      const refreshStored = setStorageItem("refreshToken", refreshToken);
+      if (!accessStored || !refreshStored) throw new Error("Failed to store JWT tokens");
+
+      if (graphToken) {
+        setStorageItem("graphAccessToken", graphToken);
+        setStorageItem("graphTokenExpiry", new Date(Date.now() + 3600 * 1000).toISOString());
+      }
+
+      setAccount({ ...msalAccount, ...backendData.user });
+      return true;
+    }
+
+    throw new Error(backendData.error || "Backend authentication failed");
   };
 
   //  MSAL initialization
@@ -322,20 +235,14 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
     const initializeMsal = async () => {
       if (isProcessingAuth.current) return;
       isProcessingAuth.current = true;
-      
+
       try {
-       
-        
         const msalApp = new PublicClientApplication(msalConfig);
         await msalApp.initialize();
-     
 
-        // Handle redirect response
         const redirectResponse = await msalApp.handleRedirectPromise();
-        
+
         if (redirectResponse && redirectResponse.account) {
-     
-          
           try {
             const tokenResponse = await msalApp.acquireTokenSilent({
               ...loginRequest,
@@ -347,60 +254,61 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
               account: redirectResponse.account,
             });
 
-          
-
             await authenticateWithBackend(
               tokenResponse.idToken,
               graphTokenResponse.accessToken,
               redirectResponse.account
             );
 
-        
-            
             setMsalInstance(msalApp);
             setInitialized(true);
             setLoading(false);
             isProcessingAuth.current = false;
-            
             router.push("/home");
             return;
-            
           } catch (error) {
-            console.error("❌ Redirect authentication error:", error);
             setAuthError(error.message);
             await clearAuth();
           }
         }
 
-        // Check existing session
         setMsalInstance(msalApp);
         setInitialized(true);
-        
+
         const accounts = msalApp.getAllAccounts();
-        
+
         if (accounts.length > 0) {
-       
-          
           const token = getStorageItem("accessToken");
-          
+
           if (token) {
-   
             try {
               await validateTokenWithBackend(token);
               setAccount(accounts[0]);
-             
-            } catch (error) {
-              console.warn("⚠️ Token validation failed");
-              await clearAuth();
+            } catch {
+              try {
+                const rt = getStorageItem("refreshToken");
+                if (!rt) throw new Error("No refresh token");
+                const res = await fetch(`${BACKEND_URL}/auth/refresh/`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ refresh: rt }),
+                  signal: AbortSignal.timeout(10000),
+                });
+                if (!res.ok) throw new Error(`Refresh failed: ${res.status}`);
+                const d = await res.json();
+                if (d.access) setStorageItem("accessToken", d.access);
+                if (d.refresh) setStorageItem("refreshToken", d.refresh);
+                if (d.access) setAccount(accounts[0]);
+                else await clearAuth();
+              } catch {
+                await clearAuth();
+              }
             }
           } else {
-            console.log("⚠️ No stored token");
             await clearAuth();
           }
         }
-        
-      } catch (error) {
-        console.error("❌ MSAL initialization error:", error);
+      } catch {
         setAuthError("Authentication system failed to initialize");
       } finally {
         setLoading(false);
@@ -414,42 +322,35 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
   //  Graph token auto-refresh (every 10 minutes)
   useEffect(() => {
     if (!account || !msalInstance) return;
-
-    const interval = setInterval(() => {
-
-      refreshGraphToken(account);
-    }, 10 * 60 * 1000);
-
+    const interval = setInterval(() => refreshGraphToken(account), 10 * 60 * 1000);
     return () => clearInterval(interval);
   }, [account, msalInstance, refreshGraphToken]);
 
   useEffect(() => {
-  if (!account || !initialized) return;
+    if (!account || !initialized) return;
 
-  const checkTokenExpiry = async () => {
-    const accessToken = getStorageItem("accessToken");
-    if (!accessToken) return;
+    const checkTokenExpiry = async () => {
+      const accessToken = getStorageItem("accessToken");
+      if (!accessToken) return;
 
-    try {
-      const payload = JSON.parse(atob(accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
-      const timeUntilExpiry = payload.exp * 1000 - Date.now();
-      
-      // 10 dəqiqədən az qalıbsa refresh et (1 dəqiqə deyil)
-      if (timeUntilExpiry > 0 && timeUntilExpiry < 10 * 60 * 1000) {
-        console.log(`⏰ Token expires in ${Math.floor(timeUntilExpiry/60000)} min, refreshing...`);
-        await refreshBackendToken();
-      } else if (timeUntilExpiry <= 0) {
-        await logout();
+      try {
+        const payload = JSON.parse(atob(accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        const timeUntilExpiry = payload.exp * 1000 - Date.now();
+
+        if (timeUntilExpiry > 0 && timeUntilExpiry < 10 * 60 * 1000) {
+          await refreshBackendToken();
+        } else if (timeUntilExpiry <= 0) {
+          await logout();
+        }
+      } catch {
+        // malformed token — will be caught on next API call
       }
-    } catch (error) {
-      console.error("Token check error:", error);
-    }
-  };
+    };
 
-  checkTokenExpiry();
-  const intervalId = setInterval(checkTokenExpiry, 4 * 60 * 1000); // hər 4 dəqiqə
-  return () => clearInterval(intervalId);
-}, [account, initialized, refreshBackendToken, getStorageItem]);
+    checkTokenExpiry();
+    const intervalId = setInterval(checkTokenExpiry, 4 * 60 * 1000);
+    return () => clearInterval(intervalId);
+  }, [account, initialized, refreshBackendToken, getStorageItem]);
 
   //  Login function
   const login = useCallback(async () => {
@@ -465,11 +366,9 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
       setLoading(true);
       isProcessingAuth.current = true;
 
-
       const existingAccounts = msalInstance.getAllAccounts();
-      
+
       if (existingAccounts.length > 0) {
-        
         try {
           const tokenResponse = await msalInstance.acquireTokenSilent({
             ...loginRequest,
@@ -487,24 +386,18 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
             existingAccounts[0]
           );
 
-        
           router.push("/home");
           return;
-          
-        } catch (silentError) {
-          console.log("⚠️ Silent login failed, redirecting to Microsoft...");
+        } catch {
+          // silent login failed, fall through to redirect
         }
       }
 
-      
       await msalInstance.loginRedirect({
-        ...loginRequest,
+        ...loginRequestWithPrompt,
         redirectUri: window.location.origin,
-        prompt: "select_account",
       });
-
     } catch (error) {
-      console.error("❌ Login error:", error);
       setAuthError(error.message || "Login failed");
     } finally {
       setIsLoggingIn(false);
@@ -518,8 +411,6 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
     if (!msalInstance || !initialized) return;
 
     try {
-      
-      // Backend logout
       try {
         const token = getStorageItem("accessToken");
         if (token) {
@@ -532,8 +423,8 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
             signal: AbortSignal.timeout(3000),
           });
         }
-      } catch (logoutError) {
-        console.warn("Backend logout failed:", logoutError);
+      } catch {
+        // backend logout failed, continue local logout
       }
 
       await clearAuth();
@@ -547,17 +438,15 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
       } else {
         router.push("/login");
       }
-      
-      
-    } catch (error) {
-      console.error("❌ Logout error:", error);
+    } catch {
       await clearAuth();
       router.push("/login");
     }
   }, [msalInstance, initialized, router, clearAuth, getStorageItem]);
 
-  //  Context value
-  const contextValue = {
+  const clearError = useCallback(() => setAuthError(null), []);
+
+  const contextValue = useMemo(() => ({
     account,
     isAuthenticated: !!account && !!getStorageItem("accessToken"),
     login,
@@ -566,9 +455,9 @@ const updateGraphTokenOnBackend = async (accessToken, graphToken) => {
     initialized,
     authError,
     isLoggingIn,
-    clearError: () => setAuthError(null),
+    clearError,
     refreshBackendToken,
-  };
+  }), [account, login, logout, loading, initialized, authError, isLoggingIn, clearError, refreshBackendToken, getStorageItem]);
 
   //  Expose to window for apiClient
   useEffect(() => {

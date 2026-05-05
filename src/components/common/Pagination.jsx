@@ -1,16 +1,19 @@
 // src/components/common/Pagination.jsx
-
+"use client";
 import React from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
-export default function Pagination({ 
-  currentPage, 
-  totalPages, 
+export default function Pagination({
+  currentPage,
+  totalPages,
   totalItems,
   itemsPerPage,
   onPageChange,
-  darkMode = false 
+  darkMode = false
 }) {
+  const { t } = useLanguage();
+
   if (totalPages <= 1) return null;
 
   const getPageNumbers = () => {
@@ -18,15 +21,10 @@ export default function Pagination({
     const showPages = 5;
     let startPage = Math.max(1, currentPage - Math.floor(showPages / 2));
     let endPage = Math.min(totalPages, startPage + showPages - 1);
-
     if (endPage - startPage + 1 < showPages) {
       startPage = Math.max(1, endPage - showPages + 1);
     }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
-    }
-
+    for (let i = startPage; i <= endPage; i++) pages.push(i);
     return pages;
   };
 
@@ -36,16 +34,16 @@ export default function Pagination({
 
   const buttonClass = (isActive) => `
     px-3 py-1.5 text-xs font-medium rounded-lg transition-colors
-    ${isActive 
-      ? 'bg-almet-sapphire text-white' 
+    ${isActive
+      ? 'bg-almet-sapphire text-white'
       : `${darkMode ? 'bg-almet-san-juan text-almet-bali-hai hover:bg-almet-comet' : 'bg-white text-gray-700 hover:bg-gray-50'} border ${darkMode ? 'border-almet-comet' : 'border-gray-300'}`
     }
   `;
 
   const navButtonClass = `
     p-1.5 rounded-lg transition-colors
-    ${darkMode 
-      ? 'text-almet-bali-hai hover:bg-almet-comet disabled:opacity-30' 
+    ${darkMode
+      ? 'text-almet-bali-hai hover:bg-almet-comet disabled:opacity-30'
       : 'text-gray-600 hover:bg-gray-100 disabled:opacity-30'
     }
     disabled:cursor-not-allowed
@@ -55,91 +53,53 @@ export default function Pagination({
     <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-lg border ${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'}`}>
       {/* Info Text */}
       <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>
-        Showing <span className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{startItem}</span> to{' '}
-        <span className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{endItem}</span> of{' '}
-        <span className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{totalItems}</span> results
+        {t('pagination.showing')}{' '}
+        <span className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{startItem}</span>{' '}
+        - <span className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{endItem}</span>{' '}
+        {t('pagination.of')}{' '}
+        <span className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{totalItems}</span>{' '}
+        {t('pagination.results')}
       </div>
 
       {/* Pagination Controls */}
       <div className="flex items-center gap-1">
-        {/* First Page */}
-        <button
-          onClick={() => onPageChange(1)}
-          disabled={currentPage === 1}
-          className={navButtonClass}
-          title="First page"
-        >
+        <button onClick={() => onPageChange(1)} disabled={currentPage === 1} className={navButtonClass} title={t('common.previous')}>
           <ChevronsLeft size={14} />
         </button>
-
-        {/* Previous Page */}
-        <button
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className={navButtonClass}
-          title="Previous page"
-        >
+        <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className={navButtonClass} title={t('common.previous')}>
           <ChevronLeft size={14} />
         </button>
 
-        {/* Page Numbers */}
         <div className="flex items-center gap-1 mx-2">
           {pageNumbers[0] > 1 && (
             <>
-              <button
-                onClick={() => onPageChange(1)}
-                className={buttonClass(false)}
-              >
-                1
-              </button>
+              <button onClick={() => onPageChange(1)} className={buttonClass(false)}>1</button>
               {pageNumbers[0] > 2 && (
                 <span className={`px-2 ${darkMode ? 'text-almet-bali-hai' : 'text-gray-400'}`}>...</span>
               )}
             </>
           )}
-
           {pageNumbers.map(pageNum => (
-            <button
-              key={pageNum}
-              onClick={() => onPageChange(pageNum)}
-              className={buttonClass(pageNum === currentPage)}
-            >
+            <button key={pageNum} onClick={() => onPageChange(pageNum)} className={buttonClass(pageNum === currentPage)}>
               {pageNum}
             </button>
           ))}
-
           {pageNumbers[pageNumbers.length - 1] < totalPages && (
             <>
               {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && (
                 <span className={`px-2 ${darkMode ? 'text-almet-bali-hai' : 'text-gray-400'}`}>...</span>
               )}
-              <button
-                onClick={() => onPageChange(totalPages)}
-                className={buttonClass(false)}
-              >
+              <button onClick={() => onPageChange(totalPages)} className={buttonClass(false)}>
                 {totalPages}
               </button>
             </>
           )}
         </div>
 
-        {/* Next Page */}
-        <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className={navButtonClass}
-          title="Next page"
-        >
+        <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className={navButtonClass} title={t('common.next')}>
           <ChevronRight size={14} />
         </button>
-
-        {/* Last Page */}
-        <button
-          onClick={() => onPageChange(totalPages)}
-          disabled={currentPage === totalPages}
-          className={navButtonClass}
-          title="Last page"
-        >
+        <button onClick={() => onPageChange(totalPages)} disabled={currentPage === totalPages} className={navButtonClass} title={t('common.next')}>
           <ChevronsRight size={14} />
         </button>
       </div>

@@ -1,13 +1,29 @@
-// components/orgChart/OrgChartHeader.jsx
-// Dəyişiklik: exportLoading + onExportPDF prop əlavə edildi, Export düyməsi dropdown oldu
-
 'use client'
 import React, { useState, useRef, useEffect } from 'react';
 import {
-    Building2, Search, TreePine, Grid, Filter, Download,
-    Expand, Shrink, RefreshCw, AlertCircle, Globe, ArrowLeft,
-    FileImage, FileText, ChevronDown
+    Building2, Search, TreePine, LayoutGrid, SlidersHorizontal, Download,
+    Maximize2, Minimize2, RefreshCw, Globe, ArrowLeft,
+    FileImage, FileText, ChevronDown, Users, LayoutDashboard,
+    Briefcase, AlertTriangle, X, Printer
 } from 'lucide-react';
+
+const StatPill = ({ icon: Icon, label, value, color = 'blue', darkMode }) => {
+    const colors = {
+        blue:   { bg: darkMode ? 'bg-blue-900/30'   : 'bg-blue-50',   text: darkMode ? 'text-blue-300'  : 'text-blue-700',   dot: 'bg-blue-500'   },
+        green:  { bg: darkMode ? 'bg-green-900/30'  : 'bg-green-50',  text: darkMode ? 'text-green-300' : 'text-green-700',  dot: 'bg-green-500'  },
+        purple: { bg: darkMode ? 'bg-purple-900/30' : 'bg-purple-50', text: darkMode ? 'text-purple-300': 'text-purple-700', dot: 'bg-purple-500' },
+        red:    { bg: darkMode ? 'bg-red-900/30'    : 'bg-red-50',    text: darkMode ? 'text-red-300'   : 'text-red-700',    dot: 'bg-red-500'    },
+        gray:   { bg: darkMode ? 'bg-slate-700'     : 'bg-gray-100',  text: darkMode ? 'text-gray-300'  : 'text-gray-600',   dot: 'bg-gray-400'   },
+    };
+    const c = colors[color];
+    return (
+        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${c.bg} ${c.text} text-xs font-medium`}>
+            <Icon className="w-3 h-3 flex-shrink-0" />
+            <span className="hidden sm:inline opacity-70">{label}</span>
+            <span className="font-bold">{value}</span>
+        </div>
+    );
+};
 
 const OrgChartHeader = ({
     summary,
@@ -23,9 +39,10 @@ const OrgChartHeader = ({
     updateFilter,
     setViewMode,
     setShowFilters,
-    handleExportToPNG,   // () => void
-    handleExportToPDF,   // () => void  ← NEW
-    exportLoading,       // null | 'png' | 'pdf'
+    handleExportToPNG,
+    handleExportToPDF,
+    handlePrint,
+    exportLoading,
     toggleFullscreen,
     fetchFullTreeWithVacancies,
     hasActiveFilters,
@@ -34,126 +51,134 @@ const OrgChartHeader = ({
     onBackToCompanySelection
 }) => {
     const [showExportMenu, setShowExportMenu] = useState(false);
+    const [searchFocused, setSearchFocused] = useState(false);
     const menuRef = useRef(null);
 
-    // Close dropdown on outside click
     useEffect(() => {
         const handler = (e) => {
-            if (menuRef.current && !menuRef.current.contains(e.target)) {
-                setShowExportMenu(false);
-            }
+            if (menuRef.current && !menuRef.current.contains(e.target)) setShowExportMenu(false);
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
-    const bgCard     = darkMode ? 'bg-slate-800'  : 'bg-white';
-    const borderColor= darkMode ? 'border-slate-600' : 'border-gray-200';
-    const textHeader = darkMode ? 'text-gray-100'  : 'text-almet-cloud-burst';
-    const textSecondary = darkMode ? 'text-gray-400' : 'text-almet-waterloo';
-    const textMuted  = darkMode ? 'text-gray-500'  : 'text-almet-bali-hai';
-    const textPrimary= darkMode ? 'text-gray-200'  : 'text-almet-comet';
-    const bgAccent   = darkMode ? 'bg-slate-700'   : 'bg-almet-mystic';
-    const bgDropdown = darkMode ? 'bg-slate-800'   : 'bg-white';
+    const bgCard      = darkMode ? 'bg-slate-800'     : 'bg-white';
+    const borderColor = darkMode ? 'border-slate-600'  : 'border-gray-200';
+    const textHeader  = darkMode ? 'text-gray-100'     : 'text-almet-cloud-burst';
+    const textMuted   = darkMode ? 'text-gray-500'     : 'text-almet-bali-hai';
+    const textPrimary = darkMode ? 'text-gray-200'     : 'text-almet-comet';
+    const bgAccent    = darkMode ? 'bg-slate-700'      : 'bg-gray-50';
+    const bgDropdown  = darkMode ? 'bg-slate-800'      : 'bg-white';
+    const iconBtn     = `p-2 border ${borderColor} rounded-lg transition-all duration-150 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm hover:shadow-md hover:border-almet-sapphire/40`;
+
+    const isFiltered = filteredOrgChart?.length !== orgChart?.length;
 
     return (
-        <div className={`${bgCard} shadow-lg border-b ${borderColor} sticky top-0 z-30 backdrop-blur-md`}>
-            <div className="px-4 py-3">
-                <div className="flex items-center justify-between">
+        <div className={`${bgCard} border-b ${borderColor} sticky top-0 z-30`}
+             style={{ backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+            <div className="px-4 py-2.5">
+                <div className="flex items-center justify-between gap-3">
 
-                    {/* ── Left: Title & Stats ── */}
-                    <div className="flex items-center gap-3">
+                    {/* ── Left: Logo + Title + Stats ── */}
+                    <div className="flex items-center gap-2.5 min-w-0">
                         {selectedCompany && (
                             <button
                                 onClick={onBackToCompanySelection}
-                                className={`p-2 hover:${bgAccent} rounded-lg transition-colors ${textMuted} hover:${textPrimary}`}
+                                className={`${iconBtn} flex-shrink-0`}
                                 title="Back to company selection"
                             >
-                                <ArrowLeft size={20} />
+                                <ArrowLeft size={16} />
                             </button>
                         )}
 
-                        <div className="w-8 h-8 bg-gradient-to-br from-almet-sapphire to-almet-cloud-burst rounded-lg flex items-center justify-center shadow-lg">
+                        <div className="w-8 h-8 bg-gradient-to-br from-almet-sapphire to-almet-cloud-burst rounded-lg flex items-center justify-center shadow-md flex-shrink-0">
                             {selectedCompany === 'ALL'
                                 ? <Globe className="w-4 h-4 text-white" />
                                 : <Building2 className="w-4 h-4 text-white" />}
                         </div>
 
-                        <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <h1 className={`text-base font-bold ${textHeader}`}>Organizational Chart</h1>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                                <h1 className={`text-sm font-bold ${textHeader} leading-none`}>Org Chart</h1>
                                 {selectedCompany && (
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-almet-sapphire text-white">
-                                        {selectedCompany === 'ALL' ? 'All Companies' : selectedCompany}
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-almet-sapphire/10 text-almet-sapphire border border-almet-sapphire/20">
+                                        {selectedCompany === 'ALL' ? 'All' : selectedCompany}
                                     </span>
                                 )}
-                            </div>
-                            <div className="flex items-center gap-4 text-xs">
-                                <p className={`${textSecondary} font-medium`}>
-                                    Total: <span className="font-bold text-almet-sapphire">{summary.totalEmployees || 0}</span>
-                                </p>
-                                <p className={`${textSecondary} font-medium`}>
-                                    Managers: <span className="font-bold text-green-600 dark:text-green-400">{summary.totalManagers || 0}</span>
-                                </p>
-                                {summary.totalDepartments > 0 && (
-                                    <p className={`${textSecondary} font-medium`}>
-                                        Departments: <span className="font-bold">{summary.totalDepartments}</span>
-                                    </p>
-                                )}
-                                {selectedCompany === 'ALL' && summary.totalBusinessFunctions > 0 && (
-                                    <p className={`${textSecondary} font-medium`}>
-                                        Companies: <span className="font-bold">{summary.totalBusinessFunctions}</span>
-                                    </p>
-                                )}
-                                {vacantCount > 0 && (
-                                    <p className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1">
-                                        <AlertCircle className="w-3 h-3" />
-                                        Vacant: <span className="font-bold">{vacantCount}</span>
-                                    </p>
-                                )}
-                                {filteredOrgChart.length !== orgChart?.length && (
-                                    <p className={textSecondary}>
-                                        Filtered: <span className="font-bold">{filteredOrgChart.length}</span>
-                                    </p>
-                                )}
-                                {expandedNodes?.length > 0 && (
-                                    <p className={textSecondary}>
-                                        Expanded: <span className="font-bold">{expandedNodes.length}</span>
-                                    </p>
-                                )}
                                 {isLoading && <RefreshCw className={`w-3 h-3 ${textMuted} animate-spin`} />}
+                            </div>
+
+                            {/* Stats pills row */}
+                            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                <StatPill icon={Users}         label="Employees"   value={summary.totalEmployees  || 0} color="blue"   darkMode={darkMode} />
+                                <StatPill icon={Briefcase}     label="Managers"    value={summary.totalManagers   || 0} color="green"  darkMode={darkMode} />
+                                <StatPill icon={LayoutDashboard} label="Depts"     value={summary.totalDepartments|| 0} color="purple" darkMode={darkMode} />
+                                {vacantCount > 0 && (
+                                    <StatPill icon={AlertTriangle} label="Vacant"  value={vacantCount}              color="red"    darkMode={darkMode} />
+                                )}
+                                {isFiltered && (
+                                    <StatPill icon={SlidersHorizontal} label="Filtered" value={filteredOrgChart?.length} color="gray" darkMode={darkMode} />
+                                )}
                             </div>
                         </div>
                     </div>
 
                     {/* ── Right: Controls ── */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
 
-                        {/* Search */}
+                        {/* Search with clear button */}
                         <div className="relative">
-                            <Search className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${textMuted} w-3.5 h-3.5 pointer-events-none`} />
+                            <Search className={`absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none transition-colors ${
+                                searchFocused ? 'text-almet-sapphire' : textMuted
+                            }`} />
                             <input
                                 type="text"
-                                placeholder="Search employees..."
+                                placeholder="Search..."
                                 value={filters.search || ''}
                                 onChange={(e) => updateFilter('search', e.target.value)}
-                                className={`pl-8 pr-7 py-2 border outline-0 ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire w-44 ${bgCard} ${textPrimary} text-sm transition-all duration-200 shadow-sm`}
+                                onFocus={() => setSearchFocused(true)}
+                                onBlur={() => setSearchFocused(false)}
+                                className={`pl-8 ${filters.search ? 'pr-7' : 'pr-3'} py-1.5 border outline-none rounded-lg text-sm transition-all duration-200 shadow-sm ${
+                                    searchFocused
+                                        ? 'border-almet-sapphire ring-2 ring-almet-sapphire/20 w-52'
+                                        : `${borderColor} w-40`
+                                } ${bgCard} ${textPrimary}`}
                             />
+                            {filters.search && (
+                                <button
+                                    onClick={() => updateFilter('search', '')}
+                                    className={`absolute right-2 top-1/2 -translate-y-1/2 ${textMuted} hover:text-almet-sapphire transition-colors`}
+                                >
+                                    <X size={13} />
+                                </button>
+                            )}
                         </div>
 
                         {/* View Toggle */}
                         <div className={`flex rounded-lg border ${borderColor} ${bgCard} p-0.5 shadow-sm`}>
                             <button
                                 onClick={() => setViewMode('tree')}
-                                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-200 flex items-center gap-1.5 ${viewMode === 'tree' ? 'bg-almet-sapphire text-white shadow-sm' : `${textMuted} hover:${textPrimary} hover:${bgAccent}`}`}
+                                title="Tree View"
+                                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-150 flex items-center gap-1.5 ${
+                                    viewMode === 'tree'
+                                        ? 'bg-almet-sapphire text-white shadow-sm'
+                                        : `${textMuted} hover:${textPrimary} hover:${bgAccent}`
+                                }`}
                             >
-                                <TreePine size={14} />Tree
+                                <TreePine size={13} />
+                                <span className="hidden md:inline">Tree</span>
                             </button>
                             <button
                                 onClick={() => setViewMode('grid')}
-                                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-200 flex items-center gap-1.5 ${viewMode === 'grid' ? 'bg-almet-sapphire text-white shadow-sm' : `${textMuted} hover:${textPrimary} hover:${bgAccent}`}`}
+                                title="Grid View"
+                                className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-150 flex items-center gap-1.5 ${
+                                    viewMode === 'grid'
+                                        ? 'bg-almet-sapphire text-white shadow-sm'
+                                        : `${textMuted} hover:${textPrimary} hover:${bgAccent}`
+                                }`}
                             >
-                                <Grid size={14} />Grid
+                                <LayoutGrid size={13} />
+                                <span className="hidden md:inline">Grid</span>
                             </button>
                         </div>
 
@@ -161,60 +186,70 @@ const OrgChartHeader = ({
                         <button
                             onClick={() => setShowFilters(!showFilters)}
                             title="Advanced Filters"
-                            className={`p-2 border ${borderColor} rounded-lg hover:${bgAccent} transition-all duration-200 ${bgCard} ${textPrimary} shadow-sm relative`}
+                            className={`${iconBtn} relative ${showFilters ? '!bg-almet-sapphire/10 !border-almet-sapphire/40' : ''}`}
                         >
-                            <Filter size={14} />
+                            <SlidersHorizontal size={14} className={showFilters ? 'text-almet-sapphire' : ''} />
                             {hasActiveFilters && (
-                                <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-almet-sapphire rounded-full border border-white" />
+                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-almet-sapphire rounded-full border-2 border-white dark:border-slate-800" />
                             )}
                         </button>
 
-                        {/* ── Export Dropdown ── */}
+                        {/* Export Dropdown */}
                         <div className="relative" ref={menuRef}>
                             <button
                                 onClick={() => setShowExportMenu(prev => !prev)}
                                 disabled={!!exportLoading}
-                                title="Export Chart"
-                                className={`p-2 border ${borderColor} rounded-lg hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed`}
+                                title="Export"
+                                className={`${iconBtn} flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed`}
                             >
-                                {exportLoading ? (
-                                    <RefreshCw size={14} className="animate-spin" />
-                                ) : (
-                                    <Download size={14} />
-                                )}
+                                {exportLoading
+                                    ? <RefreshCw size={14} className="animate-spin" />
+                                    : <Download size={14} />}
                                 <span className="text-xs hidden sm:inline">
-                                    {exportLoading === 'png' ? 'PNG...' : exportLoading === 'pdf' ? 'PDF...' : 'Export'}
+                                    {exportLoading === 'png' ? 'PNG…' : exportLoading === 'pdf' ? 'PDF…' : 'Export'}
                                 </span>
-                                <ChevronDown size={12} className={`hidden sm:block transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
+                                <ChevronDown size={11} className={`hidden sm:block transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`} />
                             </button>
 
                             {showExportMenu && !exportLoading && (
-                                <div className={`absolute right-0 mt-1 w-44 ${bgDropdown} border ${borderColor} rounded-xl shadow-2xl z-50 overflow-hidden`}>
-                                    {/* PNG option */}
+                                <div className={`absolute right-0 mt-1.5 w-48 ${bgDropdown} border ${borderColor} rounded-xl shadow-2xl z-50 overflow-hidden`}
+                                     style={{ animation: 'fadeSlideDown 0.15s ease' }}>
                                     <button
                                         onClick={() => { handleExportToPNG(); setShowExportMenu(false); }}
-                                        className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} hover:bg-almet-sapphire hover:text-white transition-colors`}
+                                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${textPrimary} hover:bg-almet-sapphire hover:text-white transition-colors`}
                                     >
-                                        <FileImage size={15} />
+                                        <FileImage size={15} className="flex-shrink-0" />
                                         <div className="text-left">
-                                            <p className="font-semibold">PNG Image</p>
-                                            <p className="text-xs opacity-70">High-res, 3× DPI</p>
+                                            <p className="font-semibold leading-none">PNG Image</p>
+                                            <p className="text-[10px] opacity-60 mt-0.5">High-res, 3× DPI</p>
                                         </div>
                                     </button>
-
                                     <div className={`border-t ${borderColor}`} />
-
-                                    {/* PDF option */}
                                     <button
                                         onClick={() => { handleExportToPDF(); setShowExportMenu(false); }}
-                                        className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${textPrimary} hover:bg-almet-sapphire hover:text-white transition-colors`}
+                                        className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${textPrimary} hover:bg-almet-sapphire hover:text-white transition-colors`}
                                     >
-                                        <FileText size={15} />
+                                        <FileText size={15} className="flex-shrink-0" />
                                         <div className="text-left">
-                                            <p className="font-semibold">PDF Document</p>
-                                            <p className="text-xs opacity-70">A3, with header</p>
+                                            <p className="font-semibold leading-none">PDF Document</p>
+                                            <p className="text-[10px] opacity-60 mt-0.5">A3 landscape</p>
                                         </div>
                                     </button>
+                                    {handlePrint && (
+                                        <>
+                                            <div className={`border-t ${borderColor}`} />
+                                            <button
+                                                onClick={() => { handlePrint(); setShowExportMenu(false); }}
+                                                className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm ${textPrimary} hover:bg-almet-sapphire hover:text-white transition-colors`}
+                                            >
+                                                <Printer size={15} className="flex-shrink-0" />
+                                                <div className="text-left">
+                                                    <p className="font-semibold leading-none">Print</p>
+                                                    <p className="text-[10px] opacity-60 mt-0.5">Browser print dialog</p>
+                                                </div>
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -223,23 +258,30 @@ const OrgChartHeader = ({
                         <button
                             onClick={toggleFullscreen}
                             title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-                            className={`p-2 border ${borderColor} rounded-lg hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}
+                            className={iconBtn}
                         >
-                            {isFullscreen ? <Shrink size={14} /> : <Expand size={14} />}
+                            {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                         </button>
 
                         {/* Refresh */}
                         <button
                             onClick={() => fetchFullTreeWithVacancies()}
                             disabled={isLoading}
-                            title="Refresh"
-                            className={`p-2 border ${borderColor} rounded-lg hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm disabled:opacity-50`}
+                            title="Refresh data"
+                            className={`${iconBtn} disabled:opacity-40`}
                         >
                             <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
                         </button>
                     </div>
                 </div>
             </div>
+
+            <style jsx>{`
+                @keyframes fadeSlideDown {
+                    from { opacity: 0; transform: translateY(-6px); }
+                    to   { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
         </div>
     );
 };

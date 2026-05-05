@@ -2,9 +2,9 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { 
-  Plus, Edit2, Trash2, Save, X, GripVertical, 
-  MessageSquare, CheckSquare, List, AlignLeft, ArrowLeft
+import {
+  Plus, Edit2, Trash2, Save, X, GripVertical,
+  MessageSquare, CheckSquare, List, AlignLeft, ArrowLeft, User, Briefcase
 } from 'lucide-react';
 import resignationExitService from '@/services/resignationExitService';
 import { useToast } from '@/components/common/Toast';
@@ -302,12 +302,32 @@ export default function QuestionManagementPage() {
               </button>
             </div>
           ) : (
-            groupedQuestions().map((group) => (
-              <div key={group.key} className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+            groupedQuestions().map((group) => {
+              const isManager = activeType === 'probation_review' && group.key.startsWith('MANAGER');
+              const isEmployee = activeType === 'probation_review' && group.key.startsWith('EMPLOYEE');
+              return (
+              <div key={group.key} className={`rounded-lg shadow-sm border p-3 ${
+                isManager
+                  ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-700'
+                  : isEmployee
+                  ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700'
+                  : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+              }`}>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-bold text-gray-900 dark:text-white">
-                    {group.label}
-                  </h3>
+                  <div className="flex items-center gap-1.5">
+                    {isManager && <Briefcase size={13} className="text-indigo-600 dark:text-indigo-400" />}
+                    {isEmployee && <User size={13} className="text-blue-600 dark:text-blue-400" />}
+                    <h3 className={`text-xs font-bold ${
+                      isManager ? 'text-indigo-900 dark:text-indigo-200' :
+                      isEmployee ? 'text-blue-900 dark:text-blue-200' :
+                      'text-gray-900 dark:text-white'
+                    }`}>
+                      {group.label}
+                    </h3>
+                    {isManager && (
+                      <span className="text-[9px] px-1.5 py-0.5 bg-indigo-600 text-white rounded font-semibold">MANAGER</span>
+                    )}
+                  </div>
                   <span className="text-[10px] font-medium px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full">
                     {group.questions.length} {group.questions.length === 1 ? 'question' : 'questions'}
                   </span>
@@ -330,7 +350,7 @@ export default function QuestionManagementPage() {
                   </div>
                 )}
               </div>
-            ))
+            );})
           )}
         </div>
 

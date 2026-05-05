@@ -1,21 +1,28 @@
-// components/orgChart/GridView.jsx - FULL VERSION with Pagination
 'use client'
 import React, { useState, useMemo } from 'react';
-import { Building2, Users, AlertCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Building2, Users, AlertCircle, XCircle, ChevronLeft, ChevronRight, Layers, Mail } from 'lucide-react';
 import Avatar from './Avatar';
+
+const POSITION_COLORS = {
+    'VC':                  '#1e3a8a',
+    'Vice Chairman':       '#1e3a8a',
+    'DIRECTOR':            '#30539b',
+    'HEAD OF DEPARTMENT':  '#336fa5',
+    'SENIOR SPECIALIST':   '#4f5772',
+    'SPECIALIST':          '#7a829a',
+    'JUNIOR SPECIALIST':   '#90a0b9',
+};
+const getAccent = (pg) => POSITION_COLORS[pg] || '#7a829a';
 
 const cleanEmployeeData = (employee) => {
     if (!employee) return null;
-    
-    
     const isVacancy = Boolean(
-        employee.employee_details?.is_vacancy ||  
-        employee.is_vacancy || 
-        employee.vacant || 
+        employee.employee_details?.is_vacancy ||
+        employee.is_vacancy ||
+        employee.vacant ||
         employee.record_type === 'vacancy' ||
         (employee.name && employee.name.includes('[VACANT]'))
     );
-    
     return {
         id: employee.id,
         employee_id: employee.employee_id,
@@ -34,57 +41,43 @@ const cleanEmployeeData = (employee) => {
         avatar: employee.avatar,
         status_color: employee.status_color,
         vacant: isVacancy,
-        is_vacancy: isVacancy,  //  Flatten for easier access
+        is_vacancy: isVacancy,
         record_type: employee.record_type || (isVacancy ? 'vacancy' : 'employee'),
         employee_details: employee.employee_details
     };
 };
 
-const GridView = ({ 
-    filteredOrgChart, 
-    setSelectedEmployee, 
-    darkMode 
-}) => {
-    const bgCard = darkMode ? "bg-slate-800" : "bg-white";
-    const borderColor = darkMode ? "border-slate-600" : "border-gray-200";
-    const textHeader = darkMode ? "text-gray-100" : "text-almet-cloud-burst";
-    const textSecondary = darkMode ? "text-gray-400" : "text-almet-waterloo";
-    const textMuted = darkMode ? "text-gray-500" : "text-almet-bali-hai";
-    const bgAccent = darkMode ? "bg-slate-700" : "bg-almet-mystic";
+const GridView = ({ filteredOrgChart, setSelectedEmployee, darkMode }) => {
+    const bgCard      = darkMode ? 'bg-slate-800'  : 'bg-white';
+    const borderColor = darkMode ? 'border-slate-600' : 'border-gray-200';
+    const textHeader  = darkMode ? 'text-gray-100' : 'text-almet-cloud-burst';
+    const textSecondary = darkMode ? 'text-gray-400' : 'text-almet-waterloo';
+    const textMuted   = darkMode ? 'text-gray-500' : 'text-almet-bali-hai';
+    const bgAccent    = darkMode ? 'bg-slate-700'  : 'bg-gray-50';
 
-    // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 12; // 3x4 grid
+    const ITEMS_PER_PAGE = 12;
 
-    // Calculate pagination
     const totalItems = filteredOrgChart?.length || 0;
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    
+    const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+
     const paginatedData = useMemo(() => {
-        if (!filteredOrgChart || filteredOrgChart.length === 0) return [];
-        
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const endIndex = startIndex + itemsPerPage;
-        
-        return filteredOrgChart.slice(startIndex, endIndex);
-    }, [filteredOrgChart, currentPage, itemsPerPage]);
+        if (!filteredOrgChart?.length) return [];
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        return filteredOrgChart.slice(start, start + ITEMS_PER_PAGE);
+    }, [filteredOrgChart, currentPage]);
 
-    // Reset to page 1 when filter changes
-    React.useEffect(() => {
-        setCurrentPage(1);
-    }, [filteredOrgChart?.length]);
+    React.useEffect(() => { setCurrentPage(1); }, [filteredOrgChart?.length]);
 
-    if (!filteredOrgChart || filteredOrgChart.length === 0) {
+    if (!filteredOrgChart?.length) {
         return (
             <div className="flex items-center justify-center h-full p-6">
                 <div className="text-center">
-                    <AlertCircle className={`w-12 h-12 ${textSecondary} mx-auto mb-4`} />
-                    <p className={`${textSecondary} text-lg font-medium`}>
-                        No employees found
-                    </p>
-                    <p className={`${textSecondary} text-sm mt-2`}>
-                        Try adjusting your filters or search criteria
-                    </p>
+                    <div className={`w-16 h-16 rounded-2xl ${bgAccent} flex items-center justify-center mx-auto mb-4`}>
+                        <Users className={`w-8 h-8 ${textMuted}`} />
+                    </div>
+                    <p className={`${textSecondary} text-base font-semibold`}>No employees found</p>
+                    <p className={`${textMuted} text-sm mt-1`}>Try adjusting your filters or search criteria</p>
                 </div>
             </div>
         );
@@ -92,77 +85,113 @@ const GridView = ({
 
     return (
         <div className="flex flex-col h-full">
-            {/* Grid Container */}
             <div className="flex-1 overflow-y-auto">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 p-4">
                     {paginatedData.map(employee => {
-                        const cleanEmployee = cleanEmployeeData(employee);
-                        const isVacant = cleanEmployee.vacant;
-                        
+                        const emp = cleanEmployeeData(employee);
+                        const isVacant = emp.vacant;
+                        const accent = isVacant ? '#dc2626' : getAccent(emp.position_group);
+
                         return (
-                            <div 
-                                key={employee.employee_id}
-                                className={`${bgCard} rounded-xl p-4 cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-105 relative ${
-                                    isVacant 
-                                        ? 'border-3 border-red-500 bg-red-50 dark:bg-red-900/20' 
-                                        : `border ${borderColor}`
-                                }`}
+                            <div
+                                key={emp.employee_id}
+                                className={`${bgCard} rounded-xl cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 overflow-hidden`}
                                 style={{
-                                    borderWidth: isVacant ? '3px' : '1px',
-                                    borderColor: isVacant ? '#ef4444' : undefined
+                                    border: isVacant ? `2px solid ${accent}` : `1px solid ${darkMode ? '#475569' : '#e2e8f0'}`,
+                                    willChange: 'transform, box-shadow'
                                 }}
-                                onClick={() => setSelectedEmployee(cleanEmployee)}
+                                onClick={() => setSelectedEmployee(emp)}
                             >
-                                {/* Vacant Badge */}
-                                {isVacant && (
-                                    <div className="absolute -top-2 -right-2 z-10">
-                                        <div className="bg-red-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-lg flex items-center gap-1">
-                                            <AlertCircle className="w-3 h-3" />
-                                            VACANT
+                                {/* Accent top stripe */}
+                                <div style={{ height: 3, background: `linear-gradient(90deg, ${accent}, ${accent}88)` }} />
+
+                                <div className="p-3.5">
+                                    {/* Avatar + name */}
+                                    <div className="flex items-start gap-3 mb-3">
+                                        <div className="relative flex-shrink-0">
+                                            <Avatar employee={emp} size="md" darkMode={darkMode} />
+                                            {emp.status_color && !isVacant && (
+                                                <span
+                                                    className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-800"
+                                                    style={{ backgroundColor: emp.status_color }}
+                                                    title="Status"
+                                                />
+                                            )}
+                                            {isVacant && (
+                                                <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full border-2 border-white dark:border-slate-800 flex items-center justify-center">
+                                                    <AlertCircle className="w-2.5 h-2.5 text-white" />
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h3
+                                                className={`font-semibold text-sm leading-tight truncate ${
+                                                    isVacant ? 'text-red-600 dark:text-red-400' : textHeader
+                                                }`}
+                                                title={emp.name}
+                                            >
+                                                {emp.name}
+                                            </h3>
+                                            <p
+                                                className={`text-xs line-clamp-2 mt-0.5 ${
+                                                    isVacant ? 'text-red-500 dark:text-red-300 italic' : textSecondary
+                                                }`}
+                                                title={emp.title}
+                                            >
+                                                {emp.title}
+                                            </p>
                                         </div>
                                     </div>
-                                )}
-                                
-                                {/* Employee Card Content */}
-                                <div className="flex items-start gap-3 mb-3">
-                                    <Avatar employee={cleanEmployee} size="sm" darkMode={darkMode} />
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className={`font-bold text-sm leading-tight mb-1 truncate ${
-                                            isVacant ? 'text-red-700 dark:text-red-400' : textHeader
-                                        }`} title={cleanEmployee.name}>
-                                            {cleanEmployee.name}
-                                        </h3>
-                                        <p className={`text-xs line-clamp-2 ${
-                                            isVacant ? 'text-red-600 dark:text-red-300 italic' : textSecondary
-                                        }`} title={cleanEmployee.title}>
-                                            {cleanEmployee.title}
-                                        </p>
+
+                                    {/* Details */}
+                                    <div className="space-y-1">
+                                        {emp.department && (
+                                            <div className={`flex items-center gap-1.5 text-xs ${isVacant ? 'text-red-500 dark:text-red-400' : textSecondary}`}>
+                                                <Building2 className="w-3 h-3 flex-shrink-0" />
+                                                <span className="truncate">{emp.department}</span>
+                                            </div>
+                                        )}
+                                        {emp.unit && emp.unit !== emp.department && (
+                                            <div className={`flex items-center gap-1.5 text-xs ${textMuted}`}>
+                                                <Layers className="w-3 h-3 flex-shrink-0" />
+                                                <span className="truncate">{emp.unit}</span>
+                                            </div>
+                                        )}
+                                        {!isVacant && emp.email && (
+                                            <div className={`flex items-center gap-1.5 text-xs ${textMuted}`}>
+                                                <Mail className="w-3 h-3 flex-shrink-0" />
+                                                <span className="truncate">{emp.email}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
-                                
-                                {/* Employee Details */}
-                                <div className="space-y-1.5">
-                                    <div className={`flex items-center text-xs ${
-                                        isVacant ? 'text-red-600 dark:text-red-400' : textSecondary
-                                    }`}>
-                                        <Building2 className="w-3 h-3 mr-1.5 flex-shrink-0" />
-                                        <span className="truncate" title={cleanEmployee.department}>
-                                            {cleanEmployee.department}
+
+                                {/* Footer */}
+                                <div
+                                    className="px-3.5 py-2 flex items-center justify-between"
+                                    style={{ borderTop: `1px solid ${accent}22`, background: `${accent}08` }}
+                                >
+                                    {isVacant ? (
+                                        <span className="flex items-center gap-1 text-[11px] font-semibold text-red-600 dark:text-red-400">
+                                            <XCircle className="w-3 h-3" /> Position Open
                                         </span>
-                                    </div>
-                                    
-                                    {!isVacant && cleanEmployee.direct_reports > 0 && (
-                                        <div className={`flex items-center ${textSecondary} text-xs`}>
-                                            <Users className="w-3 h-3 mr-1.5 flex-shrink-0" />
-                                            <span>{cleanEmployee.direct_reports} Reports</span>
-                                        </div>
+                                    ) : emp.direct_reports > 0 ? (
+                                        <span className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: accent }}>
+                                            <Users className="w-3 h-3" />
+                                            {emp.direct_reports} Report{emp.direct_reports !== 1 ? 's' : ''}
+                                        </span>
+                                    ) : (
+                                        <span className={`text-[11px] ${textMuted}`}>Individual contributor</span>
                                     )}
-                                    
-                                    {isVacant && (
-                                        <div className="flex items-center text-red-600 dark:text-red-400 text-xs font-semibold">
-                                            <XCircle className="w-3 h-3 mr-1.5 flex-shrink-0" />
-                                            <span>Position Open</span>
-                                        </div>
+
+                                    {/* Position group badge */}
+                                    {emp.position_group && !isVacant && (
+                                        <span
+                                            className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white"
+                                            style={{ background: accent }}
+                                        >
+                                            {emp.position_group.replace('HEAD OF ', 'HoD').replace(' SPECIALIST', '')}
+                                        </span>
                                     )}
                                 </div>
                             </div>
@@ -171,83 +200,58 @@ const GridView = ({
                 </div>
             </div>
 
-            {/* Pagination Controls */}
+            {/* Pagination */}
             {totalPages > 1 && (
-                <div className={`${bgCard} border-t ${borderColor} px-4 py-3`}>
-                    <div className="flex items-center justify-between">
-                        {/* Page Info */}
-                        <div className={`text-xs ${textSecondary}`}>
-                            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} employees
-                        </div>
+                <div className={`${bgCard} border-t ${borderColor} px-4 py-2.5 flex items-center justify-between gap-4`}>
+                    <span className={`text-xs ${textMuted}`}>
+                        {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} of {totalItems}
+                    </span>
 
-                        {/* Pagination Buttons */}
-                        <div className="flex items-center gap-2">
-                            {/* Previous Button */}
-                            <button
-                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                disabled={currentPage === 1}
-                                className={`p-2 rounded-lg border ${borderColor} ${bgCard} hover:${bgAccent} disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
-                            >
-                                <ChevronLeft className={`w-4 h-4 ${textSecondary}`} />
-                            </button>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className={`p-1.5 rounded-lg border ${borderColor} ${bgCard} hover:${bgAccent} disabled:opacity-40 disabled:cursor-not-allowed transition-colors`}
+                        >
+                            <ChevronLeft className={`w-4 h-4 ${textSecondary}`} />
+                        </button>
 
-                            {/* Page Numbers */}
-                            <div className="flex items-center gap-1">
-                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                    let pageNum;
-                                    if (totalPages <= 5) {
-                                        pageNum = i + 1;
-                                    } else if (currentPage <= 3) {
-                                        pageNum = i + 1;
-                                    } else if (currentPage >= totalPages - 2) {
-                                        pageNum = totalPages - 4 + i;
-                                    } else {
-                                        pageNum = currentPage - 2 + i;
-                                    }
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                            let p = totalPages <= 5 ? i + 1
+                                : currentPage <= 3 ? i + 1
+                                : currentPage >= totalPages - 2 ? totalPages - 4 + i
+                                : currentPage - 2 + i;
+                            return (
+                                <button
+                                    key={p}
+                                    onClick={() => setCurrentPage(p)}
+                                    className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${
+                                        currentPage === p
+                                            ? 'bg-almet-sapphire text-white'
+                                            : `${bgCard} ${textSecondary} hover:${bgAccent} border ${borderColor}`
+                                    }`}
+                                >
+                                    {p}
+                                </button>
+                            );
+                        })}
 
-                                    return (
-                                        <button
-                                            key={pageNum}
-                                            onClick={() => setCurrentPage(pageNum)}
-                                            className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
-                                                currentPage === pageNum
-                                                    ? 'bg-almet-sapphire text-white'
-                                                    : `${bgCard} ${textSecondary} hover:${bgAccent} border ${borderColor}`
-                                            }`}
-                                        >
-                                            {pageNum}
-                                        </button>
-                                    );
-                                })}
-                            </div>
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                            className={`p-1.5 rounded-lg border ${borderColor} ${bgCard} hover:${bgAccent} disabled:opacity-40 disabled:cursor-not-allowed transition-colors`}
+                        >
+                            <ChevronRight className={`w-4 h-4 ${textSecondary}`} />
+                        </button>
+                    </div>
 
-                            {/* Next Button */}
-                            <button
-                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                disabled={currentPage === totalPages}
-                                className={`p-2 rounded-lg border ${borderColor} ${bgCard} hover:${bgAccent} disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
-                            >
-                                <ChevronRight className={`w-4 h-4 ${textSecondary}`} />
-                            </button>
-                        </div>
-
-                        {/* Go to Page */}
-                        <div className="flex items-center gap-2">
-                            <span className={`text-xs ${textSecondary}`}>Go to:</span>
-                            <input
-                                type="number"
-                                min="1"
-                                max={totalPages}
-                                value={currentPage}
-                                onChange={(e) => {
-                                    const page = parseInt(e.target.value);
-                                    if (page >= 1 && page <= totalPages) {
-                                        setCurrentPage(page);
-                                    }
-                                }}
-                                className={`w-16 px-2 py-1 text-xs border ${borderColor} rounded ${bgCard} ${textSecondary}`}
-                            />
-                        </div>
+                    <div className="flex items-center gap-1.5">
+                        <span className={`text-xs ${textMuted}`}>Page:</span>
+                        <input
+                            type="number" min="1" max={totalPages} value={currentPage}
+                            onChange={(e) => { const p = parseInt(e.target.value); if (p >= 1 && p <= totalPages) setCurrentPage(p); }}
+                            className={`w-12 px-1.5 py-1 text-xs border ${borderColor} rounded-lg ${bgCard} ${textSecondary} text-center outline-none focus:ring-1 focus:ring-almet-sapphire`}
+                        />
                     </div>
                 </div>
             )}

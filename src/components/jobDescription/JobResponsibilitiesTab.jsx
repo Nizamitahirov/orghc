@@ -1,6 +1,6 @@
 // components/jobDescription/JobResponsibilitiesTab.jsx - WITH Dynamic Leadership/Behavioral Competencies + FORCE RE-RENDER FIX
-import React, { useState, useEffect } from 'react';
-import { Plus, X, Award, Users } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Award, Users } from 'lucide-react';
 import HierarchicalMultiSelect from '../common/HierarchicalMultiSelect';
 import BulkListEditor from '../common/BulkListEditor';
 
@@ -322,6 +322,33 @@ const handleSectionChange = (fieldName, newItems) => {
   onFormDataChange(prev => ({ ...prev, [fieldName]: newItems }));
 };
 
+// ─── Name resolvers for drag-and-drop list ───────────────────────────────────
+const resolveSkillName = useCallback((id) => {
+  const raw = String(id).replace(/^skill_/, '');
+  for (const group of skillGroupsHierarchical) {
+    const found = group.items?.find(i => String(i.id) === raw || i.id === id);
+    if (found) return found.name;
+  }
+  return id;
+}, [skillGroupsHierarchical]);
+
+const resolveCompetencyName = useCallback((id) => {
+  const raw = String(id).replace(/^item_/, '');
+  // behavioral
+  for (const group of behavioralGroupsHierarchical) {
+    const found = group.items?.find(i => String(i.id) === raw || i.id === id);
+    if (found) return found.name;
+  }
+  // leadership (3-level)
+  for (const main of leadershipGroupsHierarchical) {
+    for (const child of main.items || []) {
+      const found = child.items?.find(i => String(i.id) === raw || i.id === id);
+      if (found) return found.name;
+    }
+  }
+  return id;
+}, [behavioralGroupsHierarchical, leadershipGroupsHierarchical]);
+
   const handleSkillsChange = (selectedIds) => {
     onFormDataChange(prev => ({
       ...prev,
@@ -396,7 +423,6 @@ const handleSectionChange = (fieldName, newItems) => {
           idPrefix="skill"
         />
       )}
-      
       {validationErrors.required_skills_data && (
         <p className="text-red-500 text-xs mt-1">{validationErrors.required_skills_data}</p>
       )}
@@ -459,8 +485,6 @@ const handleSectionChange = (fieldName, newItems) => {
           />
         )
       )}
-    
-        
         {validationErrors.behavioral_competencies_data && (
           <p className="text-red-500 text-xs mt-1">{validationErrors.behavioral_competencies_data}</p>
         )}

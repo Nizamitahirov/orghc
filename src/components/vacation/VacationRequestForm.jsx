@@ -15,7 +15,7 @@ const ALLOWED_TYPES    = ['application/pdf','image/jpeg','image/jpg','image/png'
 export default function VacationRequestForm({
   formData, setFormData, formErrors,
   requester, setRequester,
-  employeeSearchResults, vacationTypes, hrRepresentatives,
+  employeeSearchResults, vacationTypes, isUKEmployee, hrRepresentatives,
   darkMode, handleStartDateChange, handleEndDateChange,
   selectedFiles, setSelectedFiles, fileErrors,
   handleSubmit, loading, activeSection
@@ -24,9 +24,10 @@ export default function VacationRequestForm({
   const [selectedType, setSelectedType]   = useState(null);
 
   useEffect(() => {
-    const isUK = formData.businessFunction?.toUpperCase().includes('UK');
+    const isUKByBF = formData.businessFunction?.toUpperCase().includes('UK');
+    const isUK = isUKByBF || isUKEmployee;
     setFilteredTypes((vacationTypes || []).filter(t => !(t.is_uk_only && !isUK)));
-  }, [vacationTypes, formData.businessFunction]);
+  }, [vacationTypes, formData.businessFunction, isUKEmployee]);
 
   const handleTypeChange = (id) => {
     const t = filteredTypes.find(x => x.id === id);
@@ -54,7 +55,7 @@ export default function VacationRequestForm({
     return b < k ? `${b} B` : b < k*k ? `${(b/k).toFixed(0)} KB` : `${(b/k/k).toFixed(1)} MB`;
   };
 
-  const isUK = formData.businessFunction?.toUpperCase().includes('UK');
+  const isUK = formData.businessFunction?.toUpperCase().includes('UK') || isUKEmployee;
 
   return (
     <div className="space-y-5">
@@ -311,15 +312,16 @@ export default function VacationRequestForm({
                   className="w-full px-3 py-2 text-xs border outline-0 focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/20 dark:disabled:bg-gray-600"
                 />
               </div>
+              {hrRepresentatives && hrRepresentatives.length > 0 && (
               <div>
                 <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1">HR Representative</label>
-                <SearchableDropdown
-                  options={hrRepresentatives.map(h => ({ value: h.id, label: `${h.name} (${h.department})` }))}
-                  value={formData.hr_representative_id}
-                  onChange={v => setFormData(p => ({ ...p, hr_representative_id: v }))}
-                  placeholder="Select HR" darkMode={darkMode}
-                />
+                <div className="w-full px-3 py-2 text-xs border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg bg-almet-mystic/20 dark:bg-gray-600 text-almet-cloud-burst dark:text-white cursor-default select-none">
+                  {hrRepresentatives.find(h => h.id === formData.hr_representative_id)
+                    ? `${hrRepresentatives.find(h => h.id === formData.hr_representative_id).name} (${hrRepresentatives.find(h => h.id === formData.hr_representative_id).department})`
+                    : 'Auto-assigned'}
+                </div>
               </div>
+              )}
             </div>
           </div>
         </div>

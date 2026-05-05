@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import {
   CheckCircle, XCircle, Eye, Clock, History,
-  User, Calendar, AlertCircle, Info, FileText
+  User, Calendar, AlertCircle, Info, FileText, Shield
 } from 'lucide-react';
 import Pagination from '@/components/common/Pagination';
 
@@ -19,14 +19,15 @@ export default function ApprovalSection({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const lineManagerRequests = pendingRequests?.line_manager_requests || [];
-  const hrRequests          = pendingRequests?.hr_requests || [];
-  const allPending          = [...lineManagerRequests, ...hrRequests];
-  const history             = approvalHistory || [];
+  const lineManagerRequests  = pendingRequests?.line_manager_requests  || [];
+  const hrRequests           = pendingRequests?.hr_requests            || [];
+  const ukAdditionalRequests = pendingRequests?.uk_additional_requests || [];
+  const allPending           = [...lineManagerRequests, ...hrRequests, ...ukAdditionalRequests];
+  const history              = approvalHistory || [];
 
-  const displayList   = activeTab === 'pending' ? allPending : history;
-  const totalPages    = Math.ceil(displayList.length / itemsPerPage);
-  const paginated     = displayList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const displayList = activeTab === 'pending' ? allPending : history;
+  const totalPages  = Math.ceil(displayList.length / itemsPerPage);
+  const paginated   = displayList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleTabChange = tab => { setActiveTab(tab); setCurrentPage(1); };
 
@@ -40,8 +41,19 @@ export default function ApprovalSection({
 
   const isPending = r =>
     r.status === 'PENDING_LINE_MANAGER' ||
-    r.status === 'PENDING_HR' ||
+    r.status === 'PENDING_HR'           ||
     r.status === 'PENDING_UK_ADDITIONAL';
+
+  // Badge for request stage
+  const getStageBadge = (status) => {
+    if (status === 'PENDING_UK_ADDITIONAL')
+      return <span className="px-1.5 py-0.5 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 rounded text-[10px] font-semibold flex items-center gap-0.5"><Shield className="w-2.5 h-2.5"/>UK</span>;
+    if (status === 'PENDING_HR')
+      return <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded text-[10px] font-semibold">HR</span>;
+    if (status === 'PENDING_LINE_MANAGER')
+      return <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded text-[10px] font-semibold">LM</span>;
+    return null;
+  };
 
   return (
     <div className="space-y-5">
@@ -55,7 +67,7 @@ export default function ApprovalSection({
       </div>
 
       {/* ── Summary cards ── */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           {
             label: 'Awaiting Your Action',
@@ -66,27 +78,34 @@ export default function ApprovalSection({
             urgent: allPending.length > 0,
           },
           {
-            label: 'From Line Manager Queue',
+            label: 'Line Manager Queue',
             value: lineManagerRequests.length,
-            icon: <User className="w-4 h-4" />,
+            icon: <User className="w-3.5 h-3.5" />,
             color: 'text-almet-sapphire',
             bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
           },
           {
+            label: 'UK Additional Queue',
+            value: ukAdditionalRequests.length,
+            icon: <Shield className="w-3.5 h-3.5" />,
+            color: 'text-red-600',
+            bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+            urgent: ukAdditionalRequests.length > 0,
+          },
+          {
             label: 'Total Reviewed',
             value: history.length,
-            icon: <History className="w-4 h-4" />,
+            icon: <History className="w-3.5 h-3.5" />,
             color: 'text-green-600',
             bg: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
           },
         ].map(s => (
-          <div key={s.label} className={`rounded-xl border  p-4 ${s.bg} ${s.urgent ? 'ring-2 ring-amber-400 dark:ring-amber-600' : ''}`}>
-            
-            <div className='flex gap-4 items-center '><div className={` ${s.color}`}>{s.icon}</div>
-            <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">{s.label}</p>
-              </div>
-              
-            <p className={`text-xl font-bold mt-0.5 ${s.color}`}>{s.value}</p>
+          <div key={s.label} className={`rounded-xl border p-4 ${s.bg} ${s.urgent && s.value > 0 ? 'ring-2 ring-amber-400 dark:ring-amber-600' : ''}`}>
+            <div className="flex gap-3 items-center">
+              <div className={s.color}>{s.icon}</div>
+              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">{s.label}</p>
+            </div>
+            <p className={`text-xl font-bold mt-1 ${s.color}`}>{s.value}</p>
             {s.urgent && s.value > 0 && (
               <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-1">Needs your attention</p>
             )}
@@ -94,7 +113,6 @@ export default function ApprovalSection({
         ))}
       </div>
 
-     
       {/* ── Tabs ── */}
       <div className="flex gap-1 bg-almet-mystic/30 dark:bg-gray-700/50 rounded-xl p-1 w-fit">
         {[
@@ -140,7 +158,7 @@ export default function ApprovalSection({
               <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
                 <thead className="bg-gray-50 dark:bg-gray-700/50">
                   <tr>
-                    {['Request ID', 'Employee', 'Leave Type', 'Period', 'Days', 'Status',
+                    {['Request ID', 'Employee', 'Leave Type', 'Period', 'Days', 'Stage', 'Status',
                       ...(activeTab === 'pending' ? ['Actions'] : ['Reviewed On'])
                     ].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
@@ -188,6 +206,11 @@ export default function ApprovalSection({
                       {/* Days */}
                       <td className="px-4 py-3 text-xs font-bold text-almet-cloud-burst dark:text-white">
                         {req.days || req.number_of_days}
+                      </td>
+
+                      {/* Stage badge */}
+                      <td className="px-4 py-3">
+                        {getStageBadge(req.status)}
                       </td>
 
                       {/* Status */}

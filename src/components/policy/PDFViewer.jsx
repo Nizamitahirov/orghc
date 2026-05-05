@@ -133,6 +133,9 @@ export default function PDFViewer({
   const [checkingAck,    setCheckingAck]    = useState(false);
   const [showReadPrompt, setShowReadPrompt] = useState(false);
   const [hasReachedEnd,  setHasReachedEnd]  = useState(false);
+  const [blobUrl,        setBlobUrl]        = useState(null);
+  const [pdfLoadState,   setPdfLoadState]   = useState("idle"); // idle | loading | ready | error
+  const blobRef = useRef(null);
 
   // Acknowledge notes step
   const [showNotesStep,  setShowNotesStep]  = useState(false);
@@ -166,6 +169,46 @@ export default function PDFViewer({
 
   // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => { refreshPolicy(); }, [selectedPolicy.id]);
+
+  // Fetch PDF as blob to bypass X-Frame-Options: deny
+  useEffect(() => {
+    const raw = getPDFUrl();
+    if (!raw) { setPdfLoadState("error"); return; }
+
+    // Google Drive/Docs embed URLs work natively in iframes
+    if (raw.includes("docs.google.com") || raw.includes("drive.google.com")) {
+      setBlobUrl(null);
+      setPdfLoadState("ready");
+      return;
+    }
+
+    setPdfLoadState("loading");
+    let cancelled = false;
+
+    const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+    fetch(raw, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then(res => {
+        if (!res.ok) throw new Error("fetch failed");
+        return res.blob();
+      })
+      .then(blob => {
+        if (cancelled) return;
+        if (blobRef.current) URL.revokeObjectURL(blobRef.current);
+        const url = URL.createObjectURL(blob);
+        blobRef.current = url;
+        setBlobUrl(url);
+        setPdfLoadState("ready");
+      })
+      .catch(() => { if (!cancelled) setPdfLoadState("error"); });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [policy.id]);
+
+  useEffect(() => {
+    return () => { if (blobRef.current) URL.revokeObjectURL(blobRef.current); };
+  }, []);
 
   useEffect(() => {
     if (!policy.requires_acknowledgment) return;
@@ -328,9 +371,31 @@ onClick={() => { if (!hasAcknowledged) setShowNotesStep(true); }}
       <div className={`flex-1 overflow-hidden ${darkMode ? "bg-gray-900" : "bg-gray-100"}`}>
         {activeTab === "document" ? (
           <div className="relative w-full h-full">
-            {pdfUrl ? (
+            {pdfLoadState === "loading" && (
+              <div className={`flex flex-col items-center justify-center h-full gap-3 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                <p className="text-sm">Loading PDF…</p>
+              </div>
+            )}
+
+            {pdfLoadState === "error" && (
+              <div className={`flex flex-col items-center justify-center h-full gap-3 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                <FileText className="w-12 h-12 opacity-40" />
+                <p className="text-sm">Cannot display PDF in browser.</p>
+                <button onClick={handleDownload}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <Download className="w-4 h-4" /> Download PDF
+                </button>
+              </div>
+            )}
+
+            {pdfLoadState === "ready" && (
               <>
-                <iframe src={pdfUrl} className="w-full h-full border-0" title={policy.title} loading="lazy" />
+                <iframe
+                  src={blobUrl || pdfUrl}
+                  className="w-full h-full border-0"
+                  title={policy.title}
+                />
 
                 {/* Read-complete floating prompt */}
                 {showReadPrompt && !hasAcknowledged && policy.requires_acknowledgment && (
@@ -367,13 +432,6 @@ onClick={() => { if (!hasAcknowledged) setShowNotesStep(true); }}
                   </div>
                 )}
               </>
-            ) : (
-              <div className={`flex items-center justify-center h-full ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
-                <div className="text-center">
-                  <FileText className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                  <p className="text-sm">PDF file not available</p>
-                </div>
-              </div>
             )}
           </div>
         ) : (
@@ -450,9 +508,9 @@ onClick={() => { if (!hasAcknowledged) setShowNotesStep(true); }}
       )}
 
       {/* ── Step 3: PDF + Signature Overlay ──────────────────────────────── */}
-      {overlayMode && pendingSig && pdfUrl && (
+      {overlayMode && pendingSig && (blobUrl || pdfUrl) && (
         <PDFSignatureOverlay
-          pdfUrl={pdfUrl}
+          pdfUrl={blobUrl || pdfUrl}
           signatureBase64={pendingSig}
           darkMode={darkMode}
           onConfirm={handleOverlayConfirm}

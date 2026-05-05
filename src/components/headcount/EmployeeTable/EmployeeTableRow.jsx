@@ -1,7 +1,8 @@
-// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - FIXED with CustomCheckbox
+// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx
 "use client";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useTheme } from "../../common/ThemeProvider";
 import CustomCheckbox from "../../common/CustomCheckbox";
 
@@ -18,7 +19,7 @@ import EmployeeTag from "../EmployeeTag";
 import EmployeeVisibilityToggle from "../EmployeeVisibilityToggle";
 import ActionsDropdown from "../ActionsDropdown";
 
-const EmployeeTableRow = ({
+const EmployeeTableRow = memo(({
   employee,
   isSelected,
   onToggleSelection,
@@ -149,8 +150,6 @@ const EmployeeTableRow = ({
                   employee.status_detail?.display_name ||
                   employee.status_detail?.name ||
                   'Unknown Status',
-                  
-  
 
       // Tags mapping
       tag_names: employee.tag_names || employee.tags || [],
@@ -341,19 +340,17 @@ const EmployeeTableRow = ({
               style={avatarStyle}
             >
               {employee.profile_image ? (
-                <img
+                <Image
                   src={employee.profile_image}
                   alt={employeeName}
+                  width={24}
+                  height={24}
                   className="h-full w-full object-cover rounded-full"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
-                  }}
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
-              ) : null}
-              <span style={{ display: employee.profile_image ? 'none' : 'flex' }}>
-                {initials}
-              </span>
+              ) : (
+                <span>{initials}</span>
+              )}
             </div>
             <div>
               <Link href={`/structure/employee/${employee.id}`}>
@@ -550,6 +547,8 @@ const EmployeeTableRow = ({
       </td>
     </tr>
   );
-};
+});
+
+EmployeeTableRow.displayName = 'EmployeeTableRow';
 
 export default EmployeeTableRow;

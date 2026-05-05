@@ -11,9 +11,11 @@ import {
   Loader2,
   X,
   File,
+  Files,
 } from "lucide-react";
 import { useToast } from "@/components/common/Toast";
 import Pagination from "@/components/common/Pagination";
+import BulkPolicyUploadModal from "@/components/policy/BulkPolicyUploadModal";
 import {
   getProceduresByFolder,
   createProcedure,
@@ -22,6 +24,7 @@ import {
   trackProcedureView,
   trackProcedureDownload,
   validatePDFFile,
+  bulkCreateProcedures,
 } from "@/services/procedureService";
 
 export default function ProceduresView({
@@ -49,6 +52,7 @@ export default function ProceduresView({
   const [showAddProcedure, setShowAddProcedure] = useState(false);
   const [showEditProcedure, setShowEditProcedure] = useState(false);
   const [editingProcedure, setEditingProcedure] = useState(null);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   
   // Form state
   const [procedureForm, setProcedureForm] = useState({
@@ -298,13 +302,26 @@ export default function ProceduresView({
           </div>
 
           {userAccess?.is_admin && (
-            <button
-              onClick={openAddModal}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-almet-sapphire text-white hover:bg-almet-cloud-burst transition-all"
-            >
-              <Upload className="w-4 h-4" />
-              Add Procedure
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowBulkUpload(true)}
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border transition-all ${
+                  darkMode
+                    ? "border-gray-600 text-gray-300 hover:bg-gray-700"
+                    : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <Files className="w-4 h-4" />
+                Bulk Upload
+              </button>
+              <button
+                onClick={openAddModal}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-almet-sapphire text-white hover:bg-almet-cloud-burst transition-all"
+              >
+                <Upload className="w-4 h-4" />
+                Add Procedure
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -432,6 +449,23 @@ export default function ProceduresView({
             </div>
           )}
         </>
+      )}
+
+      {/* Bulk Upload Modal */}
+      {showBulkUpload && (
+        <BulkPolicyUploadModal
+          folderId={selectedFolder.id}
+          folderName={selectedFolder.name}
+          darkMode={darkMode}
+          onClose={() => setShowBulkUpload(false)}
+          onSuccess={() => {
+            loadProcedures(selectedFolder.id);
+            setShowBulkUpload(false);
+          }}
+          bulkFn={bulkCreateProcedures}
+          showAckToggle={false}
+          entityName="Procedure"
+        />
       )}
 
       {/* Add/Edit Procedure Modal */}

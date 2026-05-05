@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, Plus, Search, X, ChevronRight, Columns3, Table2, Filter, FolderKanban, Inbox, LayoutGrid, Layers, MoreHorizontal, Edit3, Trash2, FolderPlus } from 'lucide-react';
+import { Users, Plus, Search, X, ChevronRight, Columns3, Table2, Filter, FolderKanban, Inbox, LayoutGrid, Layers, MoreHorizontal, Edit3, Trash2, FolderPlus, AlertTriangle, Sparkles, BarChart2 } from 'lucide-react';
 import taskService from '@/services/taskService';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 import { useToast } from '@/components/common/Toast';
@@ -18,6 +18,8 @@ import FolderModal from './FolderModal';
 import TaskModal from './TaskModal';
 import SearchableDropdown from '@/components/common/SearchableDropdown';
 import { PRIORITIES, STATUSES } from './constants';
+import AITaskDispatcher from './AITaskDispatcher';
+import AnalyticsView from './AnalyticsView';
 
 // ─── Portal Dropdown ───
 function PortalDropdown({ triggerRef, isOpen, onClose, items, darkMode }) {
@@ -97,6 +99,7 @@ export default function TaskManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterDueDate, setFilterDueDate] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   const [showTeamModal, setShowTeamModal] = useState(false);
@@ -106,6 +109,8 @@ export default function TaskManagement() {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [detailTask, setDetailTask] = useState(null);
+  const [showAIDispatcher, setShowAIDispatcher] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
 
   // Dropdown state: { type: 'team'|'folder', id: string } or null
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -123,6 +128,18 @@ export default function TaskManagement() {
   const brd = darkMode ? 'border-gray-700' : 'border-gray-200';
 
   useEffect(() => { fetchTeams(); }, []);
+
+  // ── Ctrl+K / Cmd+K → open AI Dispatcher ──────────────────────────────────
+  useEffect(() => {
+    const handle = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        if (selectedTeam) setShowAIDispatcher(true);
+      }
+    };
+    window.addEventListener('keydown', handle);
+    return () => window.removeEventListener('keydown', handle);
+  }, [selectedTeam]);
 
   useEffect(() => {
     if (selectedTeam) {
@@ -207,7 +224,33 @@ export default function TaskManagement() {
   }, [tasks]);
 
   const folderName = selectedFolder === '__none__' ? 'Unorganized' : selectedFolder ? folders.find(f => f.id === selectedFolder)?.name : 'All Tasks';
-  const activeFilters = [filterPriority, filterStatus, searchQuery].filter(Boolean).length;
+  const activeFilters = [filterPriority, filterStatus, filterDueDate, searchQuery].filter(Boolean).length;
+
+  const [overdueDismissed, setOverdueDismissed] = useState(false);
+  const overdueCount = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return tasks.filter(t => t.due_date && t.due_date < todayStr && t.status !== 'COMPLETED').length;
+  }, [tasks]);
+  // Reset dismiss when team changes or tasks reload
+  useEffect(() => { setOverdueDismissed(false); }, [selectedTeam]);
+
+  const filteredTasks = useMemo(() => {
+    if (!filterDueDate) return tasks;
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const weekEnd = new Date(now); weekEnd.setDate(now.getDate() + 7);
+    const weekEndStr = weekEnd.toISOString().split('T')[0];
+    const monthEnd = new Date(now); monthEnd.setDate(now.getDate() + 30);
+    const monthEndStr = monthEnd.toISOString().split('T')[0];
+    return tasks.filter(t => {
+      if (!t.due_date) return filterDueDate === 'no-date';
+      if (filterDueDate === 'overdue') return t.due_date < todayStr && t.status !== 'COMPLETED';
+      if (filterDueDate === 'today') return t.due_date === todayStr;
+      if (filterDueDate === 'this-week') return t.due_date >= todayStr && t.due_date <= weekEndStr;
+      if (filterDueDate === 'this-month') return t.due_date >= todayStr && t.due_date <= monthEndStr;
+      return true;
+    });
+  }, [tasks, filterDueDate]);
 
   const handleTeamCreated = () => { fetchTeams(); setShowTeamModal(false); };
   const handleFolderCreated = () => { if (selectedTeam) { fetchFolders(selectedTeam.id); setShowFolderModal(false); } };
@@ -410,13 +453,32 @@ export default function TaskManagement() {
               {[{ id: 'board', icon: Columns3 }, { id: 'list', icon: Table2 }].map(v => (
                 <button
                   key={v.id}
-                  onClick={() => setView(v.id)}
-                  className={`p-1.5 rounded-md transition-all ${view === v.id ? 'bg-almet-sapphire text-white shadow-sm' : txtMut}`}
+                  onClick={() => { setView(v.id); setShowAnalytics(false); }}
+                  className={`p-1.5 rounded-md transition-all ${view === v.id && !showAnalytics ? 'bg-almet-sapphire text-white shadow-sm' : txtMut}`}
                 >
                   <v.icon size={14} />
                 </button>
               ))}
+              <button
+                onClick={() => setShowAnalytics(a => !a)}
+                className={`p-1.5 rounded-md transition-all ${showAnalytics ? 'bg-almet-sapphire text-white shadow-sm' : txtMut}`}
+                title="Analytics"
+              >
+                <BarChart2 size={14} />
+              </button>
             </div>
+
+            {/* AI Dispatcher */}
+            <button
+              onClick={() => setShowAIDispatcher(true)}
+              disabled={!selectedTeam}
+              title="Create tasks with AI (Ctrl+K)"
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-500 to-indigo-600 text-white rounded-lg text-xs font-semibold hover:from-violet-600 hover:to-indigo-700 disabled:opacity-40 transition-all shadow-sm"
+            >
+              <Sparkles size={14} />
+              <span>AI</span>
+              <kbd className="hidden sm:inline-flex items-center px-1 py-0.5 rounded text-[9px] font-mono bg-white/20 border border-white/30 leading-none">⌘K</kbd>
+            </button>
 
             {/* New Task */}
             <button
@@ -451,9 +513,24 @@ export default function TaskManagement() {
               allowUncheck
               className="w-36"
             />
-            {(filterPriority || filterStatus) && (
+            <SearchableDropdown
+              options={[
+                { value: 'overdue', label: 'Overdue' },
+                { value: 'today', label: 'Due Today' },
+                { value: 'this-week', label: 'This Week' },
+                { value: 'this-month', label: 'This Month' },
+                { value: 'no-date', label: 'No Due Date' },
+              ]}
+              value={filterDueDate}
+              onChange={setFilterDueDate}
+              placeholder="Due Date"
+              darkMode={darkMode}
+              allowUncheck
+              className="w-36"
+            />
+            {(filterPriority || filterStatus || filterDueDate) && (
               <button
-                onClick={() => { setFilterPriority(''); setFilterStatus(''); }}
+                onClick={() => { setFilterPriority(''); setFilterStatus(''); setFilterDueDate(''); }}
                 className="px-3 py-1.5 text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg flex items-center gap-1"
               >
                 <X size={12} /> Clear filters
@@ -489,9 +566,66 @@ export default function TaskManagement() {
           </div>
         ) : (
           <>
+            {/* Analytics view */}
+            {showAnalytics && (
+              <AnalyticsView selectedTeam={selectedTeam} darkMode={darkMode} />
+            )}
+
+            {/* Normal board/list — hidden when analytics is open */}
+            {!showAnalytics && <>
+            {/* Overdue banner */}
+            {overdueCount > 0 && !overdueDismissed && !loading && (
+              <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/40 text-red-700 dark:text-red-300">
+                <AlertTriangle size={16} className="shrink-0 text-red-500" />
+                <p className="text-xs font-medium flex-1">
+                  <span className="font-bold">{overdueCount} task{overdueCount > 1 ? 's are' : ' is'} overdue.</span>{' '}
+                  Use the <span className="font-semibold">Due Date → Overdue</span> filter to review them.
+                </p>
+                <button
+                  onClick={() => { setFilterDueDate('overdue'); setShowFilters(true); setOverdueDismissed(true); }}
+                  className="shrink-0 px-2.5 py-1 text-[11px] font-semibold bg-red-100 dark:bg-red-800/40 hover:bg-red-200 dark:hover:bg-red-700/40 rounded-lg transition-all"
+                >
+                  Show overdue
+                </button>
+                <button onClick={() => setOverdueDismissed(true)} className="shrink-0 p-1 rounded-lg hover:bg-red-100 dark:hover:bg-red-800/30 transition-all">
+                  <X size={13} />
+                </button>
+              </div>
+            )}
+
+            {/* Active filters banner — "See all" shortcut */}
+            {activeFilters > 0 && (
+              <div className={`mb-4 flex items-center gap-3 px-4 py-2.5 rounded-xl border ${brd} ${bgAccent}`}>
+                <Filter size={13} className="text-almet-sapphire shrink-0" />
+                <p className={`text-xs font-medium flex-1 ${txt}`}>
+                  Showing{' '}
+                  <span className="font-bold text-almet-sapphire">{filteredTasks.length}</span>
+                  {tasks.length !== filteredTasks.length && (
+                    <> of <span className="font-bold">{tasks.length}</span></>
+                  )}{' '}
+                  tasks
+                  {selectedFolder && selectedFolder !== '__none__' && (
+                    <> in <span className="font-semibold">{folderName}</span></>
+                  )}
+                </p>
+                <button
+                  onClick={() => {
+                    setFilterPriority('');
+                    setFilterStatus('');
+                    setFilterDueDate('');
+                    setSearchQuery('');
+                    setShowFilters(false);
+                  }}
+                  className="shrink-0 flex items-center gap-1.5 px-3 py-1 text-[11px] font-semibold rounded-lg bg-almet-sapphire/10 text-almet-sapphire hover:bg-almet-sapphire/20 transition-all"
+                >
+                  <X size={11} /> See all tasks
+                </button>
+              </div>
+            )}
+
             {view === 'board' && (
               <BoardView
-                tasks={tasks}
+                tasks={filteredTasks}
                 selectedTeam={selectedTeam}
                 selectedFolder={selectedFolder}
                 onTaskClick={setDetailTask}
@@ -500,8 +634,9 @@ export default function TaskManagement() {
               />
             )}
             {view === 'list' && (
-              <ListView tasks={tasks} onTaskClick={setDetailTask} darkMode={darkMode} />
+              <ListView tasks={filteredTasks} onTaskClick={setDetailTask} darkMode={darkMode} />
             )}
+            </>}
           </>
         )}
       </div>
@@ -567,6 +702,15 @@ export default function TaskManagement() {
         type={confirmModal.type}
         loading={confirmModal.loading}
       />
+
+      {showAIDispatcher && (
+        <AITaskDispatcher
+          selectedTeam={selectedTeam}
+          onSuccess={() => { if (selectedTeam) fetchTasks(selectedTeam.id); }}
+          onClose={() => setShowAIDispatcher(false)}
+          darkMode={darkMode}
+        />
+      )}
     </div>
   );
 }

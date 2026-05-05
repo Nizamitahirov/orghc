@@ -20,18 +20,22 @@ export const msalConfig = {
   }
 };
 
-// ⭐ Login request - BÜTün scope-ları daxil et
+// ⭐ Login request - silent token alımı üçün (prompt yoxdur)
 export const loginRequest = {
   scopes: [
-    "openid", 
-    "profile", 
-    "email", 
-    "User.Read",              // İstifadəçi məlumatı
-    "Mail.Send",              // Email göndərmə
-    "Mail.Read",              // Email oxuma (lazım olarsa)
-
+    "openid",
+    "profile",
+    "email",
+    "User.Read",
+    "Mail.Send",
+    "Mail.Read",
   ],
-  prompt: "select_account", // Hər dəfə account seçimi göstər
+};
+
+// Yalnız explicit "Sign in" düyməsi basılanda istifadə et
+export const loginRequestWithPrompt = {
+  ...loginRequest,
+  prompt: "select_account",
 };
 
 // ⭐ Graph request - Email göndərmə üçün scope-lar

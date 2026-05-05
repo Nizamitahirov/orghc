@@ -833,23 +833,20 @@ export const selectPagination = createSelector(
 
 
 export const selectFilteredOrgChart = createSelector(
-  [selectOrgChart, selectActiveFilters],
-  (orgChart, activeFilters) => {
- 
-    
-    if (!Array.isArray(orgChart) || orgChart.length === 0) {
-      console.log('❌ No orgChart data to filter');
+  [selectOrgChart, selectFullTree, selectActiveFilters],
+  (orgChart, fullTree, activeFilters) => {
+    const dataSource = (Array.isArray(fullTree) && fullTree.length > 0) ? fullTree : orgChart;
+
+    if (!Array.isArray(dataSource) || dataSource.length === 0) {
       return [];
     }
-    
+
     if (!activeFilters || Object.keys(activeFilters).length === 0) {
-   
-      return orgChart;
+      return dataSource;
     }
-    
-    const filtered = orgChart.filter(employee => {
+
+    const filtered = dataSource.filter(employee => {
       if (!employee || typeof employee !== 'object') {
-        console.log('⚠️ Invalid employee object:', employee);
         return false;
       }
       
@@ -873,7 +870,6 @@ export const selectFilteredOrgChart = createSelector(
         );
         
         if (!matchesSearch) {
-          console.log('❌ Search filter failed for:', employee.name, 'with term:', searchTerm);
           return false;
         }
       }
@@ -894,7 +890,6 @@ export const selectFilteredOrgChart = createSelector(
         );
         
         if (!matchesEmployeeSearch) {
-          console.log('❌ Employee search failed for:', employee.name);
           return false;
         }
       }
@@ -905,7 +900,6 @@ export const selectFilteredOrgChart = createSelector(
         if (!searchTerm) return true;
         
         if (!employee.title || !String(employee.title).toLowerCase().includes(searchTerm)) {
-          console.log('❌ Job title search failed for:', employee.name);
           return false;
         }
       }
@@ -916,7 +910,6 @@ export const selectFilteredOrgChart = createSelector(
         if (!searchTerm) return true;
         
         if (!employee.department || !String(employee.department).toLowerCase().includes(searchTerm)) {
-          console.log('❌ Department search failed for:', employee.name);
           return false;
         }
       }
@@ -929,7 +922,6 @@ export const selectFilteredOrgChart = createSelector(
         
         if (filterValues.length > 0) {
           if (!employee.business_function) {
-            console.log('❌ No business_function for:', employee.name);
             return false;
           }
           
@@ -940,7 +932,6 @@ export const selectFilteredOrgChart = createSelector(
           });
           
           if (!matches) {
-            console.log('❌ Business function filter failed for:', employee.name, employee.business_function);
             return false;
           }
         }
@@ -953,7 +944,6 @@ export const selectFilteredOrgChart = createSelector(
         
         if (filterValues.length > 0) {
           if (!employee.department) {
-            console.log('❌ No department for:', employee.name);
             return false;
           }
           
@@ -963,7 +953,6 @@ export const selectFilteredOrgChart = createSelector(
           });
           
           if (!matches) {
-            console.log('❌ Department filter failed for:', employee.name, employee.department);
             return false;
           }
         }
@@ -976,7 +965,6 @@ export const selectFilteredOrgChart = createSelector(
         
         if (filterValues.length > 0) {
           if (!employee.unit) {
-            console.log('❌ No unit for:', employee.name);
             return false;
           }
           
@@ -986,7 +974,6 @@ export const selectFilteredOrgChart = createSelector(
           });
           
           if (!matches) {
-            console.log('❌ Unit filter failed for:', employee.name, employee.unit);
             return false;
           }
         }
@@ -999,7 +986,6 @@ export const selectFilteredOrgChart = createSelector(
         
         if (filterValues.length > 0) {
           if (!employee.position_group) {
-            console.log('❌ No position_group for:', employee.name);
             return false;
           }
           
@@ -1009,7 +995,6 @@ export const selectFilteredOrgChart = createSelector(
           });
           
           if (!matches) {
-            console.log('❌ Position group filter failed for:', employee.name, employee.position_group);
             return false;
           }
         }
@@ -1022,7 +1007,6 @@ export const selectFilteredOrgChart = createSelector(
         
         if (filterValues.length > 0) {
           if (!employee.line_manager_id) {
-            console.log('❌ No line_manager_id for:', employee.name);
             return false;
           }
           
@@ -1031,7 +1015,6 @@ export const selectFilteredOrgChart = createSelector(
           });
           
           if (!matches) {
-            console.log('❌ Line manager filter failed for:', employee.name, employee.line_manager_id);
             return false;
           }
         }
@@ -1088,14 +1071,12 @@ export const selectFilteredOrgChart = createSelector(
       // Boolean filters
       if (activeFilters.show_top_level_only) {
         if (employee.line_manager_id) {
-          console.log('❌ Top level filter failed for:', employee.name, '- has manager:', employee.line_manager_id);
           return false;
         }
       }
       
       if (activeFilters.managers_only) {
         if (!employee.direct_reports || employee.direct_reports === 0) {
-          console.log('❌ Managers only filter failed for:', employee.name, '- reports:', employee.direct_reports);
           return false;
         }
       }
@@ -1103,7 +1084,6 @@ export const selectFilteredOrgChart = createSelector(
       // Manager team filter
       if (activeFilters.manager_team) {
         if (String(employee.line_manager_id) !== String(activeFilters.manager_team)) {
-          console.log('❌ Manager team filter failed for:', employee.name);
           return false;
         }
       }

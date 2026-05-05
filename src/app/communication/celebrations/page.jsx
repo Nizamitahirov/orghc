@@ -10,9 +10,10 @@ import celebrationService from "@/services/celebrationService";
 import { 
   Plus, Search, Calendar, Cake, Award, Gift, PartyPopper,
   Edit, Trash2, X, Loader2, TrendingUp, ChevronLeft, ChevronRight,
-  Building2, Briefcase, Image as ImageIcon, Heart, Users
+  Building2, Briefcase, Image as ImageIcon, Heart, Users, Settings
 } from 'lucide-react';
 import jobDescriptionService from '@/services/jobDescriptionService';
+import CelebrationSettingsPanel from '@/components/celebration/CelebrationSettingsPanel';
 
 export default function CelebrationsPage() {
   const { darkMode } = useTheme();
@@ -49,7 +50,7 @@ export default function CelebrationsPage() {
   const [celebratedItems, setCelebratedItems] = useState(new Set());
   const [celebrationWishes, setCelebrationWishes] = useState([]);
   const [formLoading, setFormLoading] = useState(false);
-  
+  const [showSettings, setShowSettings] = useState(false);
   //  Access control state
   const [userAccess, setUserAccess] = useState(null);
   const [accessLoading, setAccessLoading] = useState(true);
@@ -92,6 +93,7 @@ export default function CelebrationsPage() {
       setAccessLoading(false);
     }
   };
+
 
   const loadCelebratedItems = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -150,7 +152,7 @@ export default function CelebrationsPage() {
 
   const openCreateModal = () => {
     //  Check access before opening
-    if (!userAccess?.can_create) {
+    if (!userAccess?.is_admin) {
       showWarning('You do not have permission to create celebrations');
       return;
     }
@@ -160,7 +162,7 @@ export default function CelebrationsPage() {
   };
 
   const openEditModal = (celebration) => {
-    if (!userAccess?.can_create) {
+    if (!userAccess?.is_admin) {
       showWarning('You do not have permission to edit celebrations');
       return;
     }
@@ -376,7 +378,7 @@ export default function CelebrationsPage() {
       return;
     }
     //  Check access before deleting
-    if (!userAccess?.can_create) {
+    if (!userAccess?.is_admin) {
       showWarning('You do not have permission to delete celebrations');
       return;
     }
@@ -416,28 +418,38 @@ export default function CelebrationsPage() {
     <DashboardLayout>
       <div className={`p-6 min-h-screen`}>
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className={`text-2xl font-bold mb-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Company Celebrations
-              </h1>
-              <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                Celebrate milestones and achievements together
-              </p>
-            </div>
-            {/*  Only show Create button if user has permission */}
-            {userAccess?.can_create && (
-              <button
-                onClick={openCreateModal}
-                className="flex items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-medium shadow-lg hover:shadow-xl"
-              >
-                <Plus size={18} />
-                Create Celebration
-              </button>
-            )}
-          </div>
-        </div>
+<div className="mb-6">
+  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div>
+      <h1 className={`text-2xl font-bold mb-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+        Company Celebrations
+      </h1>
+      <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+        Celebrate milestones and achievements together
+      </p>
+    </div>
+
+    {userAccess?.is_admin && (
+      <div className="flex items-center gap-2">
+        <button
+          onClick={openCreateModal}
+          className="flex items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-medium shadow-lg hover:shadow-xl"
+        >
+          <Plus size={18} />
+          Create Celebration
+        </button>
+
+        <button
+          onClick={() => setShowSettings(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-all text-sm font-medium shadow-lg hover:shadow-xl"
+        >
+          <Settings size={18} />
+          Settings
+        </button>
+      </div>
+    )}
+  </div>
+</div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -617,7 +629,7 @@ export default function CelebrationsPage() {
                     </div>
 
                     {/*  Only show edit/delete if user has permission AND celebration is not auto */}
-                    {!item.is_auto && userAccess?.can_create && (
+                    {!item.is_auto && userAccess?.is_admin && (
                       <div className="absolute top-56 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={(e) => handleEditCelebration(item, e)}
@@ -1019,7 +1031,7 @@ export default function CelebrationsPage() {
                 </button>
 
                 {/*  Edit and Delete Buttons - only if user has permission */}
-                {!selectedCelebration.is_auto && userAccess?.can_create && (
+                {!selectedCelebration.is_auto && userAccess?.is_admin && (
                   <div className="absolute top-4 left-4 flex gap-2">
                     <button
                       onClick={(e) => {
@@ -1160,7 +1172,13 @@ export default function CelebrationsPage() {
             </div>
           </div>
         )}
-
+<CelebrationSettingsPanel
+  show={showSettings}
+  onClose={() => setShowSettings(false)}
+  darkMode={darkMode}
+  showSuccess={showSuccess}
+  showError={showError}
+/>
         {/* Confirmation Modal */}
         <ConfirmationModal
           isOpen={confirmModal.isOpen}

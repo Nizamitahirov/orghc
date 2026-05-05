@@ -42,6 +42,8 @@ export default function CompanyPoliciesPage() {
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [selectedPolicy, setSelectedPolicy] = useState(null);
+  // Animation direction: 'forward' | 'backward'
+  const [navDir, setNavDir] = useState('forward');
   
   // Data state
   const [companies, setCompanies] = useState([]);
@@ -131,7 +133,10 @@ export default function CompanyPoliciesPage() {
       return;
     }
     if (company.type !== 'policy_company') {
-      showWarning("Business Functions cannot be edited from here");
+      showWarning(
+        'This entry is auto-generated from the Organisation Chart and cannot be edited here. ' +
+        'Please update the corresponding Business Function in the org settings.'
+      );
       return;
     }
     setEditingCompany(company);
@@ -162,128 +167,143 @@ export default function CompanyPoliciesPage() {
   };
 
   const handleDeleteCompany = (company) => {
-    //  Check access before deleting
     if (!userAccess?.is_admin) {
       showWarning('You do not have permission to delete folders');
       return;
     }
     if (company.type !== 'policy_company') {
-      showWarning("Business Functions cannot be deleted from here");
-      return;
-    }
-
-    if (company.folder_count > 0) {
       showWarning(
-        `Cannot delete company "${company.name}" - it has ${company.folder_count} folders. ` +
-        "Please delete all folders first."
+        'This entry is auto-generated from the Organisation Chart and cannot be deleted here. ' +
+        'Please update the corresponding Business Function in the org settings.'
       );
       return;
     }
 
+    // Build a clear confirmation message.
+    // If folder_count > 0 from the API we warn about cascading deletion.
+    // If folder_count is 0 or unknown we still allow the attempt — the backend
+    // is the authoritative source of truth and will reject if data is inconsistent.
+    const hasFolders = (company.folder_count || 0) > 0;
+    const message = hasFolders
+      ? `"${company.name}" contains ${company.folder_count} folder(s) and all their policies. ` +
+        'Deleting this company will permanently remove all of that content. Continue?'
+      : `Are you sure you want to delete "${company.name}"? This action cannot be undone.`;
+
     setConfirmModal({
       isOpen: true,
-      title: "Delete Company",
-      message: `Are you sure you want to delete "${company.name}"? This action cannot be undone.`,
-      type: "danger",
+      title: 'Delete Company',
+      message,
+      type: 'danger',
       onConfirm: async () => {
         try {
           await deletePolicyCompany(company.id);
           await loadAllCompanies();
-          showSuccess("Company deleted successfully!");
+          showSuccess('Company deleted successfully!');
         } catch (err) {
-          const errorMsg = err.message || "Failed to delete company";
+          // Backend may return a descriptive error (e.g. "has folders — delete them first")
+          const errorMsg =
+            err?.response?.data?.detail ||
+            err?.response?.data?.error ||
+            err?.message ||
+            'Failed to delete company';
           showError(errorMsg);
         }
-        setConfirmModal({ ...confirmModal, isOpen: false });
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
       },
     });
   };
 
-  // Navigation handlers
-  const handleSelectCompany = (company) => {
-    setSelectedCompany(company);
-    setViewMode("folders");
+  // Navigation helpers
+  const goForward = (mode, updates = {}) => {
+    setNavDir('forward');
+    Object.entries(updates).forEach(([k, v]) => {
+      if (k === 'company') setSelectedCompany(v);
+      if (k === 'folder')  setSelectedFolder(v);
+      if (k === 'policy')  setSelectedPolicy(v);
+    });
+    setViewMode(mode);
   };
 
-  const handleSelectFolder = (folder) => {
-    setSelectedFolder(folder);
-    setViewMode("policies");
+  const goBack = (mode, clears = []) => {
+    setNavDir('backward');
+    if (clears.includes('company')) setSelectedCompany(null);
+    if (clears.includes('folder'))  setSelectedFolder(null);
+    if (clears.includes('policy'))  setSelectedPolicy(null);
+    setViewMode(mode);
   };
 
-  const handleViewPolicy = (policy) => {
-    setSelectedPolicy(policy);
-    setViewMode("pdf");
-  };
+  const handleSelectCompany = (company) => goForward('folders', { company });
+  const handleSelectFolder  = (folder)  => goForward('policies', { folder });
+  const handleViewPolicy    = (policy)  => goForward('pdf', { policy });
 
-  const handleBackToCompanies = () => {
-    setViewMode("companies");
-    setSelectedCompany(null);
-    setSelectedFolder(null);
-    setSelectedPolicy(null);
-  };
+  const handleBackToCompanies = () => goBack('companies', ['company', 'folder', 'policy']);
+  const handleBackToFolders   = () => goBack('folders',   ['folder', 'policy']);
+  const handleBackToPolicies  = () => goBack('policies',  ['policy']);
 
-  const handleBackToFolders = () => {
-    setViewMode("folders");
-    setSelectedFolder(null);
-    setSelectedPolicy(null);
-  };
-
-  const handleBackToPolicies = () => {
-    setViewMode("policies");
-    setSelectedPolicy(null);
-  };
+  // Slide animation classes based on navigation direction
+  const slideClass = navDir === 'forward'
+    ? 'animate-in fade-in slide-in-from-right-4 duration-250'
+    : 'animate-in fade-in slide-in-from-left-4 duration-250';
 
   return (
     <DashboardLayout>
       {viewMode === "companies" && (
-        <CompaniesView
-          companies={companies}
-          statistics={statistics}
-          loading={loading}
-          error={error}
-          darkMode={darkMode}
-          onSelectCompany={handleSelectCompany}
-          onReload={loadAllCompanies}
-          onAddCompany={handleAddCompany}
-          onEditCompany={handleEditCompany}
-          onDeleteCompany={handleDeleteCompany}
-          userAccess={userAccess}
-        />
+        <div key="view-companies" className={slideClass}>
+          <CompaniesView
+            companies={companies}
+            statistics={statistics}
+            loading={loading}
+            error={error}
+            darkMode={darkMode}
+            onSelectCompany={handleSelectCompany}
+            onReload={loadAllCompanies}
+            onAddCompany={handleAddCompany}
+            onEditCompany={handleEditCompany}
+            onDeleteCompany={handleDeleteCompany}
+            userAccess={userAccess}
+          />
+        </div>
       )}
 
       {viewMode === "folders" && selectedCompany && (
-        <FoldersView
-          selectedCompany={selectedCompany}
-          darkMode={darkMode}
-          onBack={handleBackToCompanies}
-          onSelectFolder={handleSelectFolder}
-          confirmModal={confirmModal}
-          setConfirmModal={setConfirmModal}
-          userAccess={userAccess}
-        />
+        <div key="view-folders" className={slideClass}>
+          <FoldersView
+            selectedCompany={selectedCompany}
+            darkMode={darkMode}
+            onBack={handleBackToCompanies}
+            onSelectFolder={handleSelectFolder}
+            confirmModal={confirmModal}
+            setConfirmModal={setConfirmModal}
+            userAccess={userAccess}
+          />
+        </div>
       )}
 
       {viewMode === "policies" && selectedFolder && selectedCompany && (
-        <PoliciesView
-          selectedCompany={selectedCompany}
-          selectedFolder={selectedFolder}
-          darkMode={darkMode}
-          onBack={handleBackToFolders}
-          onViewPolicy={handleViewPolicy}
-          confirmModal={confirmModal}
-          setConfirmModal={setConfirmModal}
-          userAccess={userAccess}
-        />
+        <div key="view-policies" className={slideClass}>
+          <PoliciesView
+            selectedCompany={selectedCompany}
+            selectedFolder={selectedFolder}
+            darkMode={darkMode}
+            onBack={handleBackToFolders}
+            onViewPolicy={handleViewPolicy}
+            confirmModal={confirmModal}
+            setConfirmModal={setConfirmModal}
+            userAccess={userAccess}
+          />
+        </div>
       )}
 
       {viewMode === "pdf" && selectedPolicy && selectedFolder && selectedCompany && (
-        <PDFViewer
-          selectedPolicy={selectedPolicy}
-          selectedFolder={selectedFolder}
-          selectedCompany={selectedCompany}
-          darkMode={darkMode}
-          onBack={handleBackToPolicies}
-        />
+        <div key="view-pdf" className={slideClass}>
+          <PDFViewer
+            selectedPolicy={selectedPolicy}
+            selectedFolder={selectedFolder}
+            selectedCompany={selectedCompany}
+            darkMode={darkMode}
+            onBack={handleBackToPolicies}
+          />
+        </div>
       )}
 
       {/* Company Create/Edit Modal */}

@@ -36,8 +36,9 @@ export default function VacationCalendar({ darkMode, showError, userAccess }) {
   const [businessFunctions, setBusinessFunctions] = useState([]);
   const [selectedDay, setSelectedDay]     = useState(null);
   const [showDayDetail, setShowDayDetail] = useState(false);
+  const [calendarCountry, setCalendarCountry] = useState(null); // null = auto-detect
 
-  useEffect(() => { fetchCalendarData(); }, [currentDate, filters]);
+  useEffect(() => { fetchCalendarData(); }, [currentDate, filters, calendarCountry]);
   useEffect(() => { fetchFilterOptions(); }, []);
 
   const fetchCalendarData = async () => {
@@ -46,6 +47,7 @@ export default function VacationCalendar({ darkMode, showError, userAccess }) {
       const data = await VacationService.getCalendarEvents({
         month: currentDate.getMonth() + 1,
         year:  currentDate.getFullYear(),
+        ...(calendarCountry ? { country: calendarCountry } : {}),
         ...filters
       });
       setHolidays(data.holidays || []);
@@ -98,6 +100,18 @@ export default function VacationCalendar({ darkMode, showError, userAccess }) {
     return map[code] || 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300';
   };
 
+  const getVacationTypeStyle = (vacationType, statusCode) => {
+    if (!vacationType) return getStatusStyle(statusCode);
+    const t = vacationType.toLowerCase();
+    if (t.includes('annual') || t.includes('məzuniyyət')) return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300';
+    if (t.includes('medical') || t.includes('sick') || t.includes('xəstəlik')) return 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300';
+    if (t.includes('personal') || t.includes('şəxsi')) return 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300';
+    if (t.includes('maternity') || t.includes('paternity') || t.includes('dekret')) return 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300';
+    if (t.includes('study') || t.includes('education') || t.includes('təhsil')) return 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300';
+    if (t.includes('unpaid') || t.includes('ödənişsiz')) return 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+    return getStatusStyle(statusCode);
+  };
+
   const renderCalendar = () => {
     const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
     const cells = [];
@@ -147,7 +161,7 @@ export default function VacationCalendar({ darkMode, showError, userAccess }) {
 
           {/* Vacations */}
           {dv.slice(0, 2).map((v, i) => (
-            <div key={i} className={`px-1.5 py-0.5 rounded-lg ${getStatusStyle(v.status_code)}`} title={`${v.employee_name} – ${v.vacation_type}`}>
+            <div key={i} className={`px-1.5 py-0.5 rounded-lg ${getVacationTypeStyle(v.vacation_type, v.status_code)}`} title={`${v.employee_name} – ${v.vacation_type}`}>
               <p className="text-[9px] font-medium truncate">{v.employee_name}</p>
             </div>
           ))}
@@ -190,6 +204,24 @@ export default function VacationCalendar({ darkMode, showError, userAccess }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* AZ / UK calendar toggle — visible for admin users */}
+          {userAccess?.is_admin && (
+            <div className="flex items-center rounded-lg border border-almet-bali-hai/40 dark:border-almet-comet overflow-hidden text-xs font-semibold">
+              {[null, 'az', 'uk'].map((val, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCalendarCountry(val)}
+                  className={`px-2.5 py-1.5 transition-all ${
+                    calendarCountry === val
+                      ? 'bg-almet-sapphire text-white'
+                      : 'bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet'
+                  } ${i > 0 ? 'border-l border-almet-bali-hai/40 dark:border-almet-comet' : ''}`}
+                >
+                  {val === null ? 'Auto' : val.toUpperCase()}
+                </button>
+              ))}
+            </div>
+          )}
           {isPrivileged && (
             <button
               onClick={() => setShowFilters(v => !v)}
@@ -317,13 +349,16 @@ export default function VacationCalendar({ darkMode, showError, userAccess }) {
       </div>
 
       {/* ── Legend ── */}
-      <div className="flex flex-wrap items-center gap-4 px-1">
+      <div className="flex flex-wrap items-center gap-3 px-1">
         {[
-          { color: 'bg-red-100 dark:bg-red-900/30',   label: 'Public Holiday' },
-          { color: 'bg-green-100 dark:bg-green-900/30', label: 'Approved Vacation' },
-          { color: 'bg-blue-100 dark:bg-blue-900/30',  label: 'Scheduled' },
+          { color: 'bg-red-100 dark:bg-red-900/30',     label: 'Public Holiday' },
+          { color: 'bg-green-100 dark:bg-green-900/30', label: 'Annual Leave' },
+          { color: 'bg-rose-100 dark:bg-rose-900/30',   label: 'Medical/Sick' },
+          { color: 'bg-purple-100 dark:bg-purple-900/30', label: 'Personal' },
+          { color: 'bg-pink-100 dark:bg-pink-900/30',   label: 'Maternity/Paternity' },
+          { color: 'bg-indigo-100 dark:bg-indigo-900/30', label: 'Study Leave' },
           { color: 'bg-amber-100 dark:bg-amber-900/30', label: 'Pending Approval' },
-          { color: 'ring-2 ring-almet-sapphire',        label: 'Today' },
+          { color: 'ring-2 ring-almet-sapphire',         label: 'Today' },
         ].map(l => (
           <div key={l.label} className="flex items-center gap-1.5">
             <div className={`w-3.5 h-3.5 rounded ${l.color}`} />

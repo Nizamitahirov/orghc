@@ -4,20 +4,24 @@ import React, { useState } from 'react';
 import { X, CheckCircle, XCircle, FileText, Download, MessageSquare, User, Briefcase, Calendar, Building2 } from 'lucide-react';
 import resignationExitService from '@/services/resignationExitService';
 
-export default function ResignationDetailModal({ resignation, onClose, onSuccess, userRole }) {
+export default function ResignationDetailModal({ resignation, onClose, onSuccess, userRole, currentUser }) {
   const [showApprovalForm, setShowApprovalForm] = useState(false);
   const [action, setAction] = useState('');
   const [comments, setComments] = useState('');
   const [processing, setProcessing] = useState(false);
 
+  // Öz sorğusuna heç vaxt approve/reject düyməsi görünməsin
+  const isOwnRequest = currentUser?.id && resignation.employee && String(currentUser.id) === String(resignation.employee);
+
   const canApprove = () => {
-    if (userRole?.is_admin) return true;
-    if (userRole?.is_manager && resignation.status === 'PENDING_MANAGER') return true;
-    return false;
+    if (isOwnRequest) return false;
+    if (resignation.status !== 'PENDING_MANAGER') return false;
+    return userRole?.is_admin || userRole?.is_manager;
   };
 
   const canHRApprove = () => {
-    return userRole?.is_admin || resignation.status === 'PENDING_HR';
+    if (isOwnRequest) return false;
+    return userRole?.is_admin && resignation.status === 'PENDING_HR';
   };
 
   const handleApproval = async () => {

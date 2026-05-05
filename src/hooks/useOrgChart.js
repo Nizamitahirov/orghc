@@ -182,9 +182,7 @@ export const useOrgChart = () => {
   }, [actions]);
 
 
-  const hasActiveFilters = useCallback(() => {
-    return Object.keys(activeFilters || {}).length > 0;
-  }, [activeFilters]);
+  const hasActiveFilters = Object.keys(activeFilters || {}).length > 0;
 
 
 const filterOptions = useMemo(() => {
@@ -435,10 +433,10 @@ const filterOptions = useMemo(() => {
   
   useEffect(() => {
     if (Array.isArray(fullTree) && fullTree.length === 0 && !loading.fullTree && !errors.fullTree) {
-      
-        actions.fetchFullTree();
+      actions.fetchFullTree();
     }
-}, [fullTree, loading.fullTree, errors.fullTree, actions]);
+  }, [fullTree, loading.fullTree, errors.fullTree, actions]);
+
 
 
   useEffect(() => {
@@ -512,8 +510,8 @@ const filterOptions = useMemo(() => {
 
 
   return {
-    // Data
-    orgChart,
+    // Data — prefer fullTree (includes vacancies) when available
+    orgChart: fullTree.length > 0 ? fullTree : orgChart,
     fullTree,
     statistics,
     selectedEmployee,
@@ -521,7 +519,6 @@ const filterOptions = useMemo(() => {
     filteredOrgChart,
     reactFlowData,
     summary,
-    orgChart: fullTree.length > 0 ? fullTree : orgChart,
   
     // Filters
     filters,

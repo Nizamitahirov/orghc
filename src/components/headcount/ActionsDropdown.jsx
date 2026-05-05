@@ -16,6 +16,7 @@ import jobDescriptionService from "../../services/jobDescriptionService";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import ConfirmationModal from "../common/ConfirmationModal";
+import DeleteExitModal from "./DeleteExitModal";
 
 // ─── Shared mini-components ──────────────────────────────────────────────────
 
@@ -138,14 +139,13 @@ const ActionsDropdown = ({
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
-const terminationDateRef = useRef('');
+  const [deleteExitModal, setDeleteExitModal] = useState({ open: false, type: 'soft' });
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
   const [jobAssignments, setJobAssignments] = useState([]);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
-  const [terminationDate, setTerminationDate] = useState('');
 
   // Confirmation modal
   const [confirmationModal, setConfirmationModal] = useState({
@@ -285,67 +285,42 @@ const terminationDateRef = useRef('');
 
   
 const handleSoftDelete = () => {
-  const name = getName();
-  openConfirmation({
-    type: "danger",
-    title: "Soft Delete Employee",
-    message: `Are you sure you want to soft delete ${name}? This will create a vacant position.`,
-    confirmText: "Soft Delete",
-    action: async () => {
-      try {
-        setIsProcessing(true);
-        const date = terminationDateRef.current || undefined;  // ← ref oxu
-        const r = await archiveEmployeesService.bulkSoftDeleteEmployees(
-          [employeeId],
-          undefined,
-          date
-        );
-        showSuccess(r.message || `${name} soft deleted`);
-        setTerminationDate('');
-        terminationDateRef.current = '';                       // ← ref reset
-        if (onRefresh) await onRefresh(); else onAction?.(employeeId, "refresh");
-        if (r.data?.vacant_positions_created > 0)
-          setTimeout(() => showInfo("Vacant position created."), 1000);
-      } catch (e) {
-        showError(`Failed: ${e.message || "Unknown error"}`);
-      } finally {
-        setIsProcessing(false);
-      }
-    },
-  });
+  setIsOpen(false);
+  setDeleteExitModal({ open: true, type: 'soft' });
 };
 
-// 4. handleHardDelete-də eyni düzəliş
 const handleHardDelete = () => {
+  setIsOpen(false);
+  setDeleteExitModal({ open: true, type: 'hard' });
+};
+
+const handleDeleteExitConfirm = async ({ exitType, terminationDate, notes }) => {
   const name = getName();
-  openConfirmation({
-    type: "danger",
-    title: "Permanent Deletion Warning",
-    message: `⚠️ This will permanently delete ${name}. This action cannot be undone.`,
-    confirmText: "Continue",
-    action: async () => {
-      try {
-        setIsProcessing(true);
-        const date = terminationDateRef.current || undefined;  // ← ref oxu
-        const r = await archiveEmployeesService.bulkHardDeleteEmployees(
-          [employeeId],
-          "End of contract period",
-          true,
-          date
-        );
-        showSuccess(r.message || `${name} permanently deleted`);
-        setTerminationDate('');
-        terminationDateRef.current = '';                       // ← ref reset
-        if (onRefresh) await onRefresh(); else onAction?.(employeeId, "refresh");
-        if (r.data?.archives_created > 0)
-          setTimeout(() => showInfo("Archive record created."), 1000);
-      } catch (e) {
-        showError(`Failed: ${e.message || "Unknown error"}`);
-      } finally {
-        setIsProcessing(false);
-      }
-    },
-  });
+  const isSoft = deleteExitModal.type === 'soft';
+  setIsProcessing(true);
+  try {
+    if (isSoft) {
+      const r = await archiveEmployeesService.bulkSoftDeleteEmployees(
+        [employeeId], notes, terminationDate, exitType
+      );
+      showSuccess(r.message || `${name} employment ended`);
+      if (r.data?.vacant_positions_created > 0)
+        setTimeout(() => showInfo("Vacant position created."), 1000);
+    } else {
+      const r = await archiveEmployeesService.bulkHardDeleteEmployees(
+        [employeeId], notes, true, terminationDate, exitType
+      );
+      showSuccess(r.message || `${name} permanently deleted`);
+      if (r.data?.archives_created > 0)
+        setTimeout(() => showInfo("Archive record created."), 1000);
+    }
+    setDeleteExitModal({ open: false, type: 'soft' });
+    if (onRefresh) await onRefresh(); else onAction?.(employeeId, "refresh");
+  } catch (e) {
+    showError(`Failed: ${e.message || "Unknown error"}`);
+  } finally {
+    setIsProcessing(false);
+  }
 };
 
 
@@ -609,7 +584,7 @@ const handleHardDelete = () => {
           </div>
           <div className="flex items-center gap-2 ml-3 flex-shrink-0">
             <button
-              onClick={() => jobDescriptionService.downloadJobDescriptionPDF(jd.id)}
+              onClick={() => jobDescriptionService.downloadJobDescriptionPDF(jd.id, employeeId)}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-almet-sapphire hover:bg-almet-astral
                 text-white rounded-lg text-xs font-medium transition-colors"
             >
@@ -895,12 +870,7 @@ const handleHardDelete = () => {
 
       <ConfirmationModal
         isOpen={confirmationModal.isOpen}
-        
-onClose={() => {
-  closeConfirmation();
-  setTerminationDate('');
-  terminationDateRef.current = '';  // ← əlavə et
-}}
+        onClose={closeConfirmation}
         onConfirm={executeConfirmed}
         title={confirmationModal.title}
         message={confirmationModal.message}
@@ -908,26 +878,15 @@ onClose={() => {
         type={confirmationModal.type}
         loading={isProcessing}
         darkMode={darkMode}
-        extraContent={
-          <div className="mt-3">
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Termination Date <span className="text-gray-400">(optional — defaults to today)</span>
-            </label>
-            
-<input
-  type="date"
-  value={terminationDate}
-  onChange={e => {
-    setTerminationDate(e.target.value);
-    terminationDateRef.current = e.target.value;  // ← əlavə et
-  }}
-  className="w-full px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600
-    rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-    focus:ring-1 focus:ring-red-400 focus:border-red-400 outline-none"
-/>
+      />
 
-          </div>
-        }
+      <DeleteExitModal
+        isOpen={deleteExitModal.open}
+        onClose={() => setDeleteExitModal({ open: false, type: 'soft' })}
+        onConfirm={handleDeleteExitConfirm}
+        deleteType={deleteExitModal.type}
+        employeeName={getName()}
+        isProcessing={isProcessing}
       />
     </>
   );

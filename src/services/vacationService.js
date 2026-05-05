@@ -165,7 +165,7 @@ getVacationTypesFiltered: async () => {
           end_date: params.end_date || '',
           employee_name: params.employee_name || '',
           year: params.year || '',
-          format: params.format || 'combined'
+          export_type: params.export_type || 'combined'
         },
         responseType: 'blob'
       });
@@ -275,6 +275,16 @@ getVacationTypesFiltered: async () => {
     }
   },
 
+  // Delete Vacation Request (admin only)
+  deleteVacationRequest: async (id) => {
+    try {
+      const response = await vacationApi.delete(`/vacation/requests/${id}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   // Delete Schedule
   deleteSchedule: async (id) => {
     try {
@@ -306,7 +316,17 @@ getVacationTypesFiltered: async () => {
   },
 
   // === REQUESTS ===
-  
+
+  // Admin: Manually add an approved vacation record (full-scope admin only)
+  adminAddVacationRecord: async (data) => {
+    try {
+      const response = await vacationApi.post('/vacation/requests/admin-add-record/', data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
   // Create Immediate Request
   createImmediateRequest: async (data, files = []) => {
   try {
@@ -666,7 +686,8 @@ getVacationTypesFiltered: async () => {
           year: params.year || new Date().getFullYear(),
           employee_id: params.employee_id || '',
           department_id: params.department_id || '',
-          business_function_id: params.business_function_id || ''
+          business_function_id: params.business_function_id || '',
+          ...(params.country ? { country: params.country } : {}),
         }
       });
       return response.data;

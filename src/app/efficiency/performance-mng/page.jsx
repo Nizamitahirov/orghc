@@ -13,6 +13,7 @@ import PerformanceDashboard from "@/components/performance/PerformanceDashboard"
 import EmployeePerformanceDetail from "@/components/performance/EmployeePerformanceDetail";
 import PMSurveyComponent from "@/components/performance/PMSurveyComponent";
 import PMSurveyList from "@/components/performance/PMSurveyList";
+import { clearPerformanceStorage } from '@/hooks/usePersistentState';
 
 // Common Components
 import { LoadingSpinner, ErrorDisplay } from "@/components/common/LoadingSpinner";
@@ -77,7 +78,9 @@ export default function PerformanceManagementPage() {
   useEffect(() => {
     initializeApp();
   }, []);
-
+useEffect(() => {
+  clearPerformanceStorage();
+}, [selectedYear]);
   useEffect(() => {
     if (selectedYear && activeYear && userAccess.employee_id) {
       loadDashboardData();
@@ -146,13 +149,15 @@ export default function PerformanceManagementPage() {
   const loadSurveyStatus = async (year) => {
     try {
       const survey = await pmSurveyApi.responses.getMySurvey(year);
-      setSurveyStatus(survey?.status ?? null);
-      console.log('✅ Survey status preloaded:', survey?.status);
+      // Backend returns {survey: null, status: 'NOT_STARTED'} when no survey exists
+      if (!survey || survey.survey === null) {
+        setSurveyStatus('NOT_STARTED');
+      } else {
+        setSurveyStatus(survey?.status ?? null);
+      }
     } catch (err) {
       if (err.response?.status === 404) {
-        // No survey yet → show "Start Now" banner
         setSurveyStatus('NOT_STARTED');
-        console.log('ℹ️ No survey yet → status set to NOT_STARTED');
       } else {
         console.error('❌ Error preloading survey status:', err);
       }
@@ -327,6 +332,7 @@ export default function PerformanceManagementPage() {
           employee_name: emp.full_name,
           employee_business_function: emp.business_function_name,
           employee_unit: emp.unit_name,
+          job_title: emp.job_title || null,
           employee_position_group: emp.position_group,
           company: emp.business_function_name,
           employee_company: emp.business_function_name,

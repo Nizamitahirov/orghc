@@ -1,9 +1,10 @@
 // src/components/news/NewsDetailModal.jsx
-import React from 'react';
-import { 
-  X, Calendar, Eye, Edit, Trash2, Pin, PinOff, 
-  Users, Target, Mail 
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  X, Calendar, Eye, Edit, Trash2, Pin, PinOff,
+  Users, Target, Mail, MessageSquare, Send, Loader2
 } from 'lucide-react';
+import { newsService } from '@/services/newsService';
 
 export default function NewsDetailModal({
   isOpen,
@@ -18,23 +19,78 @@ export default function NewsDetailModal({
   formatDate,
   getCategoryInfo
 }) {
+  const [comments, setComments] = useState([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [newComment, setNewComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen || !newsItem) return;
+    setComments([]);
+    setNewComment('');
+    loadComments();
+    newsService.markRead(newsItem.id);
+  }, [isOpen, newsItem?.id]);
+
+  const loadComments = async () => {
+    setCommentsLoading(true);
+    try {
+      const data = await newsService.getComments(newsItem.id);
+      setComments(data);
+    } catch {
+      // silent
+    } finally {
+      setCommentsLoading(false);
+    }
+  };
+
+  const handleSubmitComment = async () => {
+    if (!newComment.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      const comment = await newsService.addComment(newsItem.id, newComment.trim());
+      setComments(prev => [...prev, comment]);
+      setNewComment('');
+    } catch {
+      // silent
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    try {
+      await newsService.deleteComment(newsItem.id, commentId);
+      setComments(prev => prev.filter(c => c.id !== commentId));
+    } catch {
+      // silent
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      handleSubmitComment();
+    }
+  };
+
   if (!isOpen || !newsItem) return null;
 
   const categoryInfo = getCategoryInfo(newsItem.category);
   const CategoryIcon = categoryInfo.icon;
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" 
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
-      <div 
+      <div
         className={`rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl ${
           darkMode ? 'bg-almet-cloud-burst' : 'bg-white'
-        }`} 
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
-        
+
         {/* Modal Header Image */}
         <div className="relative h-72">
           <img
@@ -42,7 +98,7 @@ export default function NewsDetailModal({
             alt={newsItem.title}
             className="w-full h-full object-cover"
           />
-          
+
           {/* Close Button */}
           <button
             onClick={onClose}
@@ -54,7 +110,7 @@ export default function NewsDetailModal({
           >
             <X size={18} />
           </button>
-          
+
           {/* Action Buttons */}
           <div className="absolute top-3 left-3 flex gap-1.5">
             {permissions?.capabilities?.can_pin_news && (
@@ -65,8 +121,8 @@ export default function NewsDetailModal({
                   onClose();
                 }}
                 className={`p-2 rounded-xl transition-all shadow-lg ${
-                  newsItem.is_pinned 
-                    ? 'bg-orange-600 hover:bg-orange-700' 
+                  newsItem.is_pinned
+                    ? 'bg-orange-600 hover:bg-orange-700'
                     : 'bg-green-600 hover:bg-green-700'
                 } text-white`}
                 title={newsItem.is_pinned ? 'Unpin' : 'Pin'}
@@ -74,7 +130,7 @@ export default function NewsDetailModal({
                 {newsItem.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
               </button>
             )}
-            
+
             {permissions?.capabilities?.can_update_news && (
               <button
                 onClick={(e) => {
@@ -87,7 +143,7 @@ export default function NewsDetailModal({
                 <Edit size={14} />
               </button>
             )}
-            
+
             {permissions?.capabilities?.can_delete_news && (
               <button
                 onClick={(e) => {
@@ -103,7 +159,7 @@ export default function NewsDetailModal({
           </div>
 
           {/* Category Badge */}
-          <div 
+          <div
             className={`absolute bottom-3 left-3 ${categoryInfo.color} text-white px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 shadow-lg`}
           >
             <CategoryIcon size={14} />
@@ -196,7 +252,7 @@ export default function NewsDetailModal({
                   </div>
                 )}
               </div>
-              
+
               <div className="flex flex-wrap gap-1.5">
                 {newsItem.target_groups_info.map(group => (
                   <div
@@ -223,7 +279,7 @@ export default function NewsDetailModal({
                   </div>
                 ))}
               </div>
-              
+
               <div className={`mt-2.5 pt-2.5 border-t ${
                 darkMode ? 'border-almet-comet' : 'border-gray-200'
               }`}>
@@ -242,7 +298,7 @@ export default function NewsDetailModal({
 
           {/* Tags */}
           {newsItem.tags_list && newsItem.tags_list.length > 0 && (
-            <div className={`flex flex-wrap gap-1.5 pt-4 border-t ${
+            <div className={`flex flex-wrap gap-1.5 pb-5 border-b ${
               darkMode ? 'border-almet-comet' : 'border-gray-200'
             }`}>
               {newsItem.tags_list.map((tag, idx) => (
@@ -259,6 +315,122 @@ export default function NewsDetailModal({
               ))}
             </div>
           )}
+
+          {/* Comments Section */}
+          <div className="mt-5">
+            <div className="flex items-center gap-2 mb-4">
+              <MessageSquare size={16} className="text-almet-sapphire" />
+              <h3 className={`text-sm font-semibold ${
+                darkMode ? 'text-white' : 'text-gray-900'
+              }`}>
+                Comments {comments.length > 0 && (
+                  <span className={`ml-1 text-xs font-normal ${
+                    darkMode ? 'text-almet-bali-hai' : 'text-gray-500'
+                  }`}>
+                    ({comments.length})
+                  </span>
+                )}
+              </h3>
+            </div>
+
+            {/* Comment List */}
+            <div className="space-y-3 mb-4">
+              {commentsLoading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 size={18} className="animate-spin text-almet-sapphire" />
+                </div>
+              ) : comments.length === 0 ? (
+                <p className={`text-xs text-center py-4 ${
+                  darkMode ? 'text-almet-bali-hai' : 'text-gray-400'
+                }`}>
+                  No comments yet. Be the first to comment.
+                </p>
+              ) : (
+                comments.map(comment => (
+                  <div
+                    key={comment.id}
+                    className={`flex gap-2.5 p-3 rounded-xl ${
+                      darkMode ? 'bg-almet-san-juan/40' : 'bg-gray-50'
+                    }`}
+                  >
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-almet-sapphire to-almet-astral text-white flex items-center justify-center text-[10px] font-bold flex-shrink-0">
+                      {(comment.author_name || comment.author?.full_name || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className={`text-xs font-semibold ${
+                          darkMode ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          {comment.author_name || comment.author?.full_name || 'Unknown'}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] ${
+                            darkMode ? 'text-almet-bali-hai' : 'text-gray-400'
+                          }`}>
+                            {formatDate(comment.created_at)}
+                          </span>
+                          {permissions?.is_admin && (
+                            <button
+                              onClick={() => handleDeleteComment(comment.id)}
+                              className={`text-[10px] transition-colors ${
+                                darkMode
+                                  ? 'text-almet-bali-hai hover:text-red-400'
+                                  : 'text-gray-400 hover:text-red-500'
+                              }`}
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <p className={`text-xs leading-relaxed ${
+                        darkMode ? 'text-almet-bali-hai' : 'text-gray-700'
+                      }`}>
+                        {comment.content}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Add Comment */}
+            <div className={`flex gap-2 p-3 rounded-xl border ${
+              darkMode
+                ? 'bg-almet-san-juan/40 border-almet-comet'
+                : 'bg-gray-50 border-gray-200'
+            }`}>
+              <textarea
+                ref={textareaRef}
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Write a comment... (Ctrl+Enter to send)"
+                rows={2}
+                className={`flex-1 text-xs resize-none bg-transparent outline-none ${
+                  darkMode
+                    ? 'text-white placeholder-almet-bali-hai'
+                    : 'text-gray-900 placeholder-gray-400'
+                }`}
+              />
+              <button
+                onClick={handleSubmitComment}
+                disabled={!newComment.trim() || submitting}
+                className={`self-end p-2 rounded-lg transition-all ${
+                  newComment.trim() && !submitting
+                    ? 'bg-almet-sapphire text-white hover:bg-almet-astral'
+                    : darkMode
+                      ? 'bg-almet-comet text-almet-bali-hai cursor-not-allowed'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                {submitting
+                  ? <Loader2 size={14} className="animate-spin" />
+                  : <Send size={14} />
+                }
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

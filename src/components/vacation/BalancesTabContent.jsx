@@ -92,7 +92,8 @@ export default function BalancesTabContent({
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const canUpdate = userPermissions.is_admin;
-  const canExport  = userPermissions.is_admin;
+  const canExport  = userPermissions.is_admin || userPermissions.is_manager;
+  const canViewPlanning = userPermissions.can_view_planning_schedule !== false;
 
   // Summary stats
   const totalEmployees   = balances.length;
@@ -114,7 +115,7 @@ export default function BalancesTabContent({
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {(userPermissions.is_admin || userPermissions.is_manager) && (
+          {(userPermissions.is_admin || userPermissions.is_manager) && canViewPlanning && (
             <button
               onClick={() => setShowStatsModal(true)}
               className="flex items-center gap-1.5 px-3 py-2 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all shadow-sm"
@@ -136,15 +137,6 @@ export default function BalancesTabContent({
       </div>
 
 
-      {/* ── Info Banner ── */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3">
-        <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-        <p className="text-xs text-blue-700 dark:text-blue-300">
-          <strong>Remaining</strong> = Total balance minus used days. &nbsp;
-          <strong>To Plan</strong> = Days that still need to be scheduled before year end. &nbsp;
-          Balances update automatically as vacations are approved.
-        </p>
-      </div>
 
       {/* ── Filters ── */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic/50 dark:border-almet-comet p-4 shadow-sm">
@@ -197,13 +189,15 @@ export default function BalancesTabContent({
                 <thead className="bg-gray-50 dark:bg-gray-700/50">
                   <tr>
                     {[
-                      { label: 'Employee',   tip: null },
-                      { label: 'Company',    tip: null },
-                      { label: 'Total Days', tip: 'Total vacation entitlement for the year' },
-                      { label: 'Used',       tip: 'Days already taken' },
-                      { label: 'Scheduled',  tip: 'Days planned but not yet taken' },
-                      { label: 'Remaining',  tip: 'Days still available' },
-                      { label: 'To Plan',    tip: 'Days that should still be scheduled' },
+                      { label: 'Employee',      tip: null },
+                      { label: 'Company',       tip: null },
+                      { label: 'Start Balance', tip: 'Carried over from previous year' },
+                      { label: 'Yearly',        tip: 'Annual entitlement for this year' },
+                      { label: 'Total',         tip: 'Start Balance + Yearly Entitlement' },
+                      { label: 'Used',          tip: 'Days already taken' },
+                      { label: 'Scheduled',     tip: 'Days planned but not yet taken' },
+                      { label: 'Remaining',     tip: 'Days still available' },
+                      { label: 'To Plan',       tip: 'Days that should still be scheduled' },
                       ...(canUpdate ? [{ label: 'Edit', tip: null }] : []),
                     ].map(h => (
                       <th key={h.label} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
@@ -233,9 +227,41 @@ export default function BalancesTabContent({
                           {balance.business_function_name || '—'}
                         </td>
 
+                        {/* Start Balance */}
+                        <td className="px-4 py-3 text-center">
+                          {isEditing ? (
+                            <input type="number" step="0.5" value={editValues.start_balance}
+                              onChange={e => setEditValues(p => ({ ...p, start_balance: e.target.value }))}
+                              className="w-20 px-2 py-1 text-xs text-center border outline-0 focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded dark:bg-gray-700 dark:text-white"
+                            />
+                          ) : (
+                            <span className="text-sm font-semibold text-violet-600 dark:text-violet-400">{balance.start_balance}</span>
+                          )}
+                        </td>
+
+                        {/* Yearly Balance */}
+                        <td className="px-4 py-3 text-center">
+                          {isEditing ? (
+                            <input type="number" step="0.5" value={editValues.yearly_balance}
+                              onChange={e => setEditValues(p => ({ ...p, yearly_balance: e.target.value }))}
+                              className="w-20 px-2 py-1 text-xs text-center border outline-0 focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded dark:bg-gray-700 dark:text-white"
+                            />
+                          ) : (
+                            <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">{balance.yearly_balance}</span>
+                          )}
+                        </td>
+
                         {/* Total */}
-                        <td className="px-4 py-3 text-sm font-bold text-almet-sapphire text-center">
-                          {balance.total_balance}
+                        <td className="px-4 py-3 text-center">
+                          {isEditing ? (
+                            <span className="text-sm font-bold text-almet-sapphire">
+                              {(parseFloat(editValues.start_balance || 0) + parseFloat(editValues.yearly_balance || 0)).toFixed(1)}
+                            </span>
+                          ) : (
+                            <span className="text-sm font-bold text-almet-sapphire" title={`Start: ${balance.start_balance} + Yearly: ${balance.yearly_balance}`}>
+                              {balance.total_balance}
+                            </span>
+                          )}
                         </td>
 
                         {/* Used */}
@@ -251,16 +277,18 @@ export default function BalancesTabContent({
                         </td>
 
                         {/* Scheduled */}
-                        <td className="px-4 py-3 text-center">
-                          {isEditing ? (
-                            <input type="number" step="0.5" value={editValues.scheduled_days}
-                              onChange={e => setEditValues(p => ({ ...p, scheduled_days: e.target.value }))}
-                              className="w-20 px-2 py-1 text-xs text-center border outline-0 focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded dark:bg-gray-700 dark:text-white"
-                            />
-                          ) : (
-                            <span className="text-sm font-semibold text-almet-steel-blue">{balance.scheduled_days}</span>
-                          )}
-                        </td>
+                        {canViewPlanning && (
+                          <td className="px-4 py-3 text-center">
+                            {isEditing ? (
+                              <input type="number" step="0.5" value={editValues.scheduled_days}
+                                onChange={e => setEditValues(p => ({ ...p, scheduled_days: e.target.value }))}
+                                className="w-20 px-2 py-1 text-xs text-center border outline-0 focus:ring-1 focus:ring-almet-sapphire border-almet-bali-hai/40 dark:border-almet-comet rounded dark:bg-gray-700 dark:text-white"
+                              />
+                            ) : (
+                              <span className="text-sm font-semibold text-almet-steel-blue">{balance.scheduled_days}</span>
+                            )}
+                          </td>
+                        )}
 
                         {/* Remaining */}
                         <td className="px-4 py-3 text-center">
@@ -270,17 +298,19 @@ export default function BalancesTabContent({
                         </td>
 
                         {/* To Plan */}
-                        <td className="px-4 py-3 text-center">
-                          {toPlan > 0 ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full text-xs font-semibold">
-                              <AlertCircle className="w-3 h-3" />{toPlan}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full text-xs font-semibold">
-                              <CheckCircle className="w-3 h-3" />Done
-                            </span>
-                          )}
-                        </td>
+                        {canViewPlanning && (
+                          <td className="px-4 py-3 text-center">
+                            {toPlan > 0 ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full text-xs font-semibold">
+                                <AlertCircle className="w-3 h-3" />{toPlan}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full text-xs font-semibold">
+                                <CheckCircle className="w-3 h-3" />Done
+                              </span>
+                            )}
+                          </td>
+                        )}
 
                         {/* Edit */}
                         {canUpdate && (
@@ -310,7 +340,7 @@ export default function BalancesTabContent({
 
                   {paginated.length === 0 && (
                     <tr>
-                      <td colSpan={canUpdate ? 8 : 7} className="px-4 py-16 text-center">
+                      <td colSpan={canUpdate ? 10 : 9} className="px-4 py-16 text-center">
                         <div className="flex flex-col items-center gap-3">
                           <div className="w-14 h-14 bg-almet-mystic/30 dark:bg-gray-700 rounded-full flex items-center justify-center">
                             <TrendingUp className="w-7 h-7 text-almet-waterloo/40 dark:text-almet-bali-hai/40" />

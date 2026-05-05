@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
+import DOMPurify from "dompurify";
 import { 
   ArrowLeft, 
   Mail, 
@@ -346,9 +347,9 @@ const EmailDetailPage = () => {
           {/* Email Body */}
           <div className={`px-6 py-6 ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
             {email.body_html ? (
-              <div 
+              <div
                 className="email-content prose prose-sm max-w-none dark:prose-invert"
-                dangerouslySetInnerHTML={{ __html: email.body_html }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(email.body_html, { USE_PROFILES: { html: true } }) }}
               />
             ) : (
               <div className="whitespace-pre-wrap text-sm leading-relaxed">

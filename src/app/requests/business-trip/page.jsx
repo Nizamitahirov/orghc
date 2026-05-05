@@ -121,7 +121,8 @@ const [selectedRequestForDetail, setSelectedRequestForDetail] = useState(null);
     end_date: '',
     comment: '',
     finance_approver_id: null,
-    hr_representative_id: null
+    hr_representative_id: null,
+    needs_approval: true,
   });
   
   const [schedules, setSchedules] = useState([
@@ -252,11 +253,7 @@ const [selectedRequestForDetail, setSelectedRequestForDetail] = useState(null);
       return;
     }
     
-    const hotelErrors = BusinessTripHelpers.validateHotelDates(hotels);
-    if (hotelErrors.length > 0) {
-      showError(hotelErrors[0]);
-      return;
-    }
+   
     
     setLoading(true);
     try {
@@ -715,11 +712,7 @@ const handleOpenRequestDetail = (request) => {
    if (editingRequest) {
       return handleUpdateSubmit(e);
     }
-    const hotelErrors = BusinessTripHelpers.validateHotelDates(hotels);
-    if (hotelErrors.length > 0) {
-      showError(hotelErrors[0]);
-      return;
-    }
+   
 
     setLoading(true);
     try {
@@ -756,7 +749,12 @@ const handleOpenRequestDetail = (request) => {
       if (selectedHrRepresentative) {
         requestData.hr_representative_id = selectedHrRepresentative;
       }
+      requestData.needs_approval = formData.needs_approval;
 
+      // Admin can skip approval workflow
+      if (userPermissions.is_admin) {
+        requestData.needs_approval = formData.needs_approval !== false;
+      }
 
         const formDataWithFiles = BusinessTripHelpers.formatTripRequestWithFiles(requestData, attachmentFiles);
         await BusinessTripService.createTripRequestWithFiles(formDataWithFiles);
@@ -764,12 +762,13 @@ const handleOpenRequestDetail = (request) => {
      
 
       showSuccess('Trip request submitted successfully');
-      
+
       setFormData(prev => ({
         ...prev,
         start_date: '',
         end_date: '',
-        comment: ''
+        comment: '',
+        needs_approval: true,
       }));
       setSchedules([{ id: 1, date: '', from_location: '', to_location: '', notes: '' }]);
       setHotels([{ id: 1, hotel_name: '', check_in_date: '', check_out_date: '', location: '', notes: '' }]);
@@ -882,6 +881,7 @@ const handleOpenRequestDetail = (request) => {
   const canViewSettings = BusinessTripHelpers.canViewSettings(userPermissions);
   const canExportAll = BusinessTripHelpers.canExportAll(userPermissions);
   const canApprove = BusinessTripHelpers.canApprove(userPermissions);
+  const canSubmit = BusinessTripHelpers.hasPermission(userPermissions, 'business_trips.request.submit');
 
   if (loading && !dashboardStats) {
     return (
@@ -1061,6 +1061,27 @@ const handleOpenRequestDetail = (request) => {
                   darkMode={darkMode}
                 />
 
+                {/* Needs Approval — visible and editable by submit permission holders and admins */}
+                {(canSubmit || userPermissions?.is_admin) && (
+                  <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200/60 dark:border-amber-700/40">
+                    <input
+                      type="checkbox"
+                      id="needs_approval"
+                      checked={formData.needs_approval}
+                      onChange={e => setFormData(prev => ({ ...prev, needs_approval: e.target.checked }))}
+                      className="w-4 h-4 accent-amber-500 cursor-pointer"
+                    />
+                    <label htmlFor="needs_approval" className="text-xs font-semibold text-amber-800 dark:text-amber-300 select-none cursor-pointer">
+                      Requires approval workflow
+                      <span className="ml-1 font-normal text-amber-600 dark:text-amber-400">
+                        {formData.needs_approval
+                          ? '— will go through Line Manager → Finance → HR'
+                          : '— will be auto-approved immediately'}
+                      </span>
+                    </label>
+                  </div>
+                )}
+
                 {/* Approvers Section */}
                 <div className="mb-6 px-4 py-3 bg-gradient-to-r from-blue-50/50 to-transparent dark:from-blue-900/10 border border-blue-200/60 dark:border-blue-800/40 rounded-xl">
                   <div className="flex items-center justify-between mb-4">
@@ -1183,7 +1204,12 @@ const handleOpenRequestDetail = (request) => {
                       </button>
                       <button 
                         type="submit"
-                        disabled={loading || !formData.start_date || !formData.end_date || !formData.travel_type_id || !formData.transport_type_id || !formData.purpose_id} 
+                        disabled={
+                          loading ||
+                          !formData.start_date || !formData.end_date ||
+                          !formData.travel_type_id || !formData.transport_type_id || !formData.purpose_id ||
+                          (formData.requester_type === 'for_my_employee' && !formData.employee_id && !formData.employeeName)
+                        }
                         className="px-6 py-2.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
                       >
                         {loading ? (
@@ -1201,7 +1227,7 @@ const handleOpenRequestDetail = (request) => {
                       <button 
                         type="button" 
                         onClick={() => {
-                          setFormData(prev => ({ ...prev, start_date: '', end_date: '', comment: '', initial_finance_amount: '' }));
+                          setFormData(prev => ({ ...prev, start_date: '', end_date: '', comment: '', initial_finance_amount: '', needs_approval: true }));
                           setSchedules([{ id: 1, date: '', from_location: '', to_location: '', notes: '' }]);
                           setHotels([{ id: 1, hotel_name: '', check_in_date: '', check_out_date: '', location: '', notes: '' }]);
                           setAttachmentFiles([]);
@@ -1221,9 +1247,14 @@ const handleOpenRequestDetail = (request) => {
                       >
                         Clear Form
                       </button>
-                      <button 
+                      <button
                         type="submit"
-                        disabled={loading || !formData.start_date || !formData.end_date || !formData.travel_type_id || !formData.transport_type_id || !formData.purpose_id} 
+                        disabled={
+                          loading ||
+                          !formData.start_date || !formData.end_date ||
+                          !formData.travel_type_id || !formData.transport_type_id || !formData.purpose_id ||
+                          (formData.requester_type === 'for_my_employee' && !formData.employee_id && !formData.employeeName)
+                        }
                         className="px-6 py-2.5 text-xs font-medium bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
                       >
                         {loading ? (
@@ -1294,14 +1325,21 @@ const handleOpenRequestDetail = (request) => {
                 <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.end_date}</td>
                 <td className="px-4 py-3 text-xs font-semibold text-almet-cloud-burst dark:text-white">{request.number_of_days}</td>
                 <td className="px-4 py-3">
-                  <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                    request.status === 'APPROVED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-                    request.status.includes('PENDING') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
-                    request.status.includes('REJECTED') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
-                    'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
-                  }`}>
-                    {request.status_display}
-                  </span>
+                  <div className="flex flex-col gap-1">
+                    <span className={`px-2.5 py-1 text-xs font-medium rounded-full w-fit ${
+                      request.status === 'APPROVED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                      request.status.includes('PENDING') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
+                      request.status.includes('REJECTED') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                      'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
+                    }`}>
+                      {request.status_display}
+                    </span>
+                    {request.needs_approval === false && (
+                      <span className="px-2 py-0.5 text-xs font-medium rounded-full w-fit bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                        Auto-approved
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <button
@@ -1321,8 +1359,8 @@ const handleOpenRequestDetail = (request) => {
                       <Eye className='w-3.5 h-3.5' />
                     </button>
                     
-                    {/*  NEW: Edit Button */}
-                    {BusinessTripHelpers.canEditRequest(request, userPermissions, currentUserId) && (
+                    {/*  Edit Button */}
+                    {BusinessTripHelpers.canEditRequest(request, userPermissions) && (
                       <button
                         onClick={() => handleEditRequest(request)}
                         className="text-xs text-blue-600 hover:text-blue-700 font-medium"
@@ -1330,9 +1368,9 @@ const handleOpenRequestDetail = (request) => {
                     <Edit className='w-3.5 h-3.5' />
                   </button>
                 )}
-                
-                {/*  NEW: Delete Button */}
-                {BusinessTripHelpers.canDeleteRequest(request, userPermissions, currentUserId) && (
+
+                {/*  Delete Button */}
+                {BusinessTripHelpers.canDeleteRequest(request, userPermissions) && (
                   <button
                     onClick={() => handleDeleteRequest(request)}
                     className="text-xs text-red-600 hover:text-red-700 font-medium"
@@ -1857,14 +1895,21 @@ const handleOpenRequestDetail = (request) => {
                 <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.end_date}</td>
                 <td className="px-4 py-3 text-xs font-semibold text-almet-cloud-burst dark:text-white">{request.number_of_days}</td>
                 <td className="px-4 py-3">
-                  <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                    request.status === 'APPROVED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-                    request.status.includes('PENDING') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
-                    request.status.includes('REJECTED') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
-                    'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
-                  }`}>
-                    {request.status_display}
-                  </span>
+                  <div className="flex flex-col gap-1">
+                    <span className={`px-2.5 py-1 text-xs font-medium rounded-full w-fit ${
+                      request.status === 'APPROVED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                      request.status.includes('PENDING') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
+                      request.status.includes('REJECTED') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                      'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
+                    }`}>
+                      {request.status_display}
+                    </span>
+                    {request.needs_approval === false && (
+                      <span className="px-2 py-0.5 text-xs font-medium rounded-full w-fit bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                        Auto-approved
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
                   {request.finance_amount ? `${request.finance_amount} AZN` : 
@@ -1892,8 +1937,8 @@ const handleOpenRequestDetail = (request) => {
                       <Eye className='w-3.5 h-3.5' />
                     </button>
                     
-                    {/*  NEW: Edit Button for All Requests */}
-                    {BusinessTripHelpers.canEditRequest(request, userPermissions, currentUserId) && (
+                    {/*  Edit Button for All Requests */}
+                    {BusinessTripHelpers.canEditRequest(request, userPermissions) && (
                       <button
                         onClick={() => handleEditRequest(request)}
                         className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
@@ -1901,9 +1946,9 @@ const handleOpenRequestDetail = (request) => {
                         <Edit className='w-3.5 h-3.5' />
                       </button>
                     )}
-                    
-                    {/*  NEW: Delete Button for All Requests */}
-                    {BusinessTripHelpers.canDeleteRequest(request, userPermissions, currentUserId) && (
+
+                    {/*  Delete Button for All Requests */}
+                    {BusinessTripHelpers.canDeleteRequest(request, userPermissions) && (
                       <button
                         onClick={() => handleDeleteRequest(request)}
                         className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium"

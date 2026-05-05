@@ -570,8 +570,8 @@ const VacantPositionsTable = () => {
                   options={businessFunctionFilterOptions}
                   value={filters.business_function}
                   onChange={(value) => handleFilterChange('business_function', Array.isArray(value) ? value : [value])}
-                  placeholder="All Companys"
-                  searchPlaceholder="Search Companys..."
+                  placeholder="All Companies"
+                  searchPlaceholder="Search Companies..."
                   darkMode={darkMode}
                    allowUncheck={true}
                   loading={loading.referenceData}

@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useState, useEffect, useContext } from "react";
+import { createContext, useState, useEffect, useContext, useMemo, useCallback } from "react";
 
 // Create context
 const ThemeContext = createContext({
@@ -11,23 +11,32 @@ const ThemeContext = createContext({
 export const ThemeProvider = ({ children }) => {
   const [darkMode, setDarkMode] = useState(false);
 
-  // Initialize when component mounts
+  // Initialize from localStorage on mount
   useEffect(() => {
-    // Apply class to <html> element
-    document.documentElement.classList.toggle('dark', darkMode);
-  }, [darkMode]);
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDark = saved ? saved === 'dark' : prefersDark;
+      setDarkMode(isDark);
+      document.documentElement.classList.toggle('dark', isDark);
+    }
+  }, []);
 
-  // Toggle theme function
-  const toggleTheme = () => {
-    const newDarkMode = !darkMode;
-    setDarkMode(newDarkMode);
-    
-    // Toggle 'dark' class on <html> element
-    document.documentElement.classList.toggle('dark', newDarkMode);
-  };
+  const toggleTheme = useCallback(() => {
+    setDarkMode(prev => {
+      const next = !prev;
+      document.documentElement.classList.toggle('dark', next);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('theme', next ? 'dark' : 'light');
+      }
+      return next;
+    });
+  }, []);
+
+  const value = useMemo(() => ({ darkMode, toggleTheme }), [darkMode, toggleTheme]);
 
   return (
-    <ThemeContext.Provider value={{ darkMode, toggleTheme }}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

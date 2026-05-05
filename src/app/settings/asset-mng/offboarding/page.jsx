@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { offboardingService, employeeService } from "@/services/assetService";
+import { offboardingService, employeeService, fetchAll } from "@/services/assetService";
 import { useToast } from "@/components/common/Toast";
 import Pagination from "@/components/common/Pagination";
 import SearchableDropdown from "@/components/common/SearchableDropdown";
@@ -70,7 +70,7 @@ const TYPE_OPTIONS = [
 // ── Initiate Modal ────────────────────────────────────────────────────────────
 const InitiateModal = ({ employees, onClose, onSuccess }) => {
   const [form, setForm] = useState({
-    employee_id: "", last_working_day: "", offboarding_type: "RETURN", notes: "",
+    employee_id: "", last_working_day: "", offboarding_type: "MIXED", notes: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
@@ -241,8 +241,8 @@ export default function OffboardingPage() {
   }, [page, search, statusFilter]);
 
   useEffect(() => {
-    employeeService.list({ page_size: 500 })
-      .then(r => setEmployees(r.results ?? r))
+    fetchAll("/employees/")
+      .then(all => setEmployees(all))
       .catch(console.error);
   }, []);
 

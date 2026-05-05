@@ -1,5 +1,6 @@
 import React from 'react';
-import { Search, BookOpen, FileText, Users, Edit, Eye, Trash2 } from 'lucide-react';
+import { Search, BookOpen, FileText, Users, Edit, Eye, Trash2, Plus } from 'lucide-react';
+import { SkeletonCards } from '@/components/common/SkeletonLoader';
 import Pagination from '@/components/common/Pagination';
 import CustomCheckbox from '@/components/common/CustomCheckbox';
 
@@ -91,15 +92,34 @@ const AllTrainingsTab = ({
 
       {/* Trainings Grid */}
       {loading ? (
-        <div className="text-center py-16">
-          <div className="inline-block animate-spin rounded-full h-14 w-14 border-4 border-almet-sapphire border-t-transparent"></div>
-          <p className={`${textMuted} mt-3 text-sm`}>Loading trainings...</p>
-        </div>
+        <SkeletonCards count={6} />
       ) : trainings.length === 0 ? (
-        <div className={`${bgCard} rounded-lg shadow-lg p-10 text-center border ${borderColor}`}>
-          <BookOpen className={`${textMuted} mx-auto mb-3`} size={44} />
-          <h3 className={`text-base font-semibold ${textPrimary} mb-2`}>No trainings found</h3>
-          <p className={`${textSecondary} text-xs`}>Create your first training to get started</p>
+        <div className={`${bgCard} rounded-lg shadow-lg p-16 text-center border ${borderColor}`}>
+          <div className="w-20 h-20 rounded-2xl bg-almet-sapphire/10 flex items-center justify-center mx-auto mb-5">
+            <BookOpen className="text-almet-sapphire opacity-70" size={36} />
+          </div>
+          <h3 className={`text-base font-semibold ${textPrimary} mb-2`}>
+            {searchTerm ? 'Nəticə tapılmadı' : 'Hələ təlim yoxdur'}
+          </h3>
+          <p className={`${textSecondary} text-sm mb-5`}>
+            {searchTerm
+              ? `"${searchTerm}" üçün heç bir təlim tapılmadı.`
+              : 'Birinci təlimi yaradaraq başlayın.'}
+          </p>
+          {!searchTerm && (
+            <button className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-almet-sapphire text-white hover:bg-almet-cloud-burst transition-colors">
+              <Plus size={15} />
+              Təlim yarat
+            </button>
+          )}
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border transition-colors ${darkMode ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}
+            >
+              Axtarışı təmizlə
+            </button>
+          )}
         </div>
       ) : (
         <>

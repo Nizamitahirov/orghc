@@ -522,18 +522,20 @@ exportEmployees: async (format = 'excel', params = {}) => {
       }
     }
     
-    //  CRITICAL FIX: Build query params from _filterParams
+    //  Build query params from _filterParams OR directly spread filter keys
     let queryParams = {};
-    
-    if (params._filterParams && typeof params._filterParams === 'object') {
-      // Copy all filter params except pagination
-      Object.entries(params._filterParams).forEach(([key, value]) => {
-        if (key === 'page' || key === 'page_size' || key === 'use_pagination') {
-          return; // Skip pagination params
-        }
-        
+
+    // Keys that are not filter params (handled separately)
+    const SPECIAL_KEYS = new Set([
+      'export_format', 'employee_ids', 'include_fields',
+      '_filterParams', '_queryParams',
+      'page', 'page_size', 'use_pagination'
+    ]);
+
+    const processFilterParams = (filterObj) => {
+      Object.entries(filterObj).forEach(([key, value]) => {
+        if (SPECIAL_KEYS.has(key)) return;
         if (value !== null && value !== undefined && value !== '') {
-          // Handle arrays - send as comma-separated
           if (Array.isArray(value)) {
             const cleanValues = value.filter(v => v !== null && v !== undefined && v !== '');
             if (cleanValues.length > 0) {
@@ -544,8 +546,14 @@ exportEmployees: async (format = 'excel', params = {}) => {
           }
         }
       });
-      
+    };
 
+    if (params._filterParams && typeof params._filterParams === 'object') {
+      // Explicit _filterParams object
+      processFilterParams(params._filterParams);
+    } else {
+      // Filter params spread directly into params (from employeeAPI.export via _queryParams spread)
+      processFilterParams(params);
     }
     
     //  Build query string

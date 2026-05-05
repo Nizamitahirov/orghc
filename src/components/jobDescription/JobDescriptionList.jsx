@@ -1,11 +1,12 @@
 // components/jobDescription/JobDescriptionList.jsx - Simplified without filters
 import React, { useState } from 'react';
-import { 
-  FileText, 
-  Edit, 
-  Eye, 
-  Trash2, 
-  Download, 
+import { capitalizeAcronyms } from '../../utils/formatText';
+import {
+  FileText,
+  Edit,
+  Eye,
+  Trash2,
+  Download,
   Send,
   Clock,
   CheckCircle,
@@ -18,7 +19,8 @@ import {
   Building,
   Briefcase,
   Users,
-  List
+  List,
+  Copy
 } from 'lucide-react';
 
 const JobDescriptionList = ({
@@ -26,6 +28,7 @@ const JobDescriptionList = ({
   onJobSelect,
   onJobEdit,
   onJobDelete,
+  onJobDuplicate,
   onViewAssignments,
   onDirectSubmission,
   onDownloadPDF,
@@ -127,10 +130,10 @@ const JobDescriptionList = ({
     }
   };
 
-  const handleDownloadPDF = (jobId, event) => {
+  const handleDownloadPDF = (jobId, event, assignmentId = null) => {
     event.stopPropagation();
     if (onDownloadPDF) {
-      onDownloadPDF(jobId);
+      onDownloadPDF(jobId, null, assignmentId);
     }
   };
 
@@ -214,7 +217,7 @@ const JobDescriptionList = ({
                         <div className="flex-1 min-w-0">
                           <h3 className={`text-sm font-bold ${textPrimary} mb-2 group-hover:text-almet-sapphire 
                             transition-colors duration-200 line-clamp-1`}>
-                            {job.job_title}
+                            {capitalizeAcronyms(job.job_title)}
                           </h3>
                           <div className={`text-xs ${textSecondary} space-y-1`}>
                             <div className="flex items-center gap-2">
@@ -272,17 +275,26 @@ const JobDescriptionList = ({
                           >
                             <Download size={14} />
                           </button>
-                          {
-                            userAccess.is_admin && (  <button
-                            onClick={(e) => handleEditClick(job, e)}
-                            disabled={actionLoading}
-                            className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg 
-                              transition-colors disabled:opacity-50"
-                            title="Edit Job Description"
-                          >
-                            <Edit size={14} />
-                          </button>)
-                          }
+                          {userAccess.is_admin && (
+                            <button
+                              onClick={(e) => handleEditClick(job, e)}
+                              disabled={actionLoading}
+                              className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg transition-colors disabled:opacity-50"
+                              title="Edit Job Description"
+                            >
+                              <Edit size={14} />
+                            </button>
+                          )}
+                          {userAccess.is_admin && onJobDuplicate && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onJobDuplicate(job); }}
+                              disabled={actionLoading}
+                              className="p-2 text-sky-600 hover:bg-sky-100 dark:hover:bg-sky-900/30 rounded-lg transition-colors disabled:opacity-50"
+                              title="Duplicate Job Description"
+                            >
+                              <Copy size={14} />
+                            </button>
+                          )}
                         {
                             userAccess.is_admin && ( 
                           <button
@@ -354,7 +366,7 @@ const JobDescriptionList = ({
                     <div className={`border-t ${borderColor} p-4 bg-gray-50 dark:bg-almet-cloud-burst/50`}>
                       <div className="space-y-2">
                         {assignments.map((assignment, index) => (
-                          <div 
+                          <div
                             key={assignment.id || index}
                             className={`flex items-center justify-between p-3 ${bgCard} rounded-lg border ${borderColor}`}
                           >
@@ -368,10 +380,22 @@ const JobDescriptionList = ({
                                 {assignment.name || (assignment.is_vacancy ? 'Vacant Position' : 'Unknown')}
                               </span>
                             </div>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium 
-                              ${getAssignmentStatusColor(assignment.status)}`}>
-                              {assignment.status_display?.status || assignment.status}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium
+                                ${getAssignmentStatusColor(assignment.status)}`}>
+                                {assignment.status_display?.status || assignment.status}
+                              </span>
+                              {!assignment.is_vacancy && (
+                                <button
+                                  onClick={(e) => handleDownloadPDF(job.id, e, assignment.id)}
+                                  disabled={actionLoading}
+                                  className="p-1.5 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors disabled:opacity-50"
+                                  title={`Download PDF for ${assignment.name}`}
+                                >
+                                  <Download size={13} />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ))}
                         

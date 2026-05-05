@@ -6,7 +6,6 @@ const nextConfig = {
   trailingSlash: true,
   reactStrictMode: true,
   images: {
-    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
@@ -18,7 +17,21 @@ const nextConfig = {
         port: "7198",
         pathname: "/appuser/**",
       },
+      {
+        protocol: "https",
+        hostname: "**",
+      },
+      {
+        protocol: "http",
+        hostname: "**",
+      },
+      {
+        protocol: "https",
+        hostname: "www.myalmet.com",
+        pathname: "/media/**",
+      },
     ],
+    unoptimized: true,
   },
   webpack(config) {
     config.resolve.alias["@"] = path.resolve(__dirname, "src");

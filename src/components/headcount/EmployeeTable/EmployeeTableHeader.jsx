@@ -1,5 +1,6 @@
 // src/components/headcount/EmployeeTable/EmployeeTableHeader.jsx - FIXED Sorting Handler
 "use client";
+import { memo } from "react";
 import { useTheme } from "../../common/ThemeProvider";
 import { getThemeStyles } from "../utils/themeStyles";
 import SortingIndicator from "../SortingIndicator";
@@ -196,4 +197,4 @@ const EmployeeTableHeader = ({
   );
 };
 
-export default EmployeeTableHeader;
+export default memo(EmployeeTableHeader);

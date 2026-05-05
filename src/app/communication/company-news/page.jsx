@@ -5,10 +5,10 @@ import React, { useState, useEffect } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { newsService, categoryService, targetGroupService, formatApiError } from '@/services/newsService';
-import { 
-  Plus, Search, Calendar, Eye, Edit, Trash2, 
-  FileText, CheckCircle, Loader2, Pin, PinOff, 
-  Users, Target, Mail, Settings, Filter, Send
+import {
+  Plus, Search, Calendar, Eye, Edit, Trash2,
+  FileText, CheckCircle, Loader2, Pin, PinOff,
+  Users, Target, Mail, Settings, Filter, Send, Heart
 } from 'lucide-react';
 import Pagination from '@/components/common/Pagination';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
@@ -42,6 +42,30 @@ export default function CompanyNewsPage() {
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null });
   const [showTargetGroupManagement, setShowTargetGroupManagement] = useState(false);
   const [showCategoryManagement, setShowCategoryManagement] = useState(false);
+
+  // Like system — stored in localStorage (no backend endpoint)
+  const [likedNews, setLikedNews] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('almet_news_likes') || '{}'); } catch { return {}; }
+  });
+  const [likeCounts, setLikeCounts] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('almet_news_like_counts') || '{}'); } catch { return {}; }
+  });
+
+  const handleLike = (e, itemId) => {
+    e.stopPropagation();
+    const isLiked = likedNews[itemId];
+    const newLiked = { ...likedNews, [itemId]: !isLiked };
+    const newCounts = {
+      ...likeCounts,
+      [itemId]: Math.max(0, (likeCounts[itemId] || 0) + (isLiked ? -1 : 1))
+    };
+    setLikedNews(newLiked);
+    setLikeCounts(newCounts);
+    try {
+      localStorage.setItem('almet_news_likes', JSON.stringify(newLiked));
+      localStorage.setItem('almet_news_like_counts', JSON.stringify(newCounts));
+    } catch {}
+  };
 
   // Load initial data
   useEffect(() => {
@@ -634,20 +658,29 @@ export default function CompanyNewsPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+            <div className="columns-1 md:columns-2 lg:columns-3 gap-4 mb-5">
               {filteredNews.map((item) => {
                 const categoryInfo = getCategoryInfo(item.category);
                 const CategoryIcon = categoryInfo.icon;
-                
+                const isLiked = !!likedNews[item.id];
+                const likeCount = likeCounts[item.id] || 0;
+
                 return (
                   <div
                     key={item.id}
-                    className={`rounded-2xl overflow-hidden border transition-all group relative cursor-pointer ${
-                      darkMode
-                        ? 'bg-almet-cloud-burst border-almet-comet hover:shadow-xl hover:shadow-almet-sapphire/10 hover:border-almet-sapphire/50'
-                        : 'bg-white border-gray-200 hover:shadow-xl hover:border-almet-sapphire/50'
+                    className={`break-inside-avoid mb-4 rounded-2xl overflow-hidden border transition-all group relative cursor-pointer ${
+                      item.is_pinned
+                        ? darkMode
+                          ? 'bg-almet-cloud-burst border-amber-500 ring-2 ring-amber-500/30 shadow-lg shadow-amber-500/10 hover:shadow-amber-500/20'
+                          : 'bg-white border-amber-400 ring-2 ring-amber-200 shadow-lg shadow-amber-100 hover:shadow-amber-200'
+                        : darkMode
+                          ? 'bg-almet-cloud-burst border-almet-comet hover:shadow-xl hover:shadow-almet-sapphire/10 hover:border-almet-sapphire/50'
+                          : 'bg-white border-gray-200 hover:shadow-xl hover:border-almet-sapphire/50'
                     }`}
                   >
+                  {item.is_pinned && (
+                    <div className="h-1 bg-gradient-to-r from-amber-400 to-orange-400" />
+                  )}
                     {/* News Image */}
                     <div 
                       className="relative h-44 overflow-hidden"
@@ -818,11 +851,25 @@ export default function CompanyNewsPage() {
                           <Calendar size={10} />
                           {formatDate(item.published_at)}
                         </div>
-                        <div className={`flex items-center gap-0.5 ${
-                          darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
-                        }`}>
-                          <Eye size={10} />
-                          {item.view_count} views
+                        <div className="flex items-center gap-2.5">
+                          <div className={`flex items-center gap-0.5 ${
+                            darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+                          }`}>
+                            <Eye size={10} />
+                            {item.view_count} views
+                          </div>
+                          {/* Like button */}
+                          <button
+                            onClick={(e) => handleLike(e, item.id)}
+                            className={`flex items-center gap-1 px-2 py-0.5 rounded-lg transition-all font-semibold ${
+                              isLiked
+                                ? 'text-red-500 bg-red-50 dark:bg-red-900/20'
+                                : darkMode ? 'text-gray-500 hover:text-red-400 hover:bg-red-900/20' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+                            }`}
+                          >
+                            <Heart size={10} className={isLiked ? 'fill-current' : ''} />
+                            {likeCount > 0 && <span>{likeCount}</span>}
+                          </button>
                         </div>
                       </div>
                     </div>

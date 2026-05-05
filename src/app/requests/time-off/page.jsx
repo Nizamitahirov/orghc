@@ -175,7 +175,7 @@ const TimeOffPage = () => {
       const end = new Date(`2000-01-01T${formData.end_time}`);
       const duration = (end - start) / (1000 * 60 * 60);
 
-      if (duration > 8) errors.end_time = 'Maximum 8 hours per request';
+      if (duration > 4) errors.end_time = 'You can request up to 4 hours per month. This request exceeds the monthly limit.';
       if (balance && duration > parseFloat(balance.current_balance_hours)) {
         errors.duration = `Insufficient balance. Available: ${balance.current_balance_hours}h`;
       }
@@ -567,35 +567,35 @@ const TimeOffPage = () => {
 
             {/* CALENDAR TAB */}
             {activeTab === 'calendar' && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic dark:border-gray-700 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-almet-mystic dark:border-gray-700 bg-gradient-to-r from-almet-sapphire to-almet-astral">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{monthName}</h2>
+                    <h2 className="text-base font-bold text-white">{monthName}</h2>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => setCurrentMonth(new Date())}
-                        className="px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+                        className="px-3 py-1.5 text-xs font-semibold text-almet-sapphire bg-white rounded-lg hover:bg-white/90 transition-colors shadow-sm"
                       >
                         Today
                       </button>
-                      <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="p-2 text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-colors">
-                        <ChevronLeft size={18} />
+                      <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+                        <ChevronLeft size={16} />
                       </button>
-                      <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="p-2 text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-gray-800 rounded-lg transition-colors">
-                        <ChevronRight size={18} />
+                      <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+                        <ChevronRight size={16} />
                       </button>
                     </div>
                   </div>
                 </div>
 
-                <div className="p-6">
-                  <div className="grid grid-cols-7 gap-2 mb-2">
+                <div className="p-4">
+                  <div className="grid grid-cols-7 gap-1.5 mb-1.5">
                     {daysOfWeek.map(day => (
-                      <div key={day} className="text-center text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide py-2">{day}</div>
+                      <div key={day} className="text-center text-[10px] font-bold text-almet-waterloo dark:text-gray-400 uppercase tracking-wide py-2 bg-almet-mystic/30 dark:bg-gray-700/40 rounded-lg">{day}</div>
                     ))}
                   </div>
-                  <div className="grid grid-cols-7 gap-2">
-                    {Array.from({ length: startingDayOfWeek }).map((_, i) => <div key={`e-${i}`} className="aspect-square" />)}
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {Array.from({ length: startingDayOfWeek }).map((_, i) => <div key={`e-${i}`} className="aspect-square rounded-xl" />)}
                     {Array.from({ length: daysInMonth }).map((_, i) => {
                       const day = i + 1;
                       const requests = getRequestsForDay(day);
@@ -603,15 +603,15 @@ const TimeOffPage = () => {
                       return (
                         <div
                           key={day}
-                          className={`aspect-square border rounded-lg p-2 transition-all relative ${
+                          className={`aspect-square border rounded-xl p-2 transition-all relative ${
                             isTodayDate
-                              ? 'border-almet-sapphire bg-almet-sapphire/5'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                              ? 'border-almet-sapphire bg-almet-sapphire/5 dark:bg-almet-sapphire/10 shadow-sm'
+                              : 'border-almet-mystic/50 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-almet-sapphire/30 hover:shadow-sm'
                           } ${requests.length > 0 ? 'cursor-pointer' : ''}`}
                           onMouseEnter={() => setHoveredDay(day)}
                           onMouseLeave={() => setHoveredDay(null)}
                         >
-                          <div className={`text-sm font-medium ${isTodayDate ? 'text-almet-sapphire' : 'text-gray-900 dark:text-white'}`}>{day}</div>
+                          <div className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full ${isTodayDate ? 'bg-almet-sapphire text-white' : 'text-almet-cloud-burst dark:text-white'}`}>{day}</div>
                           <div className="mt-1 space-y-0.5">
                             {requests.slice(0, 3).map(req => (
                               <div
@@ -646,16 +646,16 @@ const TimeOffPage = () => {
                       );
                     })}
                   </div>
-                  <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-4 text-xs">
-                    {['Approved', 'Pending', 'Rejected', 'Cancelled'].map(s => (
-                      <div key={s} className="flex items-center gap-2">
-                        <span className={`w-3 h-3 rounded border ${
-                          s === 'Approved' ? 'bg-green-100 border-green-300' :
-                          s === 'Pending' ? 'bg-yellow-100 border-yellow-300' :
-                          s === 'Rejected' ? 'bg-red-100 border-red-300' :
-                          'bg-gray-100 border-gray-300'
-                        }`} />
-                        <span className="text-gray-600 dark:text-gray-400">{s}</span>
+                  <div className="mt-4 pt-4 border-t border-almet-mystic/40 dark:border-gray-700 flex flex-wrap gap-4 text-xs">
+                    {[
+                      { label: 'Approved', bg: 'bg-green-100 dark:bg-green-900/30', border: 'border-green-300' },
+                      { label: 'Pending', bg: 'bg-yellow-100 dark:bg-yellow-900/30', border: 'border-yellow-300' },
+                      { label: 'Rejected', bg: 'bg-red-100 dark:bg-red-900/30', border: 'border-red-300' },
+                      { label: 'Cancelled', bg: 'bg-gray-100 dark:bg-gray-700', border: 'border-gray-300' },
+                    ].map(s => (
+                      <div key={s.label} className="flex items-center gap-1.5">
+                        <span className={`w-3 h-3 rounded ${s.bg} border ${s.border}`} />
+                        <span className="text-almet-waterloo dark:text-gray-400 font-medium">{s.label}</span>
                       </div>
                     ))}
                   </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { offboardingService, employeeService } from "@/services/assetService";
+import { offboardingService, employeeService, fetchAll } from "@/services/assetService";
 import { useToast } from "@/components/common/Toast";
 import SearchableDropdown from "@/components/common/SearchableDropdown";
 import {
@@ -23,8 +23,9 @@ const ErrBox = ({ msg }) => msg ? (
 
 // ── Action Modal ──────────────────────────────────────────────────────────────
 const ActionModal = ({ asset, action, employees, onClose, onConfirm, loading, error }) => {
-  const [toEmployee, setToEmployee] = useState("");
-  const [reason, setReason]         = useState("");
+  const [toEmployee,       setToEmployee]       = useState("");
+  const [receivedBy,       setReceivedBy]       = useState("");
+  const [reason,           setReason]           = useState("");
 
   const empOptions = employees.map(e => ({
     value: String(e.id),
@@ -33,7 +34,30 @@ const ActionModal = ({ asset, action, employees, onClose, onConfirm, loading, er
 
   const isTransfer = action === "TRANSFER";
   const isWriteoff = action === "WRITEOFF";
+  const isReturn   = action === "RETURN";
   const canSubmit  = isTransfer ? !!toEmployee : true;
+
+  const META = {
+    TRANSFER: {
+      title:    "Transfer to Another Employee",
+      subtitle: "Asset will be assigned to this employee for their use (IN USE).",
+      btnLabel: "Confirm Transfer",
+      btnCls:   "bg-almet-cloud-burst hover:bg-almet-sapphire",
+    },
+    RETURN: {
+      title:    "Return to IT Stock",
+      subtitle: "Asset goes back to IT inventory. Optionally note who physically collected it.",
+      btnLabel: "Confirm Return",
+      btnCls:   "bg-emerald-600 hover:bg-emerald-700",
+    },
+    WRITEOFF: {
+      title:    "Write-off Asset",
+      subtitle: "This asset will be removed from inventory.",
+      btnLabel: "Confirm Write-off",
+      btnCls:   "bg-red-600 hover:bg-red-700",
+    },
+  };
+  const m = META[action] ?? META.WRITEOFF;
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -41,14 +65,8 @@ const ActionModal = ({ asset, action, employees, onClose, onConfirm, loading, er
 
         <div className="flex items-start justify-between p-6 border-b border-gray-100 dark:border-gray-800">
           <div>
-            <h2 className="text-base font-bold text-gray-900 dark:text-white">
-              {isTransfer ? "Transfer to Another Employee" : "Write-off Asset"}
-            </h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {isTransfer
-                ? "Select the employee this asset will be transferred to."
-                : "This asset will be removed from inventory."}
-            </p>
+            <h2 className="text-base font-bold text-gray-900 dark:text-white">{m.title}</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{m.subtitle}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X size={20} />
@@ -58,6 +76,7 @@ const ActionModal = ({ asset, action, employees, onClose, onConfirm, loading, er
         <div className="p-6 space-y-4">
           <ErrBox msg={error} />
 
+          {/* Asset chip */}
           <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 flex items-center gap-3">
             <div className="bg-almet-mystic dark:bg-almet-cloud-burst/20 rounded-lg p-2 shrink-0">
               <Package size={16} className="text-almet-cloud-burst dark:text-almet-steel-blue" />
@@ -68,6 +87,7 @@ const ActionModal = ({ asset, action, employees, onClose, onConfirm, loading, er
             </div>
           </div>
 
+          {/* TRANSFER — required recipient */}
           {isTransfer && (
             <div>
               <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
@@ -81,9 +101,37 @@ const ActionModal = ({ asset, action, employees, onClose, onConfirm, loading, er
                 searchPlaceholder="Search…"
                 allowUncheck={false}
               />
+              <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-almet-steel-blue inline-block" />
+                Asset will appear in this employee's active assignments (IN USE).
+              </p>
             </div>
           )}
 
+          {/* RETURN — optional "who collected it" */}
+          {isReturn && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+                  Collected by (optional)
+                </label>
+                <SearchableDropdown
+                  options={empOptions}
+                  value={receivedBy}
+                  onChange={v => setReceivedBy(v ?? "")}
+                  placeholder="Who physically collected it?"
+                  searchPlaceholder="Search employee…"
+                  allowUncheck
+                />
+                <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                  Asset returns to IT stock — NOT assigned to this person.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* WRITEOFF — reason */}
           {isWriteoff && (
             <div>
               <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
@@ -102,12 +150,11 @@ const ActionModal = ({ asset, action, employees, onClose, onConfirm, loading, er
             Cancel
           </button>
           <button
-            onClick={() => onConfirm({ toEmployee, reason })}
+            onClick={() => onConfirm({ toEmployee, receivedBy, reason })}
             disabled={loading || !canSubmit}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50 transition-colors
-              ${isWriteoff ? "bg-red-600 hover:bg-red-700" : "bg-almet-cloud-burst hover:bg-almet-sapphire"}`}>
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50 transition-colors ${m.btnCls}`}>
             {loading && <Loader size={14} className="animate-spin" />}
-            {isTransfer ? "Confirm Transfer" : "Confirm Write-off"}
+            {m.btnLabel}
           </button>
         </div>
       </div>
@@ -121,8 +168,8 @@ const AssetRow = ({ asset, isCompleted, onAction, actionLoading, showReturned, s
 
   const statusInfo = {
     IN_STOCK:       { label: "Returned ✓",    cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
-    IN_USE:         { label: "Transferred ✓", cls: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-    OUT_OF_SERVICE: { label: "Written off ✓", cls: "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400" },
+    IN_USE:         { label: "Transferred ✓", cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
+    OUT_OF_SERVICE: { label: "Written off ✓", cls: "bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" },
     ASSIGNED:       { label: "Pending",        cls: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
   };
 
@@ -221,6 +268,10 @@ export default function OffboardingDetailPage() {
   const [modal, setModal]             = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError]   = useState("");
+  const [returnAllLoading, setReturnAllLoading] = useState(false);
+  const [transferAllModal, setTransferAllModal] = useState(false);
+  const [transferAllEmployee, setTransferAllEmployee] = useState("");
+  const [transferAllLoading, setTransferAllLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -243,34 +294,82 @@ export default function OffboardingDetailPage() {
 
   useEffect(() => {
     load();
-    employeeService.list({ page_size: 500 })
-      .then(r => setEmployees(r.results ?? r)).catch(console.error);
+    fetchAll("/employees/")
+      .then(all => setEmployees(all)).catch(console.error);
   }, [load]);
 
   const handleAction = (asset, action) => {
-    if (action === "RETURN") {
-      processAsset(asset, action, {});
-      return;
-    }
     setModalError("");
     setModal({ asset, action });
   };
 
-  const processAsset = async (asset, action, { toEmployee, reason }) => {
+  const handleReturnAll = async () => {
+    const pending = assets.filter(a => ["ASSIGNED", "IN_USE", "NEED_CLARIFICATION"].includes(a.status));
+    if (!pending.length) return;
+    setReturnAllLoading(true);
+    try {
+      for (const asset of pending) {
+        await offboardingService.processAsset(id, { asset_id: asset.id, action: "RETURN" });
+      }
+      showSuccess(`${pending.length} asset${pending.length !== 1 ? "s" : ""} returned to IT ✓`);
+      load();
+    } catch (e) {
+      const d = e.response?.data;
+      showError(typeof d === "string" ? d : d?.error ?? d?.message ?? "Something went wrong.");
+    } finally {
+      setReturnAllLoading(false);
+    }
+  };
+
+  const handleTransferAll = async (toEmployeeId) => {
+    const pending = assets.filter(a => ["ASSIGNED", "IN_USE", "NEED_CLARIFICATION"].includes(a.status));
+    if (!pending.length || !toEmployeeId) return;
+    setTransferAllLoading(true);
+    try {
+      for (const asset of pending) {
+        await offboardingService.processAsset(id, {
+          asset_id: asset.id,
+          action: "TRANSFER",
+          to_employee_id: parseInt(toEmployeeId),
+        });
+      }
+      showSuccess(`${pending.length} asset${pending.length !== 1 ? "s" : ""} transferred successfully ✓`);
+      setTransferAllModal(false);
+      setTransferAllEmployee("");
+      load();
+    } catch (e) {
+      const d = e.response?.data;
+      showError(typeof d === "string" ? d : d?.error ?? d?.message ?? "Something went wrong.");
+    } finally {
+      setTransferAllLoading(false);
+    }
+  };
+
+  const processAsset = async (asset, action, { toEmployee, receivedBy, reason }) => {
     const key = asset.id + action;
     setActionLoading(key);
+
+    // Build "collected by" note if provided
+    const collectedByEmp = receivedBy
+      ? employees.find(e => String(e.id) === String(receivedBy))
+      : null;
+    const collectedNote = collectedByEmp
+      ? `Collected by: ${collectedByEmp.full_name ?? collectedByEmp.name}`
+      : "";
+
     try {
       const payload = {
         asset_id: asset.id,
         action,
         ...(action === "TRANSFER" && { to_employee_id: parseInt(toEmployee) }),
         ...(action === "WRITEOFF" && reason && { reason }),
+        ...(action === "RETURN" && collectedNote && { notes: collectedNote }),
       };
       const res = await offboardingService.processAsset(id, payload);
 
       setModal(null);
       showSuccess(
-        action === "RETURN"   ? `${asset.asset_name} returned to IT ✓` :
+        action === "RETURN"   ? `${asset.asset_name} returned to IT stock ✓${collectedNote ? ` · ${collectedNote}` : ""}` :
         action === "TRANSFER" ? `${asset.asset_name} transferred successfully ✓` :
                                 `${asset.asset_name} written off ✓`
       );
@@ -327,6 +426,10 @@ export default function OffboardingDetailPage() {
   const showTransfer = isTransfer || isMixed;
   const showWriteoff = true;
 
+  const PENDING_STATUSES = ["ASSIGNED", "IN_USE", "NEED_CLARIFICATION"];
+  const pendingAssets = assets.filter(a => PENDING_STATUSES.includes(a.status));
+  const doneAssets    = assets.filter(a => !PENDING_STATUSES.includes(a.status));
+
   return (
     <DashboardLayout>
       {modal && (
@@ -337,11 +440,69 @@ export default function OffboardingDetailPage() {
           onClose={() => setModal(null)}
           loading={modalLoading}
           error={modalError}
-          onConfirm={({ toEmployee, reason }) => {
+          onConfirm={({ toEmployee, receivedBy, reason }) => {
             setModalLoading(true);
-            processAsset(modal.asset, modal.action, { toEmployee, reason });
+            processAsset(modal.asset, modal.action, { toEmployee, receivedBy, reason });
           }}
         />
+      )}
+
+      {/* Transfer All Modal */}
+      {transferAllModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-100 dark:border-gray-800">
+            <div className="flex items-start justify-between p-6 border-b border-gray-100 dark:border-gray-800">
+              <div>
+                <h2 className="text-base font-bold text-gray-900 dark:text-white">Transfer All to Employee</h2>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  All {pendingAssets.length} pending asset{pendingAssets.length !== 1 ? "s" : ""} will be transferred to the selected employee.
+                </p>
+              </div>
+              <button onClick={() => { setTransferAllModal(false); setTransferAllEmployee(""); }}
+                className="text-gray-400 hover:text-gray-600 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* Asset preview */}
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-3 space-y-1.5 max-h-36 overflow-y-auto">
+                {pendingAssets.map(a => (
+                  <div key={a.id} className="flex items-center gap-2.5">
+                    <Package size={12} className="text-gray-400 shrink-0" />
+                    <span className="text-xs text-gray-700 dark:text-gray-300 flex-1">{a.asset_name}</span>
+                    <span className="text-xs text-gray-400 font-mono">{a.serial_number ?? "—"}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                  Transfer To <span className="text-red-500">*</span>
+                </label>
+                <SearchableDropdown
+                  options={employees.map(e => ({ value: String(e.id), label: `${e.full_name ?? e.name} (${e.employee_id})` }))}
+                  value={transferAllEmployee}
+                  onChange={v => setTransferAllEmployee(v ?? "")}
+                  placeholder="Select employee…"
+                  searchPlaceholder="Search…"
+                  allowUncheck={false}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50 rounded-b-2xl">
+              <button onClick={() => { setTransferAllModal(false); setTransferAllEmployee(""); }}
+                className="px-5 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                Cancel
+              </button>
+              <button
+                onClick={() => handleTransferAll(transferAllEmployee)}
+                disabled={transferAllLoading || !transferAllEmployee}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-almet-cloud-burst hover:bg-almet-sapphire text-white text-sm font-semibold disabled:opacity-50 transition-colors shadow-sm">
+                {transferAllLoading && <Loader size={14} className="animate-spin" />}
+                Transfer All
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="p-6 lg:p-8  mx-auto space-y-6">
@@ -436,13 +597,57 @@ export default function OffboardingDetailPage() {
 
         {/* ── Assets ─────────────────────────────────────────────────────── */}
         <div className="space-y-3">
-          <div>
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white">Assets</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {isReturn   && "Mark each asset as returned to IT, or write-off if damaged / lost."}
-              {isTransfer && "Transfer each asset to another employee, or write-off if damaged / lost."}
-              {isMixed    && "Decide what happens to each asset individually."}
-            </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Assets Checklist</h2>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {isReturn   && "Mark each asset as returned to IT, or write-off if damaged / lost."}
+                {isTransfer && "Transfer each asset to another employee, or write-off if damaged / lost."}
+                {isMixed    && "Decide what happens to each asset individually."}
+              </p>
+            </div>
+            {assets.length > 0 && (
+              <div className="flex items-center gap-2">
+                {doneAssets.length > 0 && (
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                    <CheckCircle size={11} /> {doneAssets.length} done
+                  </span>
+                )}
+                {pendingAssets.length > 0 && (
+                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                    <Package size={11} /> {pendingAssets.length} pending
+                  </span>
+                )}
+                {(isReturn || isMixed) && !isCompleted && pendingAssets.length > 1 && (
+                  <button
+                    onClick={handleReturnAll}
+                    disabled={returnAllLoading || transferAllLoading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+                      bg-emerald-600 text-white hover:bg-emerald-700
+                      disabled:opacity-50 transition-colors">
+                    {returnAllLoading
+                      ? <Loader size={12} className="animate-spin" />
+                      : <RotateCcw size={12} />
+                    }
+                    Return All
+                  </button>
+                )}
+                {(isTransfer || isMixed) && !isCompleted && pendingAssets.length > 1 && (
+                  <button
+                    onClick={() => setTransferAllModal(true)}
+                    disabled={returnAllLoading || transferAllLoading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+                      bg-almet-cloud-burst text-white hover:bg-almet-sapphire
+                      disabled:opacity-50 transition-colors">
+                    {transferAllLoading
+                      ? <Loader size={12} className="animate-spin" />
+                      : <ArrowRightLeft size={12} />
+                    }
+                    Transfer All
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Legend */}
@@ -475,19 +680,56 @@ export default function OffboardingDetailPage() {
               <p className="text-sm">No assets found for this employee.</p>
             </div>
           ) : (
-            <div className="space-y-2.5">
-              {assets.map(a => (
-                <AssetRow
-                  key={a.id}
-                  asset={a}
-                  isCompleted={isCompleted}
-                  onAction={handleAction}
-                  actionLoading={actionLoading}
-                  showReturned={showReturned}
-                  showTransfer={showTransfer}
-                  showWriteoff={showWriteoff}
-                />
-              ))}
+            <div className="space-y-4">
+              {/* Pending block */}
+              {pendingAssets.length > 0 && (
+                <div className="space-y-2">
+                  {!isCompleted && (
+                    <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide flex items-center gap-1.5">
+                      <AlertTriangle size={11} /> Pending ({pendingAssets.length})
+                    </p>
+                  )}
+                  <div className="space-y-2.5">
+                    {pendingAssets.map(a => (
+                      <AssetRow
+                        key={a.id}
+                        asset={a}
+                        isCompleted={isCompleted}
+                        onAction={handleAction}
+                        actionLoading={actionLoading}
+                        showReturned={showReturned}
+                        showTransfer={showTransfer}
+                        showWriteoff={showWriteoff}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Done block */}
+              {doneAssets.length > 0 && (
+                <div className="space-y-2">
+                  {pendingAssets.length > 0 && (
+                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide flex items-center gap-1.5">
+                      <CheckCircle size={11} /> Done ({doneAssets.length})
+                    </p>
+                  )}
+                  <div className="space-y-2.5">
+                    {doneAssets.map(a => (
+                      <AssetRow
+                        key={a.id}
+                        asset={a}
+                        isCompleted={isCompleted}
+                        onAction={handleAction}
+                        actionLoading={actionLoading}
+                        showReturned={showReturned}
+                        showTransfer={showTransfer}
+                        showWriteoff={showWriteoff}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

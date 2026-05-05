@@ -7,7 +7,7 @@ import {
   File, FileCheck, Award, Briefcase, Heart,
   GraduationCap, Plus, Loader, PenLine,
 } from "lucide-react";
-import { apiService } from "@/services/api";
+import api, { apiService } from "@/services/api";
 import SignaturePad from "@/components/common/SignaturePad";
 import PDFSignatureOverlay from "@/components/policy/PDFSignatureOverlay";
 
@@ -526,15 +526,42 @@ const EmployeeDocumentManager = ({ employeeId, employeeData, darkMode }) => {
 // Inline PDF Viewer Modal (no routing needed)
 // ─────────────────────────────────────────────────────────────────────────────
 function PDFViewerModal({ doc, darkMode, onClose, onSign }) {
-  const url = doc.file_url || doc.document_file;
+  const [blobUrl, setBlobUrl] = useState(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
-  // Google Drive embed fix
-  const embedUrl = (() => {
-    if (!url) return null;
-    if (url.includes("drive.google.com") || url.includes("docs.google.com"))
-      return url.includes("?") ? `${url}&output=embed` : `${url}?output=embed`;
-    return url;
-  })();
+  const rawUrl = doc.file_url || doc.document_file;
+  const isGoogleDrive = rawUrl && (
+    rawUrl.includes("drive.google.com") || rawUrl.includes("docs.google.com")
+  );
+
+  // For self-hosted PDFs, fetch with auth token and create a blob: URL so the
+  // iframe never makes an unauthenticated request (which would redirect to the
+  // login page and trigger X-Frame-Options: deny errors).
+  useEffect(() => {
+    if (!rawUrl || isGoogleDrive) return;
+
+    let objectUrl = null;
+    setPdfLoading(true);
+    setBlobUrl(null);
+
+    api.get(rawUrl, { responseType: "blob" })
+      .then((response) => {
+        const blob = new Blob([response.data], { type: "application/pdf" });
+        objectUrl = URL.createObjectURL(blob);
+        setBlobUrl(objectUrl);
+      })
+      .catch((err) => console.error("Failed to load PDF preview:", err))
+      .finally(() => setPdfLoading(false));
+
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [rawUrl]);
+
+  // Google Drive URLs are publicly embeddable — pass them through as-is.
+  const embedUrl = isGoogleDrive
+    ? (rawUrl.includes("?") ? `${rawUrl}&output=embed` : `${rawUrl}?output=embed`)
+    : blobUrl;
 
   const isSigned = !!doc.signed_at;
 
@@ -578,7 +605,14 @@ function PDFViewerModal({ doc, darkMode, onClose, onSign }) {
 
       {/* PDF iframe */}
       <div className={`flex-1 overflow-hidden ${darkMode ? "bg-gray-900" : "bg-gray-100"}`}>
-        {embedUrl ? (
+        {pdfLoading ? (
+          <div className={`flex items-center justify-center h-full ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+            <div className="text-center">
+              <Loader className="w-8 h-8 mx-auto mb-3 animate-spin opacity-60" />
+              <p className="text-sm">Loading document…</p>
+            </div>
+          </div>
+        ) : embedUrl ? (
           <div className="relative w-full h-full">
             <iframe
               src={embedUrl}

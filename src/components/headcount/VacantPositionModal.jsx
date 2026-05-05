@@ -595,7 +595,7 @@ const employeeOptions = employees?.filter(emp =>
                     value={formData.business_function}
                     onChange={handleBusinessFunctionChange}
                     placeholder="Select Company"
-                    searchPlaceholder="Search Companys..."
+                    searchPlaceholder="Search Companies..."
                     error={!!errors.business_function}
                     darkMode={darkMode}
                      allowUncheck={true}

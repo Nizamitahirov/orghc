@@ -212,73 +212,54 @@ const BatchCreateModal = ({ categories, onClose, onSuccess }) => {
     asset_name: "", category: "", unit_price: "",
     purchase_date: new Date().toISOString().split("T")[0],
     useful_life_years: 5, supplier: "", purchase_order_number: "",
-    notes: "",
-    serial_numbers_raw: "",   //  Fix 3: serial numbers field əlavə edildi
+    notes: "", serial_numbers_raw: "", quantity: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
-
-  //  serial string-i array-ə çevirir
   const parseSerials = raw => raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
 
   const submit = async () => {
     if (!form.asset_name.trim()) return setError("Asset name is required.");
     if (!form.category)          return setError("Category is required.");
-    if (!form.unit_price || parseFloat(form.unit_price) <= 0)
-      return setError("Valid unit price is required.");
+    if (!form.unit_price || parseFloat(form.unit_price) <= 0) return setError("Valid unit price is required.");
     if (!form.purchase_date)     return setError("Purchase date is required.");
 
     const serials = parseSerials(form.serial_numbers_raw);
-    // serial_numbers boş ola bilər — batch-only yaratmaq da mümkündür
-    // amma ən azı 1 serial tövsiyə olunur:
-    if (serials.length === 0)
-      return setError("At least one serial number is required.");
+    const qty     = parseInt(form.quantity) || 0;
+    if (!serials.length && !qty) return setError("Enter serial numbers or a quantity.");
 
     setLoading(true); setError("");
     try {
-      await batchService.create({
-        asset_name:            form.asset_name,
-        category:              parseInt(form.category),
-        unit_price:            parseFloat(form.unit_price),
-        purchase_date:         form.purchase_date,
-        useful_life_years:     parseInt(form.useful_life_years),
-        supplier:              form.supplier,
-        purchase_order_number: form.purchase_order_number,
-        notes:                 form.notes,
-        serial_numbers:        serials,   //  backend-in gözlədiyi field
-      });
-      onSuccess(`Batch created with ${serials.length} asset(s).`);
+      const payload = {
+        asset_name: form.asset_name, category: parseInt(form.category),
+        unit_price: parseFloat(form.unit_price), purchase_date: form.purchase_date,
+        useful_life_years: parseInt(form.useful_life_years),
+        supplier: form.supplier, purchase_order_number: form.purchase_order_number,
+        notes: form.notes,
+      };
+      if (serials.length) payload.serial_numbers = serials;
+      else payload.quantity = qty;
+
+      await batchService.create(payload);
+      const count = serials.length || qty;
+      onSuccess(`Batch created with ${count} asset(s).`);
     } catch (e) {
       const d = e.response?.data;
-      setError(
-        typeof d === "string"
-          ? d
-          : JSON.stringify(d?.serial_numbers ?? d?.error ?? d) ?? "Failed to create batch."
-      );
+      setError(typeof d === "string" ? d : JSON.stringify(d?.serial_numbers ?? d?.non_field_errors ?? d?.error ?? d) ?? "Failed to create batch.");
     } finally { setLoading(false); }
   };
 
   const parsedCount = parseSerials(form.serial_numbers_raw).length;
+  const hasSerials  = parsedCount > 0;
 
   return (
-    <ModalShell
-      title="Create Batch"
-      subtitle="Register a new batch of assets in the inventory."
-      onClose={onClose}
-      wide                        //  serial textarea üçün daha geniş modal
-      footer={
-        <>
-          <BtnOutline onClick={onClose}>Cancel</BtnOutline>
-          <BtnPrimary onClick={submit} disabled={loading} loading={loading}>
-            Create Batch
-          </BtnPrimary>
-        </>
-      }
+    <ModalShell title="Create Batch" subtitle="Register a new batch of assets in the inventory."
+      onClose={onClose} wide
+      footer={<><BtnOutline onClick={onClose}>Cancel</BtnOutline><BtnPrimary onClick={submit} disabled={loading} loading={loading}>Create Batch</BtnPrimary></>}
     >
       <ErrBox msg={error} />
 
-      {/* Asset Name */}
       <div>
         <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
           Asset Name <span className="text-red-500">*</span>
@@ -287,45 +268,32 @@ const BatchCreateModal = ({ categories, onClose, onSuccess }) => {
           onChange={e => set("asset_name", e.target.value)} placeholder="e.g. Dell XPS 15" />
       </div>
 
-      {/* Category + Unit Price */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Category <span className="text-red-500">*</span>
-          </label>
-          <SearchableDropdown
-            options={categories.map(c => ({ value: String(c.id), label: c.name }))}
-            value={form.category} onChange={v => set("category", v ?? "")}
-            placeholder="Select…" allowUncheck={false} />
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Category <span className="text-red-500">*</span></label>
+          <SearchableDropdown options={categories.map(c => ({ value: String(c.id), label: c.name }))}
+            value={form.category} onChange={v => set("category", v ?? "")} placeholder="Select…" allowUncheck={false} />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Unit Price ($) <span className="text-red-500">*</span>
-          </label>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Unit Price ($) <span className="text-red-500">*</span></label>
           <input type="number" min={0} step="0.01" className={inputCls}
             value={form.unit_price} onChange={e => set("unit_price", e.target.value)} placeholder="0.00" />
         </div>
       </div>
 
-      {/* Purchase Date + Useful Life */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Purchase Date <span className="text-red-500">*</span>
-          </label>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Purchase Date <span className="text-red-500">*</span></label>
           <input type="date" className={inputCls} value={form.purchase_date}
             onChange={e => set("purchase_date", e.target.value)} />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-            Useful Life (years)
-          </label>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Useful Life (years)</label>
           <input type="number" min={1} className={inputCls} value={form.useful_life_years}
             onChange={e => set("useful_life_years", e.target.value)} />
         </div>
       </div>
 
-      {/* Supplier + PO */}
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Supplier</label>
@@ -339,37 +307,174 @@ const BatchCreateModal = ({ categories, onClose, onSuccess }) => {
         </div>
       </div>
 
-      {/* Notes */}
       <div>
         <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Notes</label>
         <textarea className={`${inputCls} resize-none`} rows={2} value={form.notes}
           onChange={e => set("notes", e.target.value)} />
       </div>
 
-      {/*  Serial Numbers — əsas fix */}
-      <div>
-        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-          Serial Numbers <span className="text-red-500">*</span>
-          <span className="font-normal normal-case text-gray-400 ml-1">
-            (one per line or comma-separated)
-          </span>
-        </label>
-        <textarea
-          className={`${inputCls} resize-none font-mono`}
-          rows={4}
-          value={form.serial_numbers_raw}
-          onChange={e => set("serial_numbers_raw", e.target.value)}
-          placeholder={"SN-001\nSN-002\nSN-003"}
-        />
-        {parsedCount > 0 && (
-          <p className="text-xs text-almet-sapphire dark:text-almet-steel-blue font-medium mt-1.5">
-            ✓ {parsedCount} serial number(s) detected — batch quantity will be {parsedCount}
-          </p>
-        )}
+      {/* Serial numbers OR quantity — one is required */}
+      <div className="border border-gray-100 dark:border-gray-800 rounded-xl p-4 space-y-3">
+        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+          Asset Count <span className="text-red-500">*</span>
+          <span className="font-normal normal-case text-gray-400 ml-1">— fill one of the two options below</span>
+        </p>
+
+        <div>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            Serial Numbers
+            <span className="text-gray-400 ml-1">(one per line or comma-separated)</span>
+          </label>
+          <textarea
+            className={`${inputCls} resize-none font-mono ${hasSerials ? "border-almet-steel-blue ring-1 ring-almet-steel-blue/30" : ""}`}
+            rows={3}
+            value={form.serial_numbers_raw}
+            onChange={e => { set("serial_numbers_raw", e.target.value); if (e.target.value) set("quantity", ""); }}
+            placeholder={"SN-001\nSN-002\nSN-003"}
+            disabled={!hasSerials && !!form.quantity}
+          />
+          {hasSerials && (
+            <p className="text-xs text-almet-sapphire dark:text-almet-steel-blue font-medium mt-1.5">
+              ✓ {parsedCount} serial number(s) — quantity will be {parsedCount}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+          <span className="text-xs text-gray-400 font-medium">OR</span>
+          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+        </div>
+
+        <div>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            Quantity only
+            <span className="text-gray-400 ml-1">(serial numbers will be auto-generated)</span>
+          </label>
+          <input
+            type="number" min={1} className={`${inputCls} ${form.quantity && !hasSerials ? "border-almet-steel-blue ring-1 ring-almet-steel-blue/30" : ""}`}
+            value={form.quantity}
+            onChange={e => { set("quantity", e.target.value); if (e.target.value) set("serial_numbers_raw", ""); }}
+            placeholder="e.g. 10"
+            disabled={hasSerials}
+          />
+          {form.quantity && !hasSerials && parseInt(form.quantity) > 0 && (
+            <p className="text-xs text-gray-400 mt-1.5">
+              Serial numbers will be auto-generated as BATCH-XXXXXX-001, -002, …
+            </p>
+          )}
+        </div>
       </div>
     </ModalShell>
   );
 };
+const BatchEditModal = ({ batch, categories, onClose, onSuccess }) => {
+  const [form, setForm] = useState({
+    asset_name:            batch.asset_name ?? "",
+    category:              String(batch.category ?? ""),
+    unit_price:            batch.unit_price ?? "",
+    purchase_date:         batch.purchase_date ?? "",
+    useful_life_years:     batch.useful_life_years ?? 5,
+    supplier:              batch.supplier ?? "",
+    purchase_order_number: batch.purchase_order_number ?? "",
+    notes:                 batch.notes ?? "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError]     = useState("");
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const submit = async () => {
+    if (!form.asset_name.trim()) return setError("Asset name is required.");
+    if (!form.category)          return setError("Category is required.");
+    if (!form.unit_price || parseFloat(form.unit_price) <= 0)
+      return setError("Valid unit price is required.");
+    setLoading(true); setError("");
+    try {
+      await batchService.patch(batch.id, {
+        asset_name:            form.asset_name,
+        category:              parseInt(form.category),
+        unit_price:            parseFloat(form.unit_price),
+        purchase_date:         form.purchase_date || undefined,
+        useful_life_years:     parseInt(form.useful_life_years),
+        supplier:              form.supplier,
+        purchase_order_number: form.purchase_order_number,
+        notes:                 form.notes,
+      });
+      onSuccess("Batch updated.");
+    } catch (e) {
+      const d = e.response?.data;
+      setError(typeof d === "string" ? d : d?.message ?? "Failed to update batch.");
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <ModalShell
+      title={`Edit Batch — ${batch.batch_number}`}
+      subtitle="Update batch details. Serial numbers cannot be changed here."
+      onClose={onClose}
+      wide
+      footer={
+        <>
+          <BtnOutline onClick={onClose}>Cancel</BtnOutline>
+          <BtnPrimary onClick={submit} disabled={loading} loading={loading}>Save Changes</BtnPrimary>
+        </>
+      }
+    >
+      <ErrBox msg={error} />
+      <div>
+        <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+          Asset Name <span className="text-red-500">*</span>
+        </label>
+        <input className={inputCls} value={form.asset_name}
+          onChange={e => set("asset_name", e.target.value)} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Category <span className="text-red-500">*</span></label>
+          <SearchableDropdown
+            options={categories.map(c => ({ value: String(c.id), label: c.name }))}
+            value={form.category} onChange={v => set("category", v ?? "")}
+            placeholder="Select…" allowUncheck={false} />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Unit Price <span className="text-red-500">*</span></label>
+          <input type="number" min={0} step="0.01" className={inputCls}
+            value={form.unit_price} onChange={e => set("unit_price", e.target.value)} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Purchase Date</label>
+          <input type="date" className={inputCls} value={form.purchase_date}
+            onChange={e => set("purchase_date", e.target.value)} />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Useful Life (years)</label>
+          <input type="number" min={1} className={inputCls} value={form.useful_life_years}
+            onChange={e => set("useful_life_years", e.target.value)} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Supplier</label>
+          <input className={inputCls} value={form.supplier}
+            onChange={e => set("supplier", e.target.value)} />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Purchase Order #</label>
+          <input className={inputCls} value={form.purchase_order_number}
+            onChange={e => set("purchase_order_number", e.target.value)} />
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Notes</label>
+        <textarea className={`${inputCls} resize-none`} rows={2} value={form.notes}
+          onChange={e => set("notes", e.target.value)} />
+      </div>
+    </ModalShell>
+  );
+};
+
 const BatchesTab = ({ categories }) => {
   const { showSuccess, showError } = useToast();
   const [batches, setBatches]         = useState([]);
@@ -378,6 +483,7 @@ const BatchesTab = ({ categories }) => {
   const [page, setPage]               = useState(1);
   const [search, setSearch]           = useState("");
   const [showCreate, setShowCreate]   = useState(false);
+  const [editTarget, setEditTarget]   = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting]         = useState(false);
 
@@ -444,7 +550,10 @@ const BatchesTab = ({ categories }) => {
                       </span>
                     </td>
                     <td className="px-5 py-4">
-                      <button onClick={() => setDeleteTarget(b)} className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 size={14} /></button>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => setEditTarget(b)} className="p-2 rounded-lg text-gray-400 hover:text-almet-sapphire hover:bg-almet-mystic dark:hover:bg-almet-cloud-burst/20 transition-colors"><Edit2 size={14} /></button>
+                        <button onClick={() => setDeleteTarget(b)} className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 size={14} /></button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -457,6 +566,7 @@ const BatchesTab = ({ categories }) => {
       <Pagination currentPage={page} totalPages={Math.ceil(totalCount / PAGE_SIZE_BATCHES)} totalItems={totalCount} itemsPerPage={PAGE_SIZE_BATCHES} onPageChange={setPage} />
 
       {showCreate && <BatchCreateModal categories={categories} onClose={() => setShowCreate(false)} onSuccess={msg => { setShowCreate(false); showSuccess(msg); load(); }} />}
+      {editTarget && <BatchEditModal batch={editTarget} categories={categories} onClose={() => setEditTarget(null)} onSuccess={msg => { setEditTarget(null); showSuccess(msg); load(); }} />}
       <ConfirmationModal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDelete} loading={deleting}
         type="danger" title="Delete Batch" message={`Delete batch "${deleteTarget?.batch_number}"? All associated assets must be unassigned first.`} confirmText="Delete" />
     </div>
@@ -487,108 +597,93 @@ const ALL_STATUS_OPTIONS = [
 ];
 
 // ── Add Assets Modal (köçürülmüş) ─────────────────────────────────────────────
-const AddAssetModal = ({ categories, batches, onClose, onSuccess }) => {
-  const [mode, setMode] = useState("new");
-  const [form, setForm] = useState({
-    asset_name: "", category: "", unit_price: "",
-    purchase_date: new Date().toISOString().split("T")[0],
-    useful_life_years: 5, supplier: "", serial_numbers_raw: "", existing_batch_id: "",
-  });
+const AddAssetModal = ({ batches, onClose, onSuccess }) => {
+  const [form, setForm] = useState({ existing_batch_id: "", serial_numbers_raw: "", quantity: "" });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError]     = useState("");
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
   const parseSerials = raw => raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
 
   const submit = async () => {
+    if (!form.existing_batch_id) return setError("Please select a batch.");
     const serials = parseSerials(form.serial_numbers_raw);
-    if (!serials.length) return setError("At least one serial number is required.");
+    const qty     = parseInt(form.quantity) || 0;
+    if (!serials.length && !qty) return setError("Enter serial numbers or a quantity.");
     setLoading(true); setError("");
     try {
-      if (mode === "new") {
-        if (!form.asset_name.trim()) return setError("Asset name is required.");
-        if (!form.category)          return setError("Category is required.");
-        if (!form.unit_price || parseFloat(form.unit_price) <= 0) return setError("Valid unit price is required.");
-        await batchService.create({
-          asset_name: form.asset_name, category: parseInt(form.category),
-          unit_price: parseFloat(form.unit_price), purchase_date: form.purchase_date,
-          useful_life_years: parseInt(form.useful_life_years), supplier: form.supplier,
-          serial_numbers: serials,
-        });
-        onSuccess(`Batch created with ${serials.length} asset(s).`);
-      } else {
-        if (!form.existing_batch_id) return setError("Please select a batch.");
-        await batchService.addAssets(form.existing_batch_id, { serial_numbers: serials });
-        onSuccess(`${serials.length} asset(s) added to batch.`);
-      }
+      const payload = serials.length ? { serial_numbers: serials } : { quantity: qty };
+      await batchService.addAssets(form.existing_batch_id, payload);
+      onSuccess(`${serials.length || qty} asset(s) added to batch.`);
     } catch (e) {
       const d = e.response?.data;
-      setError(typeof d === "string" ? d : JSON.stringify(d?.serial_numbers ?? d?.error ?? d) ?? "Failed.");
+      setError(typeof d === "string" ? d : JSON.stringify(d?.serial_numbers ?? d?.non_field_errors ?? d?.error ?? d) ?? "Failed.");
     } finally { setLoading(false); }
   };
 
+  const parsedCount = parseSerials(form.serial_numbers_raw).length;
+  const hasSerials  = parsedCount > 0;
+  const selectedBatch = batches.find(b => String(b.id) === form.existing_batch_id);
+
   return (
-    <ModalShell title="Add Assets to Inventory" subtitle="Create a new batch or add to an existing one." onClose={onClose}
-      footer={<><BtnOutline onClick={onClose}>Cancel</BtnOutline><BtnPrimary onClick={submit} disabled={loading} loading={loading}>{mode === "new" ? "Create Batch & Add Assets" : "Add to Batch"}</BtnPrimary></>}>
+    <ModalShell title="Add Assets to Batch" subtitle="Add more units to an existing batch." onClose={onClose}
+      footer={<><BtnOutline onClick={onClose}>Cancel</BtnOutline><BtnPrimary onClick={submit} disabled={loading} loading={loading}>Add Assets</BtnPrimary></>}>
       <ErrBox msg={error} />
-      <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
-        {[{ v: "new", l: "New Batch" }, { v: "existing", l: "Existing Batch" }].map(({ v, l }) => (
-          <button key={v} onClick={() => setMode(v)}
-            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${mode === v ? "bg-white dark:bg-gray-900 text-almet-cloud-burst dark:text-almet-steel-blue shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-700"}`}>
-            {l}
-          </button>
-        ))}
-      </div>
-      {mode === "new" ? (
-        <>
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Asset Name <span className="text-red-500">*</span></label>
-            <input className={inputCls} value={form.asset_name} onChange={e => set("asset_name", e.target.value)} placeholder="e.g. Dell XPS 15" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Category <span className="text-red-500">*</span></label>
-              <SearchableDropdown options={categories.map(c => ({ value: String(c.id), label: c.name }))}
-                value={form.category} onChange={v => set("category", v ?? "")} placeholder="Select…" allowUncheck={false} />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Unit Price ($) <span className="text-red-500">*</span></label>
-              <input type="number" min={0} step="0.01" className={inputCls} value={form.unit_price} onChange={e => set("unit_price", e.target.value)} placeholder="0.00" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Purchase Date <span className="text-red-500">*</span></label>
-              <input type="date" className={inputCls} value={form.purchase_date} onChange={e => set("purchase_date", e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Useful Life (years)</label>
-              <input type="number" min={1} className={inputCls} value={form.useful_life_years} onChange={e => set("useful_life_years", e.target.value)} />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Supplier</label>
-            <input className={inputCls} value={form.supplier} onChange={e => set("supplier", e.target.value)} placeholder="Vendor name" />
-          </div>
-        </>
-      ) : (
-        <div>
-          <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Select Batch <span className="text-red-500">*</span></label>
-          <SearchableDropdown options={batches.map(b => ({ value: String(b.id), label: `${b.batch_number} — ${b.asset_name}` }))}
-            value={form.existing_batch_id} onChange={v => set("existing_batch_id", v ?? "")} placeholder="Choose batch…" allowUncheck={false} />
-        </div>
-      )}
+
       <div>
         <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
-          Serial Numbers <span className="text-red-500">*</span>
-          <span className="font-normal normal-case text-gray-400 ml-1">(one per line or comma-separated)</span>
+          Batch <span className="text-red-500">*</span>
         </label>
-        <textarea className={`${inputCls} resize-none font-mono`} rows={4}
-          value={form.serial_numbers_raw} onChange={e => set("serial_numbers_raw", e.target.value)} placeholder={"SN-001\nSN-002\nSN-003"} />
-        {form.serial_numbers_raw && (
-          <p className="text-xs text-almet-sapphire dark:text-almet-steel-blue font-medium mt-1.5">
-            ✓ {parseSerials(form.serial_numbers_raw).length} serial number(s) detected
+        <SearchableDropdown
+          options={batches.map(b => ({ value: String(b.id), label: `${b.batch_number} — ${b.asset_name}` }))}
+          value={form.existing_batch_id} onChange={v => set("existing_batch_id", v ?? "")}
+          placeholder="Choose batch…" allowUncheck={false} />
+        {selectedBatch && (
+          <p className="text-xs text-gray-400 mt-1.5">
+            Currently {selectedBatch.initial_quantity} unit(s) — {selectedBatch.available_quantity} available
           </p>
         )}
+      </div>
+
+      <div className="border border-gray-100 dark:border-gray-800 rounded-xl p-4 space-y-3">
+        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+          New Units <span className="text-red-500">*</span>
+          <span className="font-normal normal-case text-gray-400 ml-1">— fill one of the two options</span>
+        </p>
+
+        <div>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            Serial Numbers <span className="text-gray-400">(one per line or comma-separated)</span>
+          </label>
+          <textarea
+            className={`${inputCls} resize-none font-mono ${hasSerials ? "border-almet-steel-blue ring-1 ring-almet-steel-blue/30" : ""}`}
+            rows={3} value={form.serial_numbers_raw}
+            onChange={e => { set("serial_numbers_raw", e.target.value); if (e.target.value) set("quantity", ""); }}
+            placeholder={"SN-001\nSN-002\nSN-003"}
+            disabled={!hasSerials && !!form.quantity}
+          />
+          {hasSerials && (
+            <p className="text-xs text-almet-sapphire dark:text-almet-steel-blue font-medium mt-1.5">
+              ✓ {parsedCount} serial number(s) detected
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+          <span className="text-xs text-gray-400 font-medium">OR</span>
+          <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+        </div>
+
+        <div>
+          <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            Quantity only <span className="text-gray-400">(serial numbers auto-generated)</span>
+          </label>
+          <input type="number" min={1}
+            className={`${inputCls} ${form.quantity && !hasSerials ? "border-almet-steel-blue ring-1 ring-almet-steel-blue/30" : ""}`}
+            value={form.quantity}
+            onChange={e => { set("quantity", e.target.value); if (e.target.value) set("serial_numbers_raw", ""); }}
+            placeholder="e.g. 5" disabled={hasSerials} />
+        </div>
       </div>
     </ModalShell>
   );
@@ -1001,7 +1096,7 @@ const toggleAll   = () => setSelectedIds(allSelected ? [] : selectableIds);
           </button>
           <button onClick={() => setShowAdd(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-almet-cloud-burst hover:bg-almet-sapphire text-white text-sm font-semibold transition-colors shadow-sm shadow-almet-cloud-burst/20">
-            <Plus size={14} /> Add Assets
+            <Plus size={14} /> Add to Batch
           </button>
         </div>
       </div>
@@ -1112,7 +1207,7 @@ const toggleAll   = () => setSelectedIds(allSelected ? [] : selectableIds);
         totalItems={totalCount} itemsPerPage={PAGE_SIZE_ASSETS} onPageChange={setPage} />
 
       {/* Modals */}
-      {showAdd            && <AddAssetModal categories={categories} batches={batches} onClose={() => setShowAdd(false)} onSuccess={onModalSuccess} />}
+      {showAdd            && <AddAssetModal batches={batches} onClose={() => setShowAdd(false)} onSuccess={onModalSuccess} />}
       {showUpload         && <BulkUploadModal onClose={() => setShowUpload(false)} onSuccess={onModalSuccess} />}
       {detailId           && <AssetDetailModal assetId={detailId} onClose={() => setDetailId(null)} />}
       {editSerialAsset    && <EditSerialModal asset={editSerialAsset} onClose={() => setEditSerialAsset(null)} onSuccess={onModalSuccess} />}

@@ -1,7 +1,7 @@
 // components/orgChart/OrgChartFilters.jsx
 'use client'
-import React from 'react';
-import { Filter, X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { SlidersHorizontal, X } from 'lucide-react';
 import Select from 'react-select';
 
 const OrgChartFilters = ({ 
@@ -21,7 +21,27 @@ const OrgChartFilters = ({
     const textSecondary = darkMode ? "text-gray-400" : "text-almet-waterloo";
     const textMuted = darkMode ? "text-gray-500" : "text-almet-bali-hai";
 
-    if (!showFilters) return null;
+    // Animate height on show/hide
+    const contentRef = useRef(null);
+    const [maxHeight, setMaxHeight] = useState('0px');
+    const [visible, setVisible] = useState(showFilters);
+
+    useEffect(() => {
+        if (showFilters) {
+            setVisible(true);
+            // Let DOM paint first, then expand
+            requestAnimationFrame(() => {
+                setMaxHeight(contentRef.current ? `${contentRef.current.scrollHeight + 32}px` : '600px');
+            });
+        } else {
+            setMaxHeight('0px');
+            // Keep mounted until transition ends
+            const t = setTimeout(() => setVisible(false), 280);
+            return () => clearTimeout(t);
+        }
+    }, [showFilters]);
+
+    if (!visible) return null;
 
     // Format options with count display
     const formatOptions = (options) => {
@@ -32,12 +52,15 @@ const OrgChartFilters = ({
     };
 
     return (
-        <div className={`${bgCard} border-b ${borderColor} shadow-md sticky ${isFullscreen ? 'top-[57px]' : 'top-[65px]'} z-20 backdrop-blur-sm`}>
-            <div className="px-4 py-3">
+        <div
+            className={`${bgCard} border-b ${borderColor} sticky ${isFullscreen ? 'top-[57px]' : 'top-[57px]'} z-20 `}
+            style={{ maxHeight, transition: 'max-height 0.28s cubic-bezier(0.4,0,0.2,1)' }}
+        >
+            <div className="px-4 py-3" ref={contentRef}>
                 {/* Header */}
                 <div className="flex items-center justify-between mb-3">
                     <h3 className={`text-sm font-semibold ${textHeader} flex items-center gap-2`}>
-                        <Filter size={16} />
+                        <SlidersHorizontal size={14} />
                         Advanced Filters
                     </h3>
                     <div className="flex items-center gap-2">

@@ -40,7 +40,8 @@ import {
   AlertCircle,
   MessageSquare,
   XCircle,
-
+  Wallet,
+  DollarSign,
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
@@ -56,6 +57,8 @@ import ResignationSubmissionModal from "@/components/resignation/ResignationSubm
 import ProbationReviewModal from "@/components/resignation/ProbationReviewModal";
 import resignationExitService from '@/services/resignationExitService';
 import { apiService } from '@/services/api';
+import { bonusRecordService } from '@/services/bonusService';
+import { siCalcService } from '@/services/siService';
 
 const EmployeeDetailPageContent = () => {
   const { id } = useParams();
@@ -78,7 +81,7 @@ const EmployeeDetailPageContent = () => {
     employment: true,
     status: true
   });
-console.log(currentEmployee)
+
   // Resignation & Probation States
   const [showResignationModal, setShowResignationModal] = useState(false);
   const [showProbationModal, setShowProbationModal] = useState(false);
@@ -90,6 +93,16 @@ console.log(currentEmployee)
   const [selectedReview, setSelectedReview] = useState(null);
   const [activeReviewFilter, setActiveReviewFilter] = useState('all'); // 'all', 'employee', 'manager'
 const [respondentType, setRespondentType] = useState('EMPLOYEE'); //  ƏLAVƏ ET
+
+  // Bonus records
+  const [bonusRecords,     setBonusRecords]     = useState([]);
+  const [siRecords,        setSiRecords]        = useState([]);
+  const [bonusLoading,     setBonusLoading]     = useState(false);
+  const [bonusDetailMap,   setBonusDetailMap]   = useState({}); // { [recordId]: detailObj }
+  const [loadingDetailId,  setLoadingDetailId]  = useState(null);
+  const [expandedBonusId,  setExpandedBonusId]  = useState(null);
+  const [siDetailModal, setSiDetailModal] = useState(null); // {record, detail: null|obj}
+  const [siDetailLoading, setSiDetailLoading] = useState(false);
 
   // Theme classes
   const bgPrimary = darkMode ? "bg-almet-cloud-burst" : "bg-almet-mystic";
@@ -108,13 +121,33 @@ const [respondentType, setRespondentType] = useState('EMPLOYEE'); //  ƏLAVƏ ET
 
   const isManager = currentEmployee?.direct_reports && currentEmployee.direct_reports.length > 0;
 
+  // Load bonus records when bonus tab activated
+  useEffect(() => {
+    if (activeTab === 'bonuses' && id) {
+      setBonusLoading(true);
+      Promise.allSettled([
+        bonusRecordService.listByEmployee(id),
+        siCalcService.listByEmployee(id),
+      ]).then(([perfResult, siResult]) => {
+        if (perfResult.status === 'fulfilled') {
+          const d = perfResult.value.data;
+          setBonusRecords(Array.isArray(d) ? d : (d.results ?? []));
+        }
+        if (siResult.status === 'fulfilled') {
+          const d = siResult.value.data;
+          setSiRecords(Array.isArray(d) ? d : (d.results ?? []));
+        }
+      }).finally(() => setBonusLoading(false));
+    }
+  }, [activeTab, id]);
+
   useEffect(() => {
     if (id) {
       fetchEmployee(id);
       loadUserInfo();
       loadContractConfigs();
     }
-    
+
     return () => {
       clearCurrentEmployee();
     };
@@ -745,6 +778,7 @@ const [respondentType, setRespondentType] = useState('EMPLOYEE'); //  ƏLAVƏ ET
                   label: 'Assets', 
                   icon: <Package size={16} />
                 },
+                { id: 'bonuses', label: 'Bonuses', icon: <Wallet size={16} /> },
                 { id: 'documents', label: 'Documents', icon: <FileText size={16} /> },
                 { id: 'activity', label: 'Activity', icon: <Activity size={16} /> }
               ].map((tab) => (
@@ -1239,6 +1273,407 @@ const [respondentType, setRespondentType] = useState('EMPLOYEE'); //  ƏLAVƏ ET
                   />
                 </div>
               )}
+
+              {/* Bonuses Tab */}
+              {activeTab === 'bonuses' && (() => {
+                const fmtMoney = v => parseFloat(v || 0).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const statusColors = {
+                  APPROVED:   darkMode ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border border-emerald-200",
+                  PAID:       darkMode ? "bg-violet-500/15 text-violet-400 border border-violet-500/20"   : "bg-violet-50 text-violet-700 border border-violet-200",
+                  CALCULATED: darkMode ? "bg-blue-500/15 text-blue-400 border border-blue-500/20"         : "bg-blue-50 text-blue-700 border border-blue-200",
+                  DRAFT:      darkMode ? "bg-slate-700/50 text-slate-400 border border-slate-600"         : "bg-gray-100 text-gray-500 border border-gray-200",
+                };
+                const currencySymbols = { AZN: "₼", USD: "$", EUR: "€", GBP: "£", TRY: "₺" };
+                const hasAny = bonusRecords.length > 0 || siRecords.length > 0;
+
+                return (
+                  <div className="space-y-6">
+                    <h3 className={`${textPrimary} text-lg font-bold`}>Bonus History</h3>
+
+                    {bonusLoading ? (
+                      <div className="flex items-center justify-center py-16">
+                        <div className="w-7 h-7 border-2 border-almet-sapphire border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    ) : !hasAny ? (
+                      <div className={`${bgCard} rounded-2xl border ${borderColor} p-12 text-center ${shadowClass}`}>
+                        <div className={`inline-flex p-4 rounded-2xl mb-4 ${darkMode ? "bg-almet-comet/30" : "bg-almet-mystic"}`}>
+                          <Wallet size={28} className="text-almet-steel-blue" />
+                        </div>
+                        <p className={`font-bold ${textPrimary}`}>No bonus records</p>
+                        <p className={`text-sm mt-1 ${textMuted}`}>Approved bonuses will appear here.</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* ── Annual Performance Bonus ── */}
+                        {bonusRecords.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className={`w-2 h-2 rounded-full bg-almet-sapphire`} />
+                              <p className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Annual Performance Bonus</p>
+                            </div>
+                            <div className="space-y-3">
+                              {bonusRecords
+                                .sort((a, b) => (b.bonus_year_label || b.bonus_year || 0) - (a.bonus_year_label || a.bonus_year || 0))
+                                .map(r => {
+                                  const isApproved   = r.status === "APPROVED" || r.status === "PAID";
+                                  const sym          = currencySymbols[r.salary_currency] || r.salary_currency || "₼";
+                                  const isExpanded   = expandedBonusId === r.id;
+                                  const detail       = bonusDetailMap[r.id];
+                                  const isLoadingDet = loadingDetailId === r.id;
+
+                                  const handleToggleDetail = async () => {
+                                    if (isExpanded) { setExpandedBonusId(null); return; }
+                                    setExpandedBonusId(r.id);
+                                    if (!bonusDetailMap[r.id]) {
+                                      setLoadingDetailId(r.id);
+                                      try {
+                                        const { data } = await bonusRecordService.detail(r.id);
+                                        setBonusDetailMap(prev => ({ ...prev, [r.id]: data }));
+                                      } catch { /* silent */ }
+                                      finally { setLoadingDetailId(null); }
+                                    }
+                                  };
+
+                                  const BreakdownTable = ({ items, color }) => {
+                                    if (!items?.length) return <p className={`text-xs ${textMuted} py-2`}>No breakdown available.</p>;
+                                    return (
+                                      <div className="space-y-1.5">
+                                        {items.map((item, i) => (
+                                          <div key={i} className={`flex items-center gap-3 px-3 py-2 rounded-xl
+                                            ${darkMode ? "bg-white/[0.03] border border-white/[0.06]" : "bg-white border border-gray-100"}`}>
+                                            <span className={`text-xs font-semibold flex-1 min-w-0 truncate ${textPrimary}`}>
+                                              {item.target_name || item.objective_name || item.competency_name || item.group_name || `Item ${i+1}`}
+                                            </span>
+                                            {item.weight_pct != null && (
+                                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0
+                                                ${darkMode ? "bg-white/[0.06] text-gray-400" : "bg-gray-100 text-gray-500"}`}>
+                                                {item.weight_pct}%
+                                              </span>
+                                            )}
+                                            {item.rating_name && (
+                                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0
+                                                ${darkMode ? "bg-almet-sapphire/15 text-almet-steel-blue" : "bg-almet-mystic text-almet-sapphire"}`}>
+                                                {item.rating_name}
+                                              </span>
+                                            )}
+                                            {item.bonus_salary_pct != null && (
+                                              <span className={`text-[10px] ${textMuted} shrink-0`}>{item.bonus_salary_pct}%</span>
+                                            )}
+                                            <span className={`text-xs font-bold tabular-nums shrink-0 ${color}`}>
+                                              {sym}{fmtMoney(item.bonus_amount)}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    );
+                                  };
+
+                                  return (
+                                    <div key={r.id} className={`${bgCard} rounded-2xl border ${borderColor} overflow-hidden ${shadowClass}`}>
+                                      <div className="p-5">
+                                        <div className="flex items-start justify-between gap-4 flex-wrap">
+                                          <div className="flex items-center gap-3">
+                                            <div className={`p-2.5 rounded-xl ${darkMode ? "bg-almet-sapphire/15" : "bg-almet-mystic"}`}>
+                                              <DollarSign size={16} className="text-almet-steel-blue" />
+                                            </div>
+                                            <div>
+                                              <p className={`font-bold text-sm ${textPrimary}`}>
+                                                {r.bonus_year_label ? `${r.bonus_year_label} Bonus Year` : `Bonus Year #${r.bonus_year}`}
+                                              </p>
+                                              <p className={`text-xs mt-0.5 ${textMuted}`}>
+                                                {r.salary_currency && r.salary_currency !== "AZN" ? r.salary_currency + " · " : ""}
+                                                Effective salary: {sym}{fmtMoney(r.effective_salary)}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-3">
+                                            <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${statusColors[r.status] || statusColors.DRAFT}`}>
+                                              {r.status}
+                                            </span>
+                                            {isApproved && (
+                                              <div className="text-right">
+                                                <p className={`text-xs ${textMuted}`}>Total Bonus</p>
+                                                <p className="text-lg font-bold text-emerald-500 tabular-nums">
+                                                  {sym}{fmtMoney(r.total_bonus)}
+                                                </p>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        {isApproved && (
+                                          <div className="grid grid-cols-3 gap-2 mt-4">
+                                            {[
+                                              { label: "Company Targets", value: r.company_targets_bonus, color: "text-almet-steel-blue" },
+                                              { label: "Objectives",       value: r.objectives_bonus,      color: "text-amber-500" },
+                                              { label: "Competencies",     value: r.competencies_bonus,    color: "text-violet-500" },
+                                            ].map(({ label, value, color }) => (
+                                              <div key={label} className={`p-3 rounded-xl text-center ${darkMode ? "bg-almet-comet/20" : "bg-almet-mystic/50 border border-gray-100"}`}>
+                                                <p className={`text-[10px] ${textMuted} mb-1`}>{label}</p>
+                                                <p className={`text-sm font-bold tabular-nums ${color}`}>{sym}{fmtMoney(value)}</p>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+
+                                        <div className="flex items-center justify-between mt-3">
+                                          {r.approved_at ? (
+                                            <p className={`text-[10px] ${textMuted}`}>
+                                              Approved: {new Date(r.approved_at).toLocaleDateString("en", { day: "numeric", month: "short", year: "numeric" })}
+                                            </p>
+                                          ) : <span />}
+                                          {isApproved && (
+                                            <button onClick={handleToggleDetail}
+                                              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl transition
+                                                ${isExpanded
+                                                  ? darkMode ? "bg-almet-sapphire/20 text-almet-steel-blue" : "bg-almet-mystic text-almet-sapphire"
+                                                  : darkMode ? "text-gray-500 hover:text-gray-300 hover:bg-white/[0.05]" : "text-gray-400 hover:text-almet-sapphire hover:bg-almet-mystic"}`}>
+                                              {isLoadingDet
+                                                ? <><span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin inline-block" /> Loading…</>
+                                                : isExpanded ? <>▲ Hide Details</> : <>▼ View Details</>}
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Expanded detail breakdown */}
+                                      {isExpanded && (
+                                        <div className={`border-t px-5 py-4 space-y-5
+                                          ${darkMode ? "border-white/[0.06] bg-[#080a10]" : "border-gray-100 bg-gray-50/60"}`}>
+                                          {isLoadingDet ? (
+                                            <div className="flex justify-center py-6">
+                                              <div className="w-5 h-5 border-2 border-almet-sapphire border-t-transparent rounded-full animate-spin" />
+                                            </div>
+                                          ) : detail ? (
+                                            <>
+                                              {detail.company_targets_breakdown?.length > 0 && (
+                                                <div>
+                                                  <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 text-almet-steel-blue`}>Company Targets</p>
+                                                  <BreakdownTable items={detail.company_targets_breakdown} color="text-almet-steel-blue" />
+                                                </div>
+                                              )}
+                                              {detail.objectives_breakdown?.length > 0 && (
+                                                <div>
+                                                  <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 text-amber-500`}>Objectives</p>
+                                                  <BreakdownTable items={detail.objectives_breakdown} color="text-amber-500" />
+                                                </div>
+                                              )}
+                                              {detail.competencies_breakdown?.length > 0 && (
+                                                <div>
+                                                  <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 text-violet-500`}>Competencies</p>
+                                                  <BreakdownTable items={detail.competencies_breakdown} color="text-violet-500" />
+                                                </div>
+                                              )}
+                                              {detail.notes && (
+                                                <p className={`text-xs italic ${textMuted}`}>{detail.notes}</p>
+                                              )}
+                                            </>
+                                          ) : (
+                                            <p className={`text-xs text-center py-4 ${textMuted}`}>No detail available.</p>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── Sales Incentive Bonus ── */}
+                        {siRecords.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-3">
+                              <div className={`w-2 h-2 rounded-full bg-amber-500`} />
+                              <p className={`text-xs font-semibold uppercase tracking-wider ${textMuted}`}>Sales Incentive Bonus</p>
+                            </div>
+                            <div className="space-y-3">
+                              {siRecords
+                                .sort((a, b) => new Date(b.approved_at || b.calculated_at || 0) - new Date(a.approved_at || a.calculated_at || 0))
+                                .map(r => {
+                                  const isApproved = r.status === "APPROVED" || r.status === "PAID";
+                                  return (
+                                    <div key={r.id} className={`${bgCard} rounded-2xl border ${borderColor} p-5 ${shadowClass}`}>
+                                      <div className="flex items-start justify-between gap-4 flex-wrap">
+                                        <div className="flex items-center gap-3">
+                                          <div className={`p-2.5 rounded-xl ${darkMode ? "bg-amber-500/15" : "bg-amber-50"}`}>
+                                            <TrendingUp size={16} className="text-amber-500" />
+                                          </div>
+                                          <div>
+                                            <p className={`font-bold text-sm ${textPrimary}`}>{r.period_name || `Period #${r.period}`}</p>
+                                            <p className={`text-xs mt-0.5 ${textMuted}`}>
+                                              Monthly salary: ₼{fmtMoney(r.monthly_salary)}
+                                              {r.payroll_impact_pct != null ? ` · Impact: ${parseFloat(r.payroll_impact_pct).toFixed(1)}%` : ""}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${statusColors[r.status] || statusColors.DRAFT}`}>
+                                            {r.status}
+                                          </span>
+                                          {isApproved && (
+                                            <div className="text-right">
+                                              <p className={`text-xs ${textMuted}`}>Total Bonus</p>
+                                              <p className="text-lg font-bold text-emerald-500 tabular-nums">
+                                                ₼{fmtMoney(r.total_bonus)}
+                                              </p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {isApproved && r.employee_pool_portion != null && (
+                                        <div className="grid grid-cols-2 gap-2 mt-4">
+                                          {[
+                                            { label: "Company Bonus Pool", value: r.company_bonus_pool, color: "text-almet-steel-blue" },
+                                            { label: "Employee Portion",   value: r.employee_pool_portion, color: "text-amber-500" },
+                                          ].map(({ label, value, color }) => (
+                                            <div key={label} className={`p-3 rounded-xl text-center ${darkMode ? "bg-almet-comet/20" : "bg-amber-50/50 border border-amber-100"}`}>
+                                              <p className={`text-[10px] ${textMuted} mb-1`}>{label}</p>
+                                              <p className={`text-sm font-bold tabular-nums ${color}`}>₼{fmtMoney(value)}</p>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {r.approved_at && (
+                                        <p className={`text-[10px] mt-3 ${textMuted}`}>
+                                          Approved: {new Date(r.approved_at).toLocaleDateString("en", { day: "numeric", month: "short", year: "numeric" })}
+                                        </p>
+                                      )}
+                                      {r.status !== "DRAFT" && (
+                                        <div className="mt-3 flex justify-end">
+                                          <button
+                                            onClick={async () => {
+                                              setSiDetailModal({ record: r, detail: null });
+                                              setSiDetailLoading(true);
+                                              try {
+                                                const { data } = await siCalcService.detail(r.id);
+                                                setSiDetailModal({ record: r, detail: data });
+                                              } finally { setSiDetailLoading(false); }
+                                            }}
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition border
+                                              ${darkMode ? "border-amber-500/30 text-amber-400 hover:bg-amber-500/10" : "border-amber-200 text-amber-600 hover:bg-amber-50"}`}>
+                                            <Eye size={12} /> View Details
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  {/* ── SI Detail Modal ── */}
+                  {siDetailModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                      onClick={() => setSiDetailModal(null)}>
+                      <div
+                        onClick={e => e.stopPropagation()}
+                        className={`w-full max-w-xl rounded-2xl border shadow-2xl overflow-hidden max-h-[90vh] flex flex-col
+                          ${darkMode ? "bg-almet-san-juan border-almet-comet" : "bg-white border-gray-200"}`}>
+                        {/* Header */}
+                        <div className={`px-5 py-4 border-b flex items-center justify-between
+                          ${darkMode ? "border-almet-comet bg-almet-cloud-burst/50" : "border-gray-100 bg-amber-50"}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-xl ${darkMode ? "bg-amber-500/15" : "bg-amber-100"}`}>
+                              <TrendingUp size={16} className="text-amber-500" />
+                            </div>
+                            <div>
+                              <p className={`font-bold text-sm ${textPrimary}`}>
+                                {siDetailModal.record.period_name || `Period #${siDetailModal.record.period}`}
+                              </p>
+                              <p className={`text-xs ${textMuted}`}>Sales Incentive Bonus — Detail</p>
+                            </div>
+                          </div>
+                          <button onClick={() => setSiDetailModal(null)}
+                            className={`p-1.5 rounded-lg transition ${darkMode ? "text-gray-400 hover:text-white hover:bg-almet-comet" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"}`}>
+                            ✕
+                          </button>
+                        </div>
+                        {/* Body */}
+                        <div className="overflow-y-auto p-5 space-y-4">
+                          {siDetailLoading || !siDetailModal.detail ? (
+                            <div className="flex items-center justify-center py-12">
+                              <div className="w-7 h-7 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                            </div>
+                          ) : (() => {
+                            const d = siDetailModal.detail;
+                            const fmtV = v => parseFloat(v || 0).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            return (
+                              <>
+                                {/* Summary */}
+                                <div className={`grid grid-cols-2 gap-3`}>
+                                  {[
+                                    { label: "Monthly Salary", value: `₼${fmtV(d.monthly_salary)}`,       color: textPrimary },
+                                    { label: "Total Salary",   value: `₼${fmtV(d.total_salary)}`,         color: textPrimary },
+                                    { label: "Company Pool",   value: `₼${fmtV(d.company_bonus_pool)}`,   color: "text-almet-steel-blue" },
+                                    { label: "Your Portion",   value: `₼${fmtV(d.employee_pool_portion)}`, color: "text-amber-500" },
+                                  ].map(({ label, value, color }) => (
+                                    <div key={label} className={`p-3 rounded-xl text-center border ${darkMode ? "bg-almet-comet/20 border-almet-comet" : "bg-gray-50 border-gray-100"}`}>
+                                      <p className={`text-[10px] ${textMuted} mb-1`}>{label}</p>
+                                      <p className={`text-sm font-bold ${color}`}>{value}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                                {/* Total */}
+                                <div className={`flex items-center justify-between p-4 rounded-xl border
+                                  ${darkMode ? "bg-emerald-500/10 border-emerald-500/20" : "bg-emerald-50 border-emerald-200"}`}>
+                                  <span className={`text-sm font-semibold ${textPrimary}`}>Total Bonus</span>
+                                  <span className="text-xl font-bold text-emerald-500">₼{fmtV(d.total_bonus)}</span>
+                                </div>
+                                {/* Company KPI Results */}
+                                {d.company_kpi_results?.length > 0 && (
+                                  <div>
+                                    <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>Company KPI Results</p>
+                                    <div className="space-y-1.5">
+                                      {d.company_kpi_results.map((kpi, i) => (
+                                        <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-lg
+                                          ${darkMode ? "bg-almet-comet/20" : "bg-gray-50"}`}>
+                                          <span className={`text-xs ${textPrimary}`}>{kpi.kpi_name}</span>
+                                          <div className="flex items-center gap-2">
+                                            <span className={`text-xs ${textMuted}`}>{kpi.achievement_pct != null ? `${(parseFloat(kpi.achievement_pct)*100).toFixed(0)}%` : "—"}</span>
+                                            <span className={`text-xs px-2 py-0.5 rounded-full font-bold
+                                              ${darkMode ? "bg-almet-sapphire/15 text-almet-steel-blue" : "bg-blue-50 text-blue-700"}`}>
+                                              {kpi.rating_label || "—"}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {/* Individual KPI Results */}
+                                {d.individual_kpi_results?.length > 0 && (
+                                  <div>
+                                    <p className={`text-xs font-bold uppercase tracking-wider mb-2 ${textMuted}`}>Individual KPI Results</p>
+                                    <div className="space-y-1.5">
+                                      {d.individual_kpi_results.map((kpi, i) => (
+                                        <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-lg
+                                          ${darkMode ? "bg-almet-comet/20" : "bg-gray-50"}`}>
+                                          <span className={`text-xs ${textPrimary}`}>{kpi.kpi_name}</span>
+                                          <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold
+                                            ${kpi.band_label === 'E++' ? (darkMode ? "bg-emerald-500/15 text-emerald-400" : "bg-emerald-50 text-emerald-700")
+                                              : kpi.band_label === 'E+' ? (darkMode ? "bg-sky-500/15 text-sky-400" : "bg-sky-50 text-sky-700")
+                                              : kpi.band_label === 'E'  ? (darkMode ? "bg-amber-500/15 text-amber-400" : "bg-amber-50 text-amber-700")
+                                              : (darkMode ? "bg-rose-500/15 text-rose-400" : "bg-rose-50 text-rose-700")}`}>
+                                            {kpi.final_rating || kpi.band_label || "—"}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                );
+              })()}
 
               {/* Documents Tab */}
               {activeTab === 'documents' && (

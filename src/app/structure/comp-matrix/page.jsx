@@ -62,11 +62,25 @@ const TextInput = ({ value, onChange, placeholder = '', required = false, autoFo
   />
 );
 
-const StatChip = ({ label }) => (
-  <div className="px-3 py-1 rounded-full bg-almet-mystic dark:bg-almet-comet text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai border border-gray-200 dark:border-almet-comet">
+const StatChip = ({ label, color }) => (
+  <div
+    className="px-3 py-1 rounded-full text-xs font-semibold border"
+    style={color ? {
+      background: `${color}15`,
+      color,
+      borderColor: `${color}40`,
+    } : undefined}
+  >
     {label}
   </div>
 );
+
+// Per-type color config: accent hex, Tailwind active classes
+const VIEW_CONFIG = {
+  skills:     { accent: '#1d6fa4', activeBg: 'bg-blue-600',   activeText: 'text-white', label: 'Skills',     icon: Target  },
+  behavioral: { accent: '#7c3aed', activeBg: 'bg-violet-600', activeText: 'text-white', label: 'Behavioral', icon: Users   },
+  leadership: { accent: '#d97706', activeBg: 'bg-amber-500',  activeText: 'text-white', label: 'Leadership', icon: Crown   },
+};
 
 const CompetencyMatrixSystemInner = () => {
   const { darkMode } = useTheme();
@@ -155,71 +169,50 @@ const CompetencyMatrixSystemInner = () => {
     setLoading(true);
     setErr(null);
     try {
+      // Single parallel call per type — backend returns full nested data via include_details=true
+      // This replaces O(N+M) serial API calls with 3 parallel calls
       const [sg, bg, lmg] = await Promise.all([
-        competencyApi.skillGroups.getAll(),
-        competencyApi.behavioralGroups.getAll(),
-        competencyApi.leadershipMainGroups.getAll(),
+        competencyApi.skillGroups.getAll({ include_details: true }),
+        competencyApi.behavioralGroups.getAll({ include_details: true }),
+        competencyApi.leadershipMainGroups.getAll({ include_details: true }),
       ]);
-      
+
       const sgList = sg.results || [];
       const bgList = bg.results || [];
       const lmgList = lmg.results || [];
-      
+
       setSkillGroups(sgList);
       setBehavioralGroups(bgList);
       setLeadershipMainGroups(lmgList);
 
-      const [sgd, bgd, lmgd] = await Promise.all([
-        Promise.all(sgList.map(g => competencyApi.skillGroups.getById(g.id))),
-        Promise.all(bgList.map(g => competencyApi.behavioralGroups.getById(g.id))),
-        Promise.all(lmgList.map(g => competencyApi.leadershipMainGroups.getById(g.id))),
-      ]);
-
+      // Skills: group name → [{id, name, created_at, updated_at}]
       const sMap = {};
-      sgd.forEach(g => {
+      sgList.forEach(g => {
         sMap[g.name] = (g.skills || []).map(s => ({
-          id: s.id,
-          name: s.name,
-          created_at: s.created_at,
-          updated_at: s.updated_at
+          id: s.id, name: s.name, created_at: s.created_at, updated_at: s.updated_at
         }));
       });
 
+      // Behavioral: group name → [{id, name, ...}]
       const bMap = {};
-      bgd.forEach(g => {
+      bgList.forEach(g => {
         bMap[g.name] = (g.competencies || []).map(c => ({
-          id: c.id,
-          name: c.name,
-          created_at: c.created_at,
-          updated_at: c.updated_at
+          id: c.id, name: c.name, created_at: c.created_at, updated_at: c.updated_at
         }));
       });
 
-      const leadershipStructure = [];
-      for (const mg of lmgd) {
-        const mainGroup = {
-          id: mg.id,
-          name: mg.name,
-          childGroups: []
-        };
-        
-        const childGroups = mg.child_groups || [];
-        for (const cg of childGroups) {
-          const cgDetail = await competencyApi.leadershipChildGroups.getById(cg.id);
-          mainGroup.childGroups.push({
-            id: cgDetail.id,
-            name: cgDetail.name,
-            items: (cgDetail.items || []).map(item => ({
-              id: item.id,
-              name: item.name,
-              created_at: item.created_at,
-              updated_at: item.updated_at
-            }))
-          });
-        }
-        
-        leadershipStructure.push(mainGroup);
-      }
+      // Leadership: full tree (main group → child groups → items)
+      const leadershipStructure = lmgList.map(mg => ({
+        id: mg.id,
+        name: mg.name,
+        childGroups: (mg.child_groups || []).map(cg => ({
+          id: cg.id,
+          name: cg.name,
+          items: (cg.items || []).map(item => ({
+            id: item.id, name: item.name, created_at: item.created_at, updated_at: item.updated_at
+          }))
+        }))
+      }));
 
       setSkillsData(sMap);
       setBehavioralData(bMap);
@@ -732,8 +725,11 @@ const CompetencyMatrixSystemInner = () => {
                     <ArrowLeft size={20} className={text} />
                   </button>
                   
-                  <div className={`p-2 rounded-lg ${darkMode ? 'bg-almet-comet' : 'bg-almet-mystic'}`}>
-                    <Target className="w-5 h-5 text-almet-sapphire" />
+                  <div className="p-2 rounded-lg" style={{ background: `${VIEW_CONFIG[activeView]?.accent}18` }}>
+                    {React.createElement(VIEW_CONFIG[activeView]?.icon || Target, {
+                      className: 'w-5 h-5',
+                      style: { color: VIEW_CONFIG[activeView]?.accent }
+                    })}
                   </div>
                   
                   <div>
@@ -754,11 +750,11 @@ const CompetencyMatrixSystemInner = () => {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <StatChip label={`${stats.totalGroups} groups`} />
+                  <StatChip label={`${stats.totalGroups} groups`} color={VIEW_CONFIG[activeView]?.accent} />
                   {activeView === 'leadership' && stats.totalChildGroups > 0 && (
-                    <StatChip label={`${stats.totalChildGroups} child groups`} />
+                    <StatChip label={`${stats.totalChildGroups} child groups`} color={VIEW_CONFIG[activeView]?.accent} />
                   )}
-                  <StatChip label={`${stats.totalItems} items`} />
+                  <StatChip label={`${stats.totalItems} items`} color={VIEW_CONFIG[activeView]?.accent} />
                 </div>
               </div>
             </div>
@@ -767,21 +763,24 @@ const CompetencyMatrixSystemInner = () => {
           {/* Filters and Controls Bar */}
           <div className={`${card} border ${border} rounded-2xl p-2 shadow-sm`}>
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
-              <div className="flex items-center gap-1">
-                {[
-                  { id: 'skills', name: 'Skills', icon: Target },
-                  { id: 'behavioral', name: 'Behavioral', icon: Users },
-                  { id: 'leadership', name: 'Leadership', icon: Crown },
-                ].map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => setActiveView(t.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${activeView === t.id ? 'bg-almet-sapphire text-white shadow' : 'text-almet-waterloo hover:bg-almet-mystic hover:text-almet-cloud-burst'}`}
-                  >
-                    <t.icon size={16} />
-                    <span className="hidden sm:inline">{t.name}</span>
-                  </button>
-                ))}
+              <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100 dark:bg-gray-800">
+                {Object.entries(VIEW_CONFIG).map(([id, cfg]) => {
+                  const active = activeView === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => setActiveView(id)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                        active
+                          ? `${cfg.activeBg} ${cfg.activeText} shadow-md`
+                          : 'text-almet-waterloo hover:text-almet-cloud-burst dark:hover:text-white'
+                      }`}
+                    >
+                      <cfg.icon size={15} />
+                      <span className="hidden sm:inline">{cfg.label}</span>
+                    </button>
+                  );
+                })}
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -824,8 +823,30 @@ const CompetencyMatrixSystemInner = () => {
                   className="min-w-[140px]"
                 />
 
-                <ActionButton icon={Plus} label="Item" onClick={() => setShowAddItem(true)} size="sm" />
-                <ActionButton icon={Building} label="Group" onClick={() => setShowAddGroup(true)} size="sm" variant="success" />
+                <button
+                  onClick={() => setShowAddItem(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white shadow-sm transition-all hover:shadow hover:scale-[1.02] active:scale-[0.98]"
+                  style={{ background: VIEW_CONFIG[activeView]?.accent }}
+                >
+                  <Plus size={14} />
+                  <span className="hidden sm:inline">
+                    {activeView === 'skills' ? 'Skill' : activeView === 'behavioral' ? 'Competency' : 'Item'}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setShowAddGroup(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all hover:shadow hover:scale-[1.02] active:scale-[0.98] border"
+                  style={{
+                    color: VIEW_CONFIG[activeView]?.accent,
+                    borderColor: `${VIEW_CONFIG[activeView]?.accent}50`,
+                    background: `${VIEW_CONFIG[activeView]?.accent}10`,
+                  }}
+                >
+                  <Building size={14} />
+                  <span className="hidden sm:inline">
+                    {activeView === 'leadership' ? 'Main Group' : 'Group'}
+                  </span>
+                </button>
               </div>
             </div>
           </div>
@@ -848,6 +869,7 @@ const CompetencyMatrixSystemInner = () => {
                 cancelEdit={cancelEdit}
                 busy={busy}
                 darkMode={darkMode}
+                accentColor={VIEW_CONFIG.leadership.accent}
               />
             ) : (
               <LeadershipCardView
@@ -873,6 +895,7 @@ const CompetencyMatrixSystemInner = () => {
                 setShowAddItem={setShowAddItem}
                 setNewItem={setNewItem}
                 darkMode={darkMode}
+                accentColor={VIEW_CONFIG.leadership.accent}
               />
             )
           ) : (
@@ -888,6 +911,7 @@ const CompetencyMatrixSystemInner = () => {
                 cancelEdit={cancelEdit}
                 busy={busy}
                 darkMode={darkMode}
+                accentColor={VIEW_CONFIG[activeView]?.accent}
               />
             ) : (
               <CardView
@@ -907,6 +931,7 @@ const CompetencyMatrixSystemInner = () => {
                 setShowAddItem={setShowAddItem}
                 setNewItem={setNewItem}
                 darkMode={darkMode}
+                accentColor={VIEW_CONFIG[activeView]?.accent}
               />
             )
           )}
@@ -915,22 +940,28 @@ const CompetencyMatrixSystemInner = () => {
         {/* Add Item Modal */}
         {showAddItem && (
           <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm p-4">
-            <div className={`${card} border ${border} rounded-2xl w-full max-w-md shadow-2xl`}>
-              <div className={`p-5 border-b ${border} flex items-center gap-2`}>
-                <span className="p-2 rounded-xl bg-almet-mystic">
-                  <Plus className="text-almet-sapphire" />
+            <div className={`${card} border ${border} rounded-2xl w-full max-w-md shadow-2xl overflow-hidden`}>
+              <div className="h-1 w-full" style={{ background: VIEW_CONFIG[activeView]?.accent }} />
+              <div className={`p-5 border-b ${border} flex items-center gap-3`}>
+                <span className="p-2 rounded-xl" style={{ background: `${VIEW_CONFIG[activeView]?.accent}18` }}>
+                  <Plus size={18} style={{ color: VIEW_CONFIG[activeView]?.accent }} />
                 </span>
-                <h3 className={`text-sm font-bold ${text}`}>
-                  New {activeView === 'skills' ? 'Skill' : activeView === 'behavioral' ? 'Competency' : 'Leadership Item'}
-                </h3>
+                <div>
+                  <h3 className={`text-sm font-bold ${text}`}>
+                    New {activeView === 'skills' ? 'Skill' : activeView === 'behavioral' ? 'Competency' : 'Leadership Item'}
+                  </h3>
+                  <p className={`text-xs ${textDim} mt-0.5`}>
+                    {VIEW_CONFIG[activeView]?.label} competency
+                  </p>
+                </div>
                 <button
-                  className="ml-auto p-2 rounded-xl hover:bg-almet-mystic"
+                  className={`ml-auto p-2 rounded-xl transition-colors ${darkMode ? 'hover:bg-almet-comet' : 'hover:bg-almet-mystic'}`}
                   onClick={() => {
                     setShowAddItem(false);
                     setNewItem({ main_group: '', child_group: '', name: '' });
                   }}
                 >
-                  <X />
+                  <X size={18} className={textDim} />
                 </button>
               </div>
               <div className="p-5 space-y-4">
@@ -1016,22 +1047,28 @@ const CompetencyMatrixSystemInner = () => {
         {/* Add Group Modal */}
         {showAddGroup && (
           <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm p-4">
-            <div className={`${card} border ${border} rounded-2xl w-full max-w-md shadow-2xl`}>
-              <div className={`p-5 border-b ${border} flex items-center gap-2`}>
-                <span className="p-2 rounded-xl bg-almet-mystic">
-                  <Building className="text-almet-sapphire" />
+            <div className={`${card} border ${border} rounded-2xl w-full max-w-md shadow-2xl overflow-hidden`}>
+              <div className="h-1 w-full" style={{ background: VIEW_CONFIG[activeView]?.accent }} />
+              <div className={`p-5 border-b ${border} flex items-center gap-3`}>
+                <span className="p-2 rounded-xl" style={{ background: `${VIEW_CONFIG[activeView]?.accent}18` }}>
+                  <Building size={18} style={{ color: VIEW_CONFIG[activeView]?.accent }} />
                 </span>
-                <h3 className={`text-sm font-bold ${text}`}>
-                  New {activeView === 'leadership' ? 'Main Group' : 'Group'}
-                </h3>
+                <div>
+                  <h3 className={`text-sm font-bold ${text}`}>
+                    New {activeView === 'leadership' ? 'Main Group' : 'Group'}
+                  </h3>
+                  <p className={`text-xs ${textDim} mt-0.5`}>
+                    {VIEW_CONFIG[activeView]?.label} group
+                  </p>
+                </div>
                 <button
-                  className="ml-auto p-2 rounded-xl hover:bg-almet-mystic"
+                  className={`ml-auto p-2 rounded-xl transition-colors ${darkMode ? 'hover:bg-almet-comet' : 'hover:bg-almet-mystic'}`}
                   onClick={() => {
                     setShowAddGroup(false);
                     setNewGroupName('');
                   }}
                 >
-                  <X />
+                  <X size={18} className={textDim} />
                 </button>
               </div>
               <div className="p-5 space-y-4">
@@ -1069,20 +1106,24 @@ const CompetencyMatrixSystemInner = () => {
         {/* Add Child Group Modal - Leadership only */}
         {activeView === 'leadership' && showAddChildGroup && (
           <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm p-4">
-            <div className={`${card} border ${border} rounded-2xl w-full max-w-md shadow-2xl`}>
-              <div className={`p-5 border-b ${border} flex items-center gap-2`}>
-                <span className="p-2 rounded-xl bg-almet-mystic">
-                  <Building className="text-almet-sapphire" />
+            <div className={`${card} border ${border} rounded-2xl w-full max-w-md shadow-2xl overflow-hidden`}>
+              <div className="h-1 w-full" style={{ background: VIEW_CONFIG.leadership.accent }} />
+              <div className={`p-5 border-b ${border} flex items-center gap-3`}>
+                <span className="p-2 rounded-xl" style={{ background: `${VIEW_CONFIG.leadership.accent}18` }}>
+                  <Building size={18} style={{ color: VIEW_CONFIG.leadership.accent }} />
                 </span>
-                <h3 className={`text-sm font-bold ${text}`}>New Child Group</h3>
+                <div>
+                  <h3 className={`text-sm font-bold ${text}`}>New Child Group</h3>
+                  <p className={`text-xs ${textDim} mt-0.5`}>Leadership sub-category</p>
+                </div>
                 <button
-                  className="ml-auto p-2 rounded-xl hover:bg-almet-mystic"
+                  className={`ml-auto p-2 rounded-xl transition-colors ${darkMode ? 'hover:bg-almet-comet' : 'hover:bg-almet-mystic'}`}
                   onClick={() => {
                     setShowAddChildGroup(false);
                     setNewChildGroup({ main_group: '', name: '' });
                   }}
                 >
-                  <X />
+                  <X size={18} className={textDim} />
                 </button>
               </div>
               <div className="p-5 space-y-4">

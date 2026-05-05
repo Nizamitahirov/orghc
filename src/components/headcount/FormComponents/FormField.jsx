@@ -3,6 +3,30 @@ import { useState, useEffect, useRef } from "react";
 import { ChevronDown, Loader, AlertCircle, Search, X, Check } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 
+const ERROR_MAP = {
+  'This field is required.': 'Bu sahə mütləq doldurulmalıdır.',
+  'This field may not be blank.': 'Bu sahə boş ola bilməz.',
+  'Enter a valid email address.': 'Düzgün e-poçt ünvanı daxil edin.',
+  'Ensure this field has no more than': 'Bu sahə çox uzundur.',
+  'Ensure this value is greater than or equal to': 'Dəyər çox kiçikdir.',
+  'Ensure this value is less than or equal to': 'Dəyər çox böyükdür.',
+  'A valid integer is required.': 'Düzgün rəqəm daxil edin.',
+  'A valid number is required.': 'Düzgün rəqəm daxil edin.',
+  'This field must be unique.': 'Bu dəyər artıq mövcuddur.',
+  'Not a valid string.': 'Düzgün mətn daxil edin.',
+  'Invalid pk': 'Seçilmiş dəyər etibarsızdır.',
+  'Invalid choice': 'Etibarsız seçim.',
+  'Invalid date': 'Düzgün tarix daxil edin.',
+};
+
+function friendlyError(msg) {
+  if (!msg) return msg;
+  for (const [key, val] of Object.entries(ERROR_MAP)) {
+    if (msg.includes(key)) return val;
+  }
+  return msg;
+}
+
 /**
  * IMPROVED FORM FIELD COMPONENT
  * ✓ Daha yaxşı vizual hiyerarxiya
@@ -372,12 +396,12 @@ const FormField = ({
       
       {/* ERROR MESSAGE */}
       {validationError && (
-        <div className="mt-1 flex items-center text-red-500 text-[11px]">
-          <AlertCircle className="h-3 w-3 mr-1 flex-shrink-0" />
-          <span>{validationError}</span>
+        <div className="mt-1.5 flex items-start gap-1.5 bg-red-50 dark:bg-red-900/15 border border-red-200 dark:border-red-800/50 rounded-md px-2.5 py-1.5">
+          <AlertCircle className="h-3.5 w-3.5 text-red-500 flex-shrink-0 mt-px" />
+          <span className="text-[11px] text-red-600 dark:text-red-400 leading-snug">{friendlyError(validationError)}</span>
         </div>
       )}
-      
+
       {/* HELP TEXT */}
       {helpText && !validationError && (
         <p className={`mt-1 text-[11px] ${textMuted}`}>{helpText}</p>

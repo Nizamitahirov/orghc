@@ -1,36 +1,56 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { bonusRecordService, downloadBlob } from "@/services/bonusService";
+import { bonusRecordService, exchangeRateService, downloadBlob } from "@/services/bonusService";
 import {
   Search, CheckCircle, Download, ChevronDown, ChevronUp,
   Calculator, Users, TrendingUp, Target, Brain, RefreshCw,
-  AlertTriangle,
+  AlertTriangle, DollarSign,
 } from "lucide-react";
 
 // ─── Status config ─────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
-  DRAFT:      { label: "Draft",      bg: "bg-slate-100",  text: "text-slate-600",   dot: "bg-slate-400",   ring: "ring-slate-200"   },
-  CALCULATED: { label: "Calculated", bg: "bg-blue-50",    text: "text-blue-600",    dot: "bg-blue-500",    ring: "ring-blue-100"    },
-  APPROVED:   { label: "Approved",   bg: "bg-emerald-50", text: "text-emerald-600", dot: "bg-emerald-500", ring: "ring-emerald-100" },
-  PAID:       { label: "Paid",       bg: "bg-violet-50",  text: "text-violet-600",  dot: "bg-violet-500",  ring: "ring-violet-100"  },
+  DRAFT:      { label: "Not Started",      bg: "bg-slate-100",  text: "text-slate-600",   dot: "bg-slate-400",   ring: "ring-slate-200"   },
+  CALCULATED: { label: "Ready to Approve", bg: "bg-blue-50",    text: "text-blue-600",    dot: "bg-blue-500",    ring: "ring-blue-100"    },
+  APPROVED:   { label: "Approved",         bg: "bg-emerald-50", text: "text-emerald-600", dot: "bg-emerald-500", ring: "ring-emerald-100" },
+  PAID:       { label: "Paid",             bg: "bg-violet-50",  text: "text-violet-600",  dot: "bg-violet-500",  ring: "ring-violet-100"  },
 };
 const STATUS_CONFIG_DARK = {
-  DRAFT:      { label: "Draft",      bg: "bg-slate-800",      text: "text-slate-400",   dot: "bg-slate-500",   ring: "ring-slate-700"      },
-  CALCULATED: { label: "Calculated", bg: "bg-blue-500/15",    text: "text-blue-400",    dot: "bg-blue-500",    ring: "ring-blue-500/30"    },
-  APPROVED:   { label: "Approved",   bg: "bg-emerald-500/15", text: "text-emerald-400", dot: "bg-emerald-500", ring: "ring-emerald-500/30" },
-  PAID:       { label: "Paid",       bg: "bg-violet-500/15",  text: "text-violet-400",  dot: "bg-violet-500",  ring: "ring-violet-500/30"  },
+  DRAFT:      { label: "Not Started",      bg: "bg-slate-800",      text: "text-slate-400",   dot: "bg-slate-500",   ring: "ring-slate-700"      },
+  CALCULATED: { label: "Ready to Approve", bg: "bg-blue-500/15",    text: "text-blue-400",    dot: "bg-blue-500",    ring: "ring-blue-500/30"    },
+  APPROVED:   { label: "Approved",         bg: "bg-emerald-500/15", text: "text-emerald-400", dot: "bg-emerald-500", ring: "ring-emerald-500/30" },
+  PAID:       { label: "Paid",             bg: "bg-violet-500/15",  text: "text-violet-400",  dot: "bg-violet-500",  ring: "ring-violet-500/30"  },
 };
 
-// ─── Currency symbol helper ────────────────────────────────────────────────
+// ─── Currency helpers ──────────────────────────────────────────────────────
 const CURRENCY_SYMBOLS = { AZN: "₼", USD: "$", EUR: "€", GBP: "£", TRY: "₺", RUB: "₽" };
+const CURRENCY_LABELS  = { AZN: "AZN", USD: "USD", EUR: "EUR", GBP: "GBP", TRY: "TRY", RUB: "RUB" };
 function currencySymbol(code) {
   return CURRENCY_SYMBOLS[code] || code || "₼";
+}
+function convertAmount(value, fromCurrency, toCurrency, rates) {
+  const v = parseFloat(value || 0);
+  if (!fromCurrency || fromCurrency === toCurrency || !rates?.length) return v;
+  const getRate = (from, to) => {
+    const d = rates.find(r => r.from_currency === from && r.to_currency === to);
+    if (d) return parseFloat(d.rate);
+    const inv = rates.find(r => r.from_currency === to && r.to_currency === from);
+    if (inv && parseFloat(inv.rate) !== 0) return 1 / parseFloat(inv.rate);
+    return null;
+  };
+  const direct = getRate(fromCurrency, toCurrency);
+  if (direct !== null) return v * direct;
+  // 2-hop through AZN (CBAR rates are all AZN-based)
+  const toAzn = getRate(fromCurrency, 'AZN');
+  const aznTo = getRate('AZN', toCurrency);
+  if (toAzn !== null && aznTo !== null) return v * toAzn * aznTo;
+  return v;
 }
 
 
 function EmployeeDropdown({ records, selected, onSelect, dark }) {
   const [open, setOpen] = useState(false);
   const [q, setQ]       = useState("");
+  const [bfFilter, setBfFilter] = useState("ALL");
   const ref             = useRef(null);
   // FIX: onSelect-i ref-də saxla ki, həmişə ən yeni versiyası işləsin
   const onSelectRef     = useRef(onSelect);
@@ -42,10 +62,14 @@ function EmployeeDropdown({ records, selected, onSelect, dark }) {
     return () => document.removeEventListener("mousedown", fn);
   }, []);
 
-  const filtered = records.filter(r =>
-    r.employee_name?.toLowerCase().includes(q.toLowerCase()) ||
-    r.employee_id_code?.toLowerCase().includes(q.toLowerCase())
-  );
+  const bfOptions = [...new Set(records.map(r => r.business_function_name).filter(Boolean))].sort();
+
+  const filtered = records.filter(r => {
+    const matchQ  = r.employee_name?.toLowerCase().includes(q.toLowerCase()) ||
+                    r.employee_id_code?.toLowerCase().includes(q.toLowerCase());
+    const matchBf = bfFilter === "ALL" || r.business_function_name === bfFilter;
+    return matchQ && matchBf;
+  });
 
   const statCfg = (s) => dark
     ? (STATUS_CONFIG_DARK[s] || STATUS_CONFIG_DARK.DRAFT)
@@ -87,7 +111,7 @@ function EmployeeDropdown({ records, selected, onSelect, dark }) {
         <div className={`absolute top-full mt-1.5 left-0 right-0 z-50 rounded-xl border shadow-2xl overflow-hidden
           ${dark ? "bg-[#161616] border-[#2e2e2e]" : "bg-white border-gray-200"}`}>
           <div className={`p-2.5 border-b ${dark ? "border-[#2e2e2e]" : "border-gray-100"}`}>
-            <div className="relative">
+            <div className="relative mb-2">
               <Search size={13} className={`absolute left-3 top-1/2 -translate-y-1/2 ${dark ? "text-gray-500" : "text-almet-bali-hai"}`} />
               <input
                 autoFocus value={q} onChange={e => setQ(e.target.value)}
@@ -98,6 +122,18 @@ function EmployeeDropdown({ records, selected, onSelect, dark }) {
                     : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-almet-sapphire focus:bg-white"}`}
               />
             </div>
+            {bfOptions.length > 1 && (
+              <div className="flex flex-wrap gap-1">
+                {["ALL", ...bfOptions].map(bf => (
+                  <button key={bf} type="button" onClick={() => setBfFilter(bf)}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition
+                      ${bfFilter === bf
+                        ? dark ? "bg-amber-500/20 text-amber-300" : "bg-amber-500 text-white"
+                        : dark ? "bg-[#2a2a2a] text-gray-500 hover:text-gray-300" : "bg-gray-100 text-gray-500 hover:bg-almet-mystic"}`}
+                  >{bf === "ALL" ? "All" : bf}</button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="max-h-60 overflow-y-auto">
@@ -107,8 +143,8 @@ function EmployeeDropdown({ records, selected, onSelect, dark }) {
               const s = statCfg(r.status);
               return (
                 <button key={r.id}
-                  onClick={() => { if (r.has_performance !== false) handleSelect(r); }}
-                  disabled={r.has_performance === false}
+                  onClick={() => { if (r.has_performance !== false || r.status !== "DRAFT") handleSelect(r); }}
+                  disabled={r.has_performance === false && r.status === "DRAFT"}
                   className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition
                     ${r.has_performance === false
                       ? "opacity-40 cursor-not-allowed"
@@ -121,7 +157,7 @@ function EmployeeDropdown({ records, selected, onSelect, dark }) {
                       {r.employee_name}
                     </p>
                     <p className={`text-xs ${dark ? "text-gray-500" : "text-almet-bali-hai"}`}>
-                      {r.employee_id_code} · {r.position}
+                      {r.employee_id_code} · {r.job_title || r.position || "—"}
                       {r.has_performance === false && (
                         <span className="ml-1.5 text-amber-400">· performance pending</span>
                       )}
@@ -225,10 +261,14 @@ function BonusSection({ icon: Icon, title, subtitle, total, color, bgColor, rows
 export default function BonusCalculationPanel({
   records, loading, selectedRecord, onSelectRecord, bonusYear, dark, onUpdate,
 }) {
-  const [detail,  setDetail]  = useState(null);
-  const [fetching,setFetch]   = useState(false);
-  const [saving,  setSaving]  = useState(null);
-  const [open,    setOpen]    = useState({ targets: true, objectives: true, competencies: true });
+  const [detail,          setDetail]         = useState(null);
+  const [fetching,        setFetch]          = useState(false);
+  const [saving,          setSaving]         = useState(null);
+  const [open,            setOpen]           = useState({ targets: true, objectives: true, competencies: true });
+  const [listQ,           setListQ]          = useState("");
+  const [listBf,          setListBf]         = useState("ALL");
+  const [exchangeRates,   setExchangeRates]  = useState([]);
+  const [displayCurrency, setDisplayCurrency] = useState(null); // null = use employee's own currency
 
   const statusCfg = (s) => dark
     ? (STATUS_CONFIG_DARK[s] || STATUS_CONFIG_DARK.DRAFT)
@@ -240,7 +280,9 @@ export default function BonusCalculationPanel({
     bonusRecordService.detail(selectedRecord.id)
       .then(({ data }) => setDetail(data))
       .finally(() => setFetch(false));
-  }, [selectedRecord?.id]);
+  // Use the full object as dep so a fresh object (same id) still triggers re-fetch
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRecord]);
 
   useEffect(() => {
     if (!detail) return;
@@ -249,6 +291,13 @@ export default function BonusCalculationPanel({
       bonusRecordService.detail(detail.id).then(({ data }) => setDetail(data));
     }
   }, [records]);
+
+  // Load live exchange rates from CBAR (no DB)
+  useEffect(() => {
+    exchangeRateService.liveRates()
+      .then(({ data }) => setExchangeRates(data.rates ?? []))
+      .catch(() => setExchangeRates([]));
+  }, []);
 
   const handleCalculate = async () => {
     if (!detail || bonusYear?.is_locked) return;
@@ -279,16 +328,28 @@ export default function BonusCalculationPanel({
   };
 
   // ── currency helpers ─────────────────────────────────────────────────────
-  const currency = detail?.salary_currency || "AZN";
-  const sym      = currencySymbol(currency);
+  const nativeCurrency = detail?.salary_currency || bonusYear?.base_currency || "AZN";
+  const currency       = displayCurrency || nativeCurrency;
+  const sym            = currencySymbol(currency);
+
+  // Available currencies for the selector: native + any currency in exchange rates
+  const availableCurrencies = [
+    nativeCurrency,
+    ...(bonusYear?.base_currency && bonusYear.base_currency !== nativeCurrency ? [bonusYear.base_currency] : []),
+    ...exchangeRates.map(r => r.to_currency),
+    ...exchangeRates.map(r => r.from_currency),
+  ].filter((c, i, arr) => c && arr.indexOf(c) === i);
 
   const fmt = v =>
     v != null
       ? parseFloat(v).toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       : "0.00";
 
-  // format + append currency symbol
-  const fmtC = v => `${fmt(v)} ${sym}`;
+  // Convert from employee's native currency to display currency, then format
+  const fmtC = v => {
+    const converted = convertAmount(v, nativeCurrency, currency, exchangeRates);
+    return `${fmt(converted)} ${sym}`;
+  };
 
   const toggle = id => setOpen(o => ({ ...o, [id]: !o[id] }));
 
@@ -299,84 +360,153 @@ export default function BonusCalculationPanel({
   const isZeroBonus   = detail?.notes?.startsWith("[ZERO]");
   const zeroBonusText = isZeroBonus ? detail.notes.replace("[ZERO] ", "") : null;
 
+  const listBfOptions = [...new Set(records.map(r => r.business_function_name).filter(Boolean))].sort();
+  const listFiltered  = records.filter(r => {
+    const matchQ  = r.employee_name?.toLowerCase().includes(listQ.toLowerCase()) ||
+                    r.employee_id_code?.toLowerCase().includes(listQ.toLowerCase());
+    const matchBf = listBf === "ALL" || r.business_function_name === listBf;
+    return matchQ && matchBf;
+  });
+
   const salaryItems = detail ? [
-    { label: "Yearly Salary",  value: fmtC(detail.yearly_salary),         accent: null              },
-    { label: "Worked Months",  value: detail.worked_months,                accent: null              },
-    { label: "Prorata Salary", value: fmtC(detail.prorata_salary),         accent: "text-orange-500" },
+    { label: "Yearly Salary (Gross)", value: fmtC(detail.yearly_salary), accent: null, gross: true },
+    { label: "Worked Months",         value: detail.worked_months,        accent: null              },
+    { label: "Prorata Salary",        value: fmtC(detail.prorata_salary), accent: "text-orange-500" },
     {
       label: detail.use_adjusted_salary ? "Adjusted Salary ✓" : "Adjusted Salary",
       value: detail.adjusted_yearly_salary ? fmtC(detail.adjusted_yearly_salary) : "—",
       accent: detail.use_adjusted_salary ? "text-almet-steel-blue" : null,
     },
     {
-      label: "Effective Salary",
+      label: "Effective Salary (Gross)",
       value: fmtC(detail.effective_salary),
       highlight: true,
       accent: "text-emerald-500",
+      gross: true,
     },
   ] : [];
 
+  const card = dark ? "bg-[#0f0f0f] border-[#1e1e1e]" : "bg-white border-gray-200 shadow-sm";
+
   return (
-    <div className={`rounded-2xl border overflow-hidden
-      ${dark ? "bg-[#0f0f0f] border-[#1e1e1e]" : "bg-white border-gray-200 shadow-sm"}`}>
+    <div className="grid lg:grid-cols-[300px_1fr] gap-4">
 
-      {/* ── Header ── */}
-      <div className={`px-5 py-4 border-b flex flex-wrap items-center gap-3
-        ${dark ? "border-[#1e1e1e] bg-[#0a0a0a]" : "border-gray-100 bg-gray-50/50"}`}>
-        <div className="flex items-center gap-2 shrink-0">
-          <div className={`p-1.5 rounded-lg ${dark ? "bg-[#1a1a1a]" : "bg-almet-mystic"}`}>
-            <Users size={14} className="text-almet-steel-blue" />
-          </div>
-          <span className={`text-sm font-bold ${dark ? "text-white" : "text-almet-cloud-burst"}`}>Employee</span>
-        </div>
-
-        <EmployeeDropdown
-          records={records}
-          selected={selectedRecord}
-          onSelect={onSelectRecord}
-          dark={dark}
-        />
-
-        {detail && (
-          <div className="ml-auto flex items-center gap-2">
-            {/* Currency badge */}
-            {currency !== "AZN" && (
-              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/20">
-                {currency}
-              </span>
-            )}
-            <span className={`text-xs px-3 py-1 rounded-full font-semibold ring-1
-              ${statusCfg(detail.status).bg} ${statusCfg(detail.status).text} ${statusCfg(detail.status).ring || ""}`}>
-              {statusCfg(detail.status).label}
+      {/* ── Left: Employee List ── */}
+      <div className={`rounded-2xl border overflow-hidden self-start ${card}`}>
+        <div className={`px-4 py-3 border-b ${dark ? "border-[#1e1e1e] bg-[#0a0a0a]" : "border-gray-100 bg-gray-50"}`}>
+          <div className="flex items-center gap-2 mb-2">
+            <Users size={13} className="text-almet-steel-blue" />
+            <span className={`text-sm font-bold ${dark ? "text-white" : "text-almet-cloud-burst"}`}>Employees</span>
+            <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-semibold
+              ${dark ? "bg-almet-sapphire/15 text-almet-steel-blue" : "bg-almet-mystic text-almet-sapphire"}`}>
+              {listFiltered.length}
             </span>
           </div>
-        )}
+          <div className="relative mb-2">
+            <Search size={12} className={`absolute left-2.5 top-1/2 -translate-y-1/2 ${dark ? "text-gray-500" : "text-almet-bali-hai"}`} />
+            <input value={listQ} onChange={e => setListQ(e.target.value)}
+              placeholder="Search name or badge…"
+              className={`w-full pl-8 pr-3 py-1.5 rounded-lg border text-xs outline-none transition
+                ${dark ? "bg-[#1a1a1a] border-[#2a2a2a] text-white placeholder-gray-600 focus:border-almet-steel-blue/50"
+                       : "bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-almet-sapphire"}`} />
+          </div>
+          {listBfOptions.length > 1 && (
+            <div className="flex flex-wrap gap-1">
+              {["ALL", ...listBfOptions].map(bf => (
+                <button key={bf} type="button" onClick={() => setListBf(bf)}
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-semibold transition
+                    ${listBf === bf
+                      ? dark ? "bg-almet-sapphire/20 text-almet-steel-blue" : "bg-almet-sapphire text-white"
+                      : dark ? "bg-[#1e1e1e] text-gray-500 hover:text-gray-300" : "bg-gray-100 text-gray-500 hover:bg-almet-mystic"}`}
+                >{bf === "ALL" ? "All" : bf}</button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="divide-y max-h-[calc(100vh-260px)] overflow-y-auto"
+          style={{ borderColor: dark ? "#1e1e1e" : "#f3f4f6" }}>
+          {listFiltered.length === 0 && (
+            <p className={`text-center py-10 text-xs ${dark ? "text-gray-600" : "text-gray-400"}`}>
+              {records.length === 0 ? "No employees yet" : "No matches"}
+            </p>
+          )}
+          {listFiltered.map(r => {
+            const s     = statusCfg(r.status);
+            const isSel = selectedRecord?.id === r.id;
+            // Only block clicking for DRAFT employees without a performance evaluation.
+            // Approved/calculated employees are always clickable.
+            const isNoPerf = r.has_performance === false && r.status === "DRAFT";
+            return (
+              <button key={r.id}
+                onClick={() => !isNoPerf && onSelectRecord(r)}
+                disabled={isNoPerf}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition
+                  ${isNoPerf ? "opacity-40 cursor-not-allowed" : ""}
+                  ${isSel
+                    ? dark ? "bg-almet-sapphire/10" : "bg-almet-mystic"
+                    : dark ? "hover:bg-[#111]" : "hover:bg-gray-50/60"}`}>
+                <span className={`w-2 h-2 rounded-full shrink-0 ${s.dot}`} />
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold truncate ${dark ? "text-white" : "text-almet-cloud-burst"}`}>
+                    {r.employee_name}
+                  </p>
+                  <p className={`text-xs truncate ${dark ? "text-gray-500" : "text-almet-bali-hai"}`}>
+                    {r.employee_id_code} · {r.job_title || r.position || "—"}
+                    {isNoPerf && <span className="ml-1 text-amber-400"> · no performance</span>}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${s.bg} ${s.text}`}>
+                    {s.label}
+                  </span>
+                  {r.status !== "DRAFT" && (
+                    <span className={`text-[10px] font-bold tabular-nums text-emerald-500`}>
+                      {currencySymbol(r.salary_currency)}{parseFloat(r.total_bonus || 0).toLocaleString("en", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* ── Body ── */}
-      <div className="p-5">
-        {!selectedRecord ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className={`p-5 rounded-2xl ${dark ? "bg-[#141414]" : "bg-almet-mystic"}`}>
-              <Calculator size={32} className="text-almet-steel-blue" />
-            </div>
-            <div className="text-center">
-              <p className={`text-base font-bold ${dark ? "text-white" : "text-almet-cloud-burst"}`}>
-                Select an employee
-              </p>
-              <p className={`text-sm mt-1 ${dark ? "text-gray-500" : "text-almet-bali-hai"}`}>
-                Use the dropdown above to search by name or badge
-              </p>
-            </div>
+      {/* ── Right: Detail Panel ── */}
+      <div>
+      {!selectedRecord ? (
+        <div className={`rounded-2xl border p-16 text-center ${card}`}>
+          <div className={`inline-flex p-5 rounded-2xl mb-5 ${dark ? "bg-[#141414]" : "bg-almet-mystic"}`}>
+            <Calculator size={32} className="text-almet-steel-blue" />
           </div>
-
-        ) : fetching ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-7 h-7 border-2 border-almet-steel-blue border-t-transparent rounded-full animate-spin" />
+          <p className={`text-base font-bold ${dark ? "text-white" : "text-almet-cloud-burst"}`}>
+            Select an employee to begin
+          </p>
+          <p className={`text-sm mt-2 ${dark ? "text-gray-500" : "text-almet-bali-hai"}`}>
+            Choose from the list on the left. Then click <b>Calculate Bonus</b> and <b>Approve</b>.
+          </p>
+          <div className="flex items-center justify-center gap-6 mt-6">
+            {[
+              { n: "1", label: "Select employee", color: "text-almet-steel-blue", bg: dark ? "bg-almet-sapphire/15" : "bg-almet-mystic" },
+              { n: "2", label: "Calculate bonus",  color: "text-amber-500",        bg: dark ? "bg-amber-500/10" : "bg-amber-50" },
+              { n: "3", label: "Approve",          color: "text-emerald-500",      bg: dark ? "bg-emerald-500/10" : "bg-emerald-50" },
+            ].map(({ n, label, color, bg }) => (
+              <div key={n} className="flex flex-col items-center gap-2">
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-black ${bg} ${color}`}>{n}</div>
+                <span className={`text-xs font-medium ${dark ? "text-gray-500" : "text-almet-bali-hai"}`}>{label}</span>
+              </div>
+            ))}
           </div>
+        </div>
 
-        ) : detail ? (
-          <div className="space-y-4">
+      ) : fetching ? (
+        <div className={`rounded-2xl border p-16 flex items-center justify-center ${card}`}>
+          <div className="w-7 h-7 border-2 border-almet-steel-blue border-t-transparent rounded-full animate-spin" />
+        </div>
+
+      ) : detail ? (
+        <div className={`rounded-2xl border overflow-hidden ${card}`}>
+        <div className="p-5">
+        <div className="space-y-4">
 
             {/* Employee info + actions */}
             <div className={`flex flex-wrap items-start justify-between gap-4 p-4 rounded-xl border
@@ -386,7 +516,7 @@ export default function BonusCalculationPanel({
                   {detail.employee_name}
                 </h2>
                 <p className={`text-xs mt-0.5 ${dark ? "text-gray-400" : "text-almet-bali-hai"}`}>
-                  {detail.employee_id_code} · {detail.position}
+                  {detail.employee_id_code} · {detail.job_title || detail.position || "—"}
                 </p>
                 {detail.calculated_at && (
                   <p className={`text-[10px] mt-1.5 ${dark ? "text-gray-600" : "text-gray-400"}`}>
@@ -399,6 +529,26 @@ export default function BonusCalculationPanel({
                 )}
               </div>
               <div className="flex items-center gap-2 flex-wrap">
+                {/* Currency selector */}
+                {availableCurrencies.length > 1 && (
+                  <div className={`flex items-center gap-1 rounded-xl border px-2.5 py-1.5
+                    ${dark ? "border-[#2a2a2a] bg-[#111]" : "border-gray-200 bg-gray-50"}`}>
+                    <DollarSign size={11} className={dark ? "text-gray-500" : "text-almet-bali-hai"} />
+                    <span className={`text-[10px] mr-1 ${dark ? "text-gray-500" : "text-gray-400"}`}>Display in:</span>
+                    {availableCurrencies.map(c => (
+                      <button
+                        key={c}
+                        onClick={() => setDisplayCurrency(c === nativeCurrency && displayCurrency === null ? null : c)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition
+                          ${(displayCurrency === c || (!displayCurrency && c === nativeCurrency))
+                            ? "bg-almet-sapphire text-white"
+                            : dark ? "text-gray-500 hover:text-gray-300" : "text-gray-400 hover:text-gray-700"}`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <button
                   onClick={handlePdf}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition
@@ -433,7 +583,7 @@ export default function BonusCalculationPanel({
                     className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold disabled:opacity-60 transition shadow-sm"
                   >
                     <CheckCircle size={12} />
-                    {saving === "approve" ? "Approving…" : "Approve"}
+                    {saving === "approve" ? "Approving…" : "Final Approve"}
                   </button>
                 )}
               </div>
@@ -442,14 +592,20 @@ export default function BonusCalculationPanel({
             {/* Salary strip */}
             <div className={`grid grid-cols-5 gap-2 p-3 rounded-xl border
               ${dark ? "border-[#1e1e1e] bg-[#0a0a0a]" : "border-gray-100 bg-gray-50/70"}`}>
-              {salaryItems.map(({ label, value, highlight, accent }) => (
+              {salaryItems.map(({ label, value, highlight, accent, gross }) => (
                 <div
                   key={label}
-                  className={`text-center px-2 py-2.5 rounded-lg
+                  className={`text-center px-2 py-2.5 rounded-lg relative
                     ${highlight
                       ? dark ? "bg-emerald-500/10 ring-1 ring-emerald-500/25" : "bg-emerald-50 ring-1 ring-emerald-200"
                       : dark ? "bg-[#141414]" : "bg-white border border-gray-100"}`}
                 >
+                  {gross && (
+                    <span className={`absolute top-1 right-1 text-[8px] font-bold px-1 rounded
+                      ${dark ? "bg-amber-500/20 text-amber-400" : "bg-amber-100 text-amber-600"}`}>
+                      Gross
+                    </span>
+                  )}
                   <p style={{ fontSize: "10px" }} className={`mb-1 leading-tight font-medium
                     ${highlight
                       ? dark ? "text-emerald-500" : "text-emerald-600"
@@ -582,9 +738,21 @@ export default function BonusCalculationPanel({
                   ${dark ? "border-[#1e1e1e] bg-[#0a0a0a]" : "border-almet-mystic bg-almet-mystic/40"}`}>
                   <div className="flex items-center justify-between mb-5">
                     <div>
-                      <p className={`text-xs font-semibold uppercase tracking-wider ${dark ? "text-gray-500" : "text-almet-bali-hai"}`}>
-                        Total Bonus
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className={`text-xs font-semibold uppercase tracking-wider ${dark ? "text-gray-500" : "text-almet-bali-hai"}`}>
+                          Total Bonus
+                        </p>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded
+                          ${dark ? "bg-amber-500/20 text-amber-400" : "bg-amber-100 text-amber-600"}`}>
+                          Gross
+                        </span>
+                        {displayCurrency && displayCurrency !== nativeCurrency && (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded
+                            ${dark ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"}`}>
+                            Converted to {displayCurrency}
+                          </span>
+                        )}
+                      </div>
                       <p className={`text-xl font-bold mt-1 tabular-nums
                         ${isZeroBonus ? "text-red-500" : dark ? "text-white" : "text-almet-cloud-burst"}`}>
                         {fmtC(detail.total_bonus)}
@@ -624,6 +792,8 @@ export default function BonusCalculationPanel({
               </>
             )}
           </div>
+        </div>
+        </div>
         ) : null}
       </div>
     </div>

@@ -68,7 +68,27 @@ api.interceptors.response.use(
  * Job Description Service - Complete API Integration with Multi-Assignment
  */
 class JobDescriptionService {
-  
+
+  // ─── In-memory PDF blob cache (session lifetime) ───────────────────────────
+  _pdfCache = new Map(); // key: jobId → { blob, ts }
+  _PDF_TTL  = 10 * 60 * 1000; // 10 minutes
+
+  _pdfCacheGet(id) {
+    const entry = this._pdfCache.get(id);
+    if (!entry) return null;
+    if (Date.now() - entry.ts > this._PDF_TTL) { this._pdfCache.delete(id); return null; }
+    return entry.blob;
+  }
+
+  _pdfCacheSet(id, blob) {
+    this._pdfCache.set(id, { blob, ts: Date.now() });
+  }
+
+  /** Call this after a JD is updated so the stale PDF is evicted. */
+  invalidatePdfCache(id) {
+    this._pdfCache.delete(id);
+  }
+
   // ========================================
   // VALIDATION METHODS
   // ========================================
@@ -697,22 +717,32 @@ async getAssignmentDetail(assignmentId) {
   // PDF EXPORT FUNCTIONALITY
   // ========================================
 
-  async downloadJobDescriptionPDF(id) {
+  async downloadJobDescriptionPDF(id, employeeId = null, assignmentId = null) {
     try {
-      const response = await api.get(`/job-descriptions/${id}/download_pdf/`, {
-        responseType: 'blob'
-      });
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      // ── Serve from cache if available ──────────────────────────────────────
+      const cacheKey = assignmentId ? `${id}_asgn_${assignmentId}` : employeeId ? `${id}_emp_${employeeId}` : id;
+      let blob = this._pdfCacheGet(cacheKey);
+
+      if (!blob) {
+        let url = `/job-descriptions/${id}/download_pdf/`;
+        if (assignmentId) url += `?assignment_id=${assignmentId}`;
+        else if (employeeId) url += `?employee_id=${employeeId}`;
+        const response = await api.get(url, { responseType: 'blob' });
+        blob = new Blob([response.data], { type: 'application/pdf' });
+        this._pdfCacheSet(cacheKey, blob);
+      }
+
+      // ── Trigger browser download ───────────────────────────────────────────
+      const objectUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = url;
+      link.href  = objectUrl;
       link.setAttribute('download', `job-description-${id}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
-      
-      return response.data;
+      window.URL.revokeObjectURL(objectUrl);
+
+      return blob;
     } catch (error) {
       console.error('Error downloading job description PDF:', error);
       throw error;

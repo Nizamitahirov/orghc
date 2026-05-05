@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { bonusRecordService } from "@/services/bonusService";
+import { bonusRecordService, exchangeRateService } from "@/services/bonusService";
 import { salaryService } from "@/services/salaryService";
 import { apiService } from "@/services/api";
 import {
@@ -38,7 +38,7 @@ function CurrencyBadge({ currency, dark }) {
 }
 
 // ─── EditableRow ───────────────────────────────────────────────────────────
-function EditableRow({ r, dark, inp, muted, text, isSaving, onApply, onCancel, prefill }) {
+function EditableRow({ r, dark, inp, muted, text, isSaving, onApply, onCancel, prefill, exchangeRates = [] }) {
   const [form, setForm] = useState({
     yearly_salary:          r.yearly_salary          ?? prefill?.annual_salary   ?? "",
     worked_months:          r.worked_months          ?? 12,
@@ -48,6 +48,15 @@ function EditableRow({ r, dark, inp, muted, text, isSaving, onApply, onCancel, p
 
   const isPrefilled = !r.yearly_salary && !!prefill?.annual_salary;
   const CURRENCIES  = ["AZN", "USD", "EUR", "GBP", "TRY", "RUB"];
+
+  const convertAmount = (amount, fromCur, toCur) => {
+    if (!amount || fromCur === toCur) return amount;
+    const direct = exchangeRates.find(x => x.from_currency === fromCur && x.to_currency === toCur);
+    if (direct) return +(parseFloat(amount) * parseFloat(direct.rate)).toFixed(2);
+    const inverse = exchangeRates.find(x => x.from_currency === toCur && x.to_currency === fromCur);
+    if (inverse) return +(parseFloat(amount) / parseFloat(inverse.rate)).toFixed(2);
+    return amount; // exchange rate tapılmadısa dəyər olduğu kimi qalır
+  };
 
   const activeBg = dark
     ? "bg-almet-sapphire/8 border-almet-sapphire/20"
@@ -89,7 +98,16 @@ function EditableRow({ r, dark, inp, muted, text, isSaving, onApply, onCancel, p
             />
             <select
               value={form.salary_currency}
-              onChange={(e) => setForm((p) => ({ ...p, salary_currency: e.target.value }))}
+              onChange={(e) => {
+                const newCur = e.target.value;
+                const oldCur = form.salary_currency;
+                setForm((p) => ({
+                  ...p,
+                  salary_currency:        newCur,
+                  yearly_salary:          p.yearly_salary          !== "" ? String(convertAmount(p.yearly_salary, oldCur, newCur))          : "",
+                  adjusted_yearly_salary: p.adjusted_yearly_salary !== "" ? String(convertAmount(p.adjusted_yearly_salary, oldCur, newCur)) : "",
+                }));
+              }}
               className={`px-2 py-1.5 rounded-xl border text-xs font-bold outline-none transition cursor-pointer
                 ${form.salary_currency !== "AZN"
                   ? dark
@@ -279,6 +297,7 @@ export default function SalarySetupTab({ dark, bonusYear }) {
 
   const [records,      setRecords]    = useState([]);
   const [salaryMap,    setSalaryMap]  = useState({});
+  const [exchangeRates, setExchangeRates] = useState([]);
   const [bfList,       setBfList]     = useState([]);
   const [loading,      setLoading]    = useState(true);
   const [initializing, setInit]       = useState(false);
@@ -302,6 +321,13 @@ export default function SalarySetupTab({ dark, bonusYear }) {
   const searchInp = dark
     ? "bg-[#0b0e16] border-white/[0.08] text-white placeholder-gray-700 focus:border-almet-steel-blue/50"
     : "bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-almet-sapphire";
+
+  /* ── load exchange rates from CBAR (live, no DB) ── */
+  useEffect(() => {
+    exchangeRateService.liveRates()
+      .then(({ data }) => setExchangeRates(data.rates ?? []))
+      .catch(() => {});
+  }, []);
 
   /* ── load business functions ── */
   useEffect(() => {
@@ -620,6 +646,7 @@ export default function SalarySetupTab({ dark, bonusYear }) {
                         onApply={handleApply}
                         onCancel={() => setEditing(null)}
                         prefill={salaryMap[r.employee_id_code]}
+                        exchangeRates={exchangeRates}
                       />
                     ) : (
                       <StaticRow

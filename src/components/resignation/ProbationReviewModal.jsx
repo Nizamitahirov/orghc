@@ -4,6 +4,129 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, ChevronLeft, ChevronRight, Check, User, Briefcase, Calendar, AlertCircle, Eye } from 'lucide-react';
 import resignationExitService from '@/services/resignationExitService';
 
+const RatingQuestion = ({ question, responses, isViewMode, existingResponses, onResponseChange }) => {
+  const labels = ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+  const currentValue = responses[question.id]?.rating_value || 3;
+
+  return (
+    <div className="pb-3 mb-3 border-b border-gray-200 dark:border-gray-700">
+      <label className="block text-xs font-medium text-gray-900 dark:text-white mb-2">
+        {question.question_text_en}
+        {question.is_required && !isViewMode && <span className="text-red-500 ml-1">*</span>}
+        {isViewMode && existingResponses[question.id] && (
+          <span className="ml-2 text-[10px] text-green-600 dark:text-green-400">(Answered)</span>
+        )}
+      </label>
+      <div className="flex items-center gap-2 flex-wrap">
+        {[1, 2, 3, 4, 5].map((rating) => (
+          <button
+            key={rating}
+            type="button"
+            onClick={() => !isViewMode && onResponseChange(question.id, 'rating_value', rating)}
+            disabled={isViewMode}
+            className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
+              currentValue >= rating
+                ? 'bg-almet-sapphire text-white shadow-sm'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+            } ${!isViewMode ? 'hover:bg-almet-astral dark:hover:bg-almet-steel-blue cursor-pointer' : 'cursor-default opacity-75'}`}
+          >
+            {rating}
+          </button>
+        ))}
+        <span className="text-xs font-medium text-gray-900 dark:text-white ml-2">
+          {labels[currentValue - 1]}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+const YesNoQuestion = ({ question, responses, isViewMode, existingResponses, onResponseChange }) => {
+  const currentValue = responses[question.id]?.yes_no_value;
+
+  return (
+    <div className="pb-3 mb-3 border-b border-gray-200 dark:border-gray-700">
+      <label className="block text-xs font-medium text-gray-900 dark:text-white mb-2">
+        {question.question_text_en}
+        {question.is_required && !isViewMode && <span className="text-red-500 ml-1">*</span>}
+        {isViewMode && existingResponses[question.id] && (
+          <span className="ml-2 text-[10px] text-green-600 dark:text-green-400">(Answered)</span>
+        )}
+      </label>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => !isViewMode && onResponseChange(question.id, 'yes_no_value', true)}
+          disabled={isViewMode}
+          className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+            currentValue === true
+              ? 'bg-green-600 text-white shadow-sm'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+          } ${!isViewMode ? 'hover:bg-green-700 dark:hover:bg-green-500 cursor-pointer' : 'cursor-default opacity-75'}`}
+        >
+          ✓ Yes
+        </button>
+        <button
+          type="button"
+          onClick={() => !isViewMode && onResponseChange(question.id, 'yes_no_value', false)}
+          disabled={isViewMode}
+          className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+            currentValue === false
+              ? 'bg-red-600 text-white shadow-sm'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+          } ${!isViewMode ? 'hover:bg-red-700 dark:hover:bg-red-500 cursor-pointer' : 'cursor-default opacity-75'}`}
+        >
+          ✗ No
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const TextQuestion = ({ question, responses, isViewMode, existingResponses, onResponseChange }) => (
+  <div className="pb-3 mb-3 border-b border-gray-200 dark:border-gray-700">
+    <label className="block text-xs font-medium text-gray-900 dark:text-white mb-2">
+      {question.question_text_en}
+      {question.is_required && !isViewMode && <span className="text-red-500 ml-1">*</span>}
+      {isViewMode && existingResponses[question.id] && (
+        <span className="ml-2 text-[10px] text-green-600 dark:text-green-400">(Answered)</span>
+      )}
+    </label>
+    <input
+      type="text"
+      value={responses[question.id]?.text_value || ''}
+      onChange={(e) => onResponseChange(question.id, 'text_value', e.target.value)}
+      disabled={isViewMode}
+      className={`w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${
+        isViewMode ? 'opacity-75 cursor-default bg-gray-50 dark:bg-gray-800' : ''
+      }`}
+      placeholder={isViewMode ? '' : 'Your answer...'}
+    />
+  </div>
+);
+
+const TextAreaQuestion = ({ question, responses, isViewMode, existingResponses, onResponseChange }) => (
+  <div className="pb-3 mb-3 border-b border-gray-200 dark:border-gray-700">
+    <label className="block text-xs font-medium text-gray-900 dark:text-white mb-2">
+      {question.question_text_en}
+      {question.is_required && !isViewMode && <span className="text-red-500 ml-1">*</span>}
+      {isViewMode && existingResponses[question.id] && (
+        <span className="ml-2 text-[10px] text-green-600 dark:text-green-400">(Answered)</span>
+      )}
+    </label>
+    <textarea
+      value={responses[question.id]?.text_value || ''}
+      onChange={(e) => onResponseChange(question.id, 'text_value', e.target.value)}
+      disabled={isViewMode}
+      rows={3}
+      className={`w-full px-3 py-2 text-xs border focus:outline-none  border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none ${
+        isViewMode ? 'opacity-75 cursor-default bg-gray-50 dark:bg-gray-800' : ''
+      }`}
+      placeholder={isViewMode ? '' : 'Your answer...'}
+    />
+  </div>
+);
+
 export default function ProbationReviewModal({ review, onClose, onSuccess, respondentType, viewMode = false }) {
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState([]);
@@ -137,135 +260,13 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
     }
   };
 
-  const RatingQuestion = ({ question }) => {
-    const labels = ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
-    const currentValue = responses[question.id]?.rating_value || 3;
-
-    return (
-      <div className="pb-3 mb-3 border-b border-gray-200 dark:border-gray-700">
-        <label className="block text-xs font-medium text-gray-900 dark:text-white mb-2">
-          {question.question_text_en}
-          {question.is_required && !isViewMode && <span className="text-red-500 ml-1">*</span>}
-          {isViewMode && existingResponses[question.id] && (
-            <span className="ml-2 text-[10px] text-green-600 dark:text-green-400">(Answered)</span>
-          )}
-        </label>
-        <div className="flex items-center gap-2 flex-wrap">
-          {[1, 2, 3, 4, 5].map((rating) => (
-            <button
-              key={rating}
-              type="button"
-              onClick={() => !isViewMode && handleResponseChange(question.id, 'rating_value', rating)}
-              disabled={isViewMode}
-              className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
-                currentValue >= rating
-                  ? 'bg-almet-sapphire text-white shadow-sm'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-              } ${!isViewMode ? 'hover:bg-almet-astral dark:hover:bg-almet-steel-blue cursor-pointer' : 'cursor-default opacity-75'}`}
-            >
-              {rating}
-            </button>
-          ))}
-          <span className="text-xs font-medium text-gray-900 dark:text-white ml-2">
-            {labels[currentValue - 1]}
-          </span>
-        </div>
-      </div>
-    );
-  };
-
-  const YesNoQuestion = ({ question }) => {
-    const currentValue = responses[question.id]?.yes_no_value;
-
-    return (
-      <div className="pb-3 mb-3 border-b border-gray-200 dark:border-gray-700">
-        <label className="block text-xs font-medium text-gray-900 dark:text-white mb-2">
-          {question.question_text_en}
-          {question.is_required && !isViewMode && <span className="text-red-500 ml-1">*</span>}
-          {isViewMode && existingResponses[question.id] && (
-            <span className="ml-2 text-[10px] text-green-600 dark:text-green-400">(Answered)</span>
-          )}
-        </label>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => !isViewMode && handleResponseChange(question.id, 'yes_no_value', true)}
-            disabled={isViewMode}
-            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-              currentValue === true
-                ? 'bg-green-600 text-white shadow-sm'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-            } ${!isViewMode ? 'hover:bg-green-700 dark:hover:bg-green-500 cursor-pointer' : 'cursor-default opacity-75'}`}
-          >
-            ✓ Yes
-          </button>
-          <button
-            type="button"
-            onClick={() => !isViewMode && handleResponseChange(question.id, 'yes_no_value', false)}
-            disabled={isViewMode}
-            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-              currentValue === false
-                ? 'bg-red-600 text-white shadow-sm'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-            } ${!isViewMode ? 'hover:bg-red-700 dark:hover:bg-red-500 cursor-pointer' : 'cursor-default opacity-75'}`}
-          >
-            ✗ No
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const TextQuestion = ({ question }) => (
-    <div className="pb-3 mb-3 border-b border-gray-200 dark:border-gray-700">
-      <label className="block text-xs font-medium text-gray-900 dark:text-white mb-2">
-        {question.question_text_en}
-        {question.is_required && !isViewMode && <span className="text-red-500 ml-1">*</span>}
-        {isViewMode && existingResponses[question.id] && (
-          <span className="ml-2 text-[10px] text-green-600 dark:text-green-400">(Answered)</span>
-        )}
-      </label>
-      <input
-        type="text"
-        value={responses[question.id]?.text_value || ''}
-        onChange={(e) => handleResponseChange(question.id, 'text_value', e.target.value)}
-        disabled={isViewMode}
-        className={`w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${
-          isViewMode ? 'opacity-75 cursor-default bg-gray-50 dark:bg-gray-800' : ''
-        }`}
-        placeholder={isViewMode ? '' : 'Your answer...'}
-      />
-    </div>
-  );
-
-  const TextAreaQuestion = ({ question }) => (
-    <div className="pb-3 mb-3 border-b border-gray-200 dark:border-gray-700">
-      <label className="block text-xs font-medium text-gray-900 dark:text-white mb-2">
-        {question.question_text_en}
-        {question.is_required && !isViewMode && <span className="text-red-500 ml-1">*</span>}
-        {isViewMode && existingResponses[question.id] && (
-          <span className="ml-2 text-[10px] text-green-600 dark:text-green-400">(Answered)</span>
-        )}
-      </label>
-      <textarea
-        value={responses[question.id]?.text_value || ''}
-        onChange={(e) => handleResponseChange(question.id, 'text_value', e.target.value)}
-        disabled={isViewMode}
-        rows={3}
-        className={`w-full px-3 py-2 text-xs border focus:outline-none  border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none ${
-          isViewMode ? 'opacity-75 cursor-default bg-gray-50 dark:bg-gray-800' : ''
-        }`}
-        placeholder={isViewMode ? '' : 'Your answer...'}
-      />
-    </div>
-  );
-
   const renderQuestion = (question) => {
+    const sharedProps = { question, responses, isViewMode, existingResponses, onResponseChange: handleResponseChange };
     switch (question.question_type) {
-      case 'RATING': return <RatingQuestion key={question.id} question={question} />;
-      case 'YES_NO': return <YesNoQuestion key={question.id} question={question} />;
-      case 'TEXT': return <TextQuestion key={question.id} question={question} />;
-      case 'TEXTAREA': return <TextAreaQuestion key={question.id} question={question} />;
+      case 'RATING': return <RatingQuestion key={question.id} {...sharedProps} />;
+      case 'YES_NO': return <YesNoQuestion key={question.id} {...sharedProps} />;
+      case 'TEXT': return <TextQuestion key={question.id} {...sharedProps} />;
+      case 'TEXTAREA': return <TextAreaQuestion key={question.id} {...sharedProps} />;
       default: return null;
     }
   };

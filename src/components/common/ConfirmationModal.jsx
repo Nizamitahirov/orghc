@@ -1,20 +1,29 @@
 // components/common/ConfirmationModal.jsx
 import React from 'react';
 import { X, AlertTriangle, CheckCircle, Info, XCircle } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const ConfirmationModal = ({
   isOpen,
   onClose,
   onConfirm,
-  title = "Confirm Action",
-  message = "Are you sure you want to proceed?",
-  confirmText = "Confirm",
-  cancelText = "Cancel",
+  title,
+  message,
+  confirmText,
+  cancelText,
   type = "default",
   loading = false,
   darkMode = false,
-  extraContent = null,   // ← YENİ: modal içinə əlavə məzmun (date input və s.)
+  extraContent = null,
 }) => {
+  const { t } = useLanguage();
+
+  // Use translated defaults if props not provided
+  const resolvedTitle = title || t('common.confirm');
+  const resolvedMessage = message || t('common.confirm');
+  const resolvedConfirmText = confirmText || t('common.confirm');
+  const resolvedCancelText = cancelText || t('common.cancel');
+
   if (!isOpen) return null;
 
   const bgModal      = darkMode ? "bg-almet-cloud-burst" : "bg-white";
@@ -25,10 +34,10 @@ const ConfirmationModal = ({
 
   const getTypeConfig = () => {
     switch (type) {
-      case 'danger':  return { icon: XCircle,       iconColor: 'text-red-500',   confirmBg: 'bg-red-600 hover:bg-red-700',                    confirmText: 'text-white' };
-      case 'success': return { icon: CheckCircle,   iconColor: 'text-green-500', confirmBg: 'bg-green-600 hover:bg-green-700',                confirmText: 'text-white' };
-      case 'info':    return { icon: Info,           iconColor: 'text-blue-500',  confirmBg: 'bg-almet-sapphire hover:bg-almet-astral',        confirmText: 'text-white' };
-      default:        return { icon: AlertTriangle,  iconColor: 'text-orange-500',confirmBg: 'bg-almet-sapphire hover:bg-almet-astral',        confirmText: 'text-white' };
+      case 'danger':  return { icon: XCircle,       iconColor: 'text-red-500',    confirmBg: 'bg-red-600 hover:bg-red-700',                     confirmText: 'text-white' };
+      case 'success': return { icon: CheckCircle,   iconColor: 'text-green-500',  confirmBg: 'bg-green-600 hover:bg-green-700',                 confirmText: 'text-white' };
+      case 'info':    return { icon: Info,           iconColor: 'text-blue-500',   confirmBg: 'bg-almet-sapphire hover:bg-almet-astral',         confirmText: 'text-white' };
+      default:        return { icon: AlertTriangle,  iconColor: 'text-orange-500', confirmBg: 'bg-almet-sapphire hover:bg-almet-astral',         confirmText: 'text-white' };
     }
   };
 
@@ -48,7 +57,7 @@ const ConfirmationModal = ({
               <div className={`p-2 rounded-lg ${darkMode ? 'bg-almet-comet/50' : 'bg-gray-100'}`}>
                 <IconComponent size={20} className={iconColor} />
               </div>
-              <h2 className={`text-lg font-semibold ${textPrimary}`}>{title}</h2>
+              <h2 className={`text-lg font-semibold ${textPrimary}`}>{resolvedTitle}</h2>
             </div>
             <button
               onClick={handleCancel}
@@ -63,10 +72,8 @@ const ConfirmationModal = ({
         {/* Content */}
         <div className="px-6 py-6">
           <p className={`${textSecondary} text-wrap leading-relaxed`}>
-            {message}
+            {resolvedMessage}
           </p>
-
-          {/* ── Əlavə məzmun (məs. termination date input) ── */}
           {extraContent && (
             <div className="mt-4">
               {extraContent}
@@ -83,7 +90,7 @@ const ConfirmationModal = ({
               className={`px-4 py-2 border ${borderColor} rounded-lg ${textSecondary} hover:${textPrimary}
                 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {cancelText}
+              {resolvedCancelText}
             </button>
 
             <button
@@ -96,7 +103,7 @@ const ConfirmationModal = ({
               {loading ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
-                confirmText
+                resolvedConfirmText
               )}
             </button>
           </div>

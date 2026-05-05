@@ -199,9 +199,17 @@ export const employeeRolesAPI = {
   },
 };
 
+const businessFunctionsAPI = {
+  getAll: async () => {
+    const response = await apiClient.get('/business-functions/');
+    return response.data;
+  },
+};
+
 // Export all APIs
 export default {
   permissions: permissionsAPI,
   roles: rolesAPI,
   employeeRoles: employeeRolesAPI,
+  businessFunctions: businessFunctionsAPI,
 };

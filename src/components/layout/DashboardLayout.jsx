@@ -1,6 +1,8 @@
 // src/components/layout/DashboardLayout.jsx
 "use client";
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import Sidebar from "../common/Sidebar";
 import Header from "../common/Header";
 import ProtectedRoute from "../auth/ProtectedRoute";
@@ -8,6 +10,7 @@ import ProtectedRoute from "../auth/ProtectedRoute";
 const DashboardLayout = ({ children }) => {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const pathname = usePathname();
 
   const [isPinned, setIsPinned] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -16,9 +19,7 @@ const DashboardLayout = ({ children }) => {
     return false;
   });
 
-  const [isHovered, setIsHovered] = useState(false);
-
-  const isSidebarExpanded = isMobile ? isSidebarOpen : (isPinned || isHovered);
+  const isSidebarExpanded = isMobile ? isSidebarOpen : isPinned;
 
   // Desktop: toggle = pin/unpin; Mobile: toggle = open/close
   const toggleSidebar = () => {
@@ -28,7 +29,6 @@ const DashboardLayout = ({ children }) => {
       const newPinned = !isPinned;
       setIsPinned(newPinned);
       localStorage.setItem('sidebarPinned', String(newPinned));
-      if (newPinned) setIsHovered(false);
     }
   };
 
@@ -36,16 +36,13 @@ const DashboardLayout = ({ children }) => {
     const newPinned = !isPinned;
     setIsPinned(newPinned);
     localStorage.setItem('sidebarPinned', String(newPinned));
-    if (newPinned) setIsHovered(false);
   };
 
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      if (mobile) {
-        setSidebarOpen(false);
-      }
+      if (mobile) setSidebarOpen(false);
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -64,8 +61,6 @@ const DashboardLayout = ({ children }) => {
             ${isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''}
             ${isSidebarExpanded ? 'w-52' : 'w-16'}
           `}
-          onMouseEnter={() => !isMobile && !isPinned && setIsHovered(true)}
-          onMouseLeave={() => !isMobile && !isPinned && setIsHovered(false)}
         >
           <Sidebar
             collapsed={!isSidebarExpanded}
@@ -75,12 +70,19 @@ const DashboardLayout = ({ children }) => {
         </aside>
 
         {/* Mobile overlay */}
-        {isMobile && isSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-10"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
+        <AnimatePresence>
+          {isMobile && isSidebarOpen && (
+            <motion.div
+              className="fixed inset-0 bg-black/50 z-10"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setSidebarOpen(false)}
+              aria-hidden="true"
+            />
+          )}
+        </AnimatePresence>
 
         {/* Main content */}
         <div className="flex-1 flex flex-col overflow-hidden bg-almet-mystic dark:bg-gray-900">
@@ -89,8 +91,19 @@ const DashboardLayout = ({ children }) => {
             isMobile={isMobile}
             isSidebarCollapsed={!isSidebarExpanded}
           />
-          <main className="flex-1 overflow-y-auto p-4">
-            {children}
+          <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-5">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={pathname}
+                className="h-full"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+              >
+                {children}
+              </motion.div>
+            </AnimatePresence>
           </main>
         </div>
       </div>

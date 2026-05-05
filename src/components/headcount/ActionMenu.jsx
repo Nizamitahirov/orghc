@@ -22,6 +22,7 @@ import {
 import ConfirmationModal from "../common/ConfirmationModal";
 import TagManagementModal from "./TagManagementModal";
 import BulkEditModal from "./BulkEditModal";
+import DeleteExitModal from "./DeleteExitModal";
 
 const ActionMenu = ({ 
   isOpen, 
@@ -35,8 +36,7 @@ const ActionMenu = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
-  const [terminationDate, setTerminationDate] = useState('');
-const terminationDateRef = useRef('');
+  const [deleteExitModal, setDeleteExitModal] = useState({ open: false, type: 'soft' });
 
   // Confirmation modal states
   const [confirmationModal, setConfirmationModal] = useState({
@@ -110,92 +110,51 @@ const terminationDateRef = useRef('');
   
 const handleSoftDelete = async () => {
   if (selectedCount === 0) {
-    showWarning('Please select employees to soft delete');
+    showWarning('Please select employees to end employment for');
     return;
   }
-
-  openConfirmation({
-    type: 'danger',
-    title: 'Soft Delete Employees',
-    message: `Are you sure you want to soft delete ${selectedCount} employee${selectedCount !== 1 ? 's' : ''}?`,
-    confirmText: 'Soft Delete',
-    action: async () => {
-      try {
-        setIsProcessing(true);
-        const date = terminationDateRef.current || undefined;  // ← ref oxu
-        const result = await archiveEmployeesService.bulkSoftDeleteEmployees(
-          selectedEmployees,
-          undefined,
-          date
-        );
-        setTerminationDate('');
-        terminationDateRef.current = '';                       // ← ref reset
-        await refreshAll();
-        onClose();
-        showSuccess(
-          result.message ||
-          `Successfully soft deleted ${selectedCount} employee${selectedCount !== 1 ? 's' : ''}!`
-        );
-        if (result.data?.vacant_positions_created > 0) {
-          setTimeout(() => {
-            showInfo(
-              `Created ${result.data.vacant_positions_created} vacant position${result.data.vacant_positions_created !== 1 ? 's' : ''} automatically.`
-            );
-          }, 1000);
-        }
-      } catch (error) {
-        showError(`Soft delete failed: ${error.message || 'Unknown error'}`);
-      } finally {
-        setIsProcessing(false);
-      }
-    }
-  });
+  setDeleteExitModal({ open: true, type: 'soft' });
 };
 
-// 4. handleHardDelete — ref oxu
 const handleHardDelete = async () => {
   if (selectedCount === 0) {
     showWarning('Please select employees to permanently delete');
     return;
   }
+  setDeleteExitModal({ open: true, type: 'hard' });
+};
 
-  openConfirmation({
-    type: 'danger',
-    title: 'Permanent Deletion Warning',
-    message: `⚠️ WARNING: This will permanently delete ${selectedCount} employee${selectedCount !== 1 ? 's' : ''}`,
-    confirmText: 'Continue',
-    action: async () => {
-      try {
-        setIsProcessing(true);
-        const date = terminationDateRef.current || undefined;  // ← ref oxu
-        const result = await archiveEmployeesService.bulkHardDeleteEmployees(
-          selectedEmployees,
-          'End of contract period - bulk cleanup',
-          true,
-          date
-        );
-        setTerminationDate('');
-        terminationDateRef.current = '';                       // ← ref reset
-        await refreshAll();
-        onClose();
-        showSuccess(
-          result.message ||
-          `Successfully deleted ${selectedCount} employee${selectedCount !== 1 ? 's' : ''} permanently!`
-        );
-        if (result.data?.archives_created > 0) {
-          setTimeout(() => {
-            showInfo(
-              `Created ${result.data.archives_created} archive record${result.data.archives_created !== 1 ? 's' : ''} for audit purposes.`
-            );
-          }, 1000);
-        }
-      } catch (error) {
-        showError(`Hard delete failed: ${error.message || 'Unknown error'}`);
-      } finally {
-        setIsProcessing(false);
+const handleDeleteExitConfirm = async ({ exitType, terminationDate, notes }) => {
+  const isSoft = deleteExitModal.type === 'soft';
+  setIsProcessing(true);
+  try {
+    if (isSoft) {
+      const result = await archiveEmployeesService.bulkSoftDeleteEmployees(
+        selectedEmployees, notes, terminationDate, exitType
+      );
+      await refreshAll();
+      onClose();
+      showSuccess(result.message || `Successfully ended employment for ${selectedCount} employee${selectedCount !== 1 ? 's' : ''}!`);
+      if (result.data?.vacant_positions_created > 0) {
+        setTimeout(() => showInfo(`Created ${result.data.vacant_positions_created} vacant position(s) automatically.`), 1000);
+      }
+    } else {
+      const result = await archiveEmployeesService.bulkHardDeleteEmployees(
+        selectedEmployees, notes || 'Permanent deletion', true, terminationDate, exitType
+      );
+      await refreshAll();
+      onClose();
+      showSuccess(result.message || `Successfully deleted ${selectedCount} employee${selectedCount !== 1 ? 's' : ''} permanently!`);
+      if (result.data?.archives_created > 0) {
+        setTimeout(() => showInfo(`Created ${result.data.archives_created} archive record(s) for audit purposes.`), 1000);
       }
     }
-  });
+    setDeleteExitModal({ open: false, type: 'soft' });
+  } catch (error) {
+    showError(`Operation failed: ${error.message || 'Unknown error'}`);
+  } finally {
+    setIsProcessing(false);
+  }
 };
 
   
@@ -444,12 +403,7 @@ const handleHardDelete = async () => {
 
       <ConfirmationModal
         isOpen={confirmationModal.isOpen}
-        
-onClose={() => {
-  closeConfirmation();
-  setTerminationDate('');
-  terminationDateRef.current = '';  // ← əlavə et
-}}
+        onClose={closeConfirmation}
         onConfirm={executeConfirmedAction}
         title={confirmationModal.title}
         message={confirmationModal.message}
@@ -457,25 +411,15 @@ onClose={() => {
         type={confirmationModal.type}
         loading={isProcessing}
         darkMode={darkMode}
-        extraContent={
-          <div className="mt-3">
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Termination Date <span className="text-gray-400">(optional — defaults to today)</span>
-            </label>
-            
-<input
-  type="date"
-  value={terminationDate}
-  onChange={e => {
-    setTerminationDate(e.target.value);
-    terminationDateRef.current = e.target.value;  // ← əlavə et
-  }}
-  className="w-full px-3 py-1.5 text-xs border border-gray-300 dark:border-gray-600
-    rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white
-    focus:ring-1 focus:ring-red-400 focus:border-red-400 outline-none"
-/>
-          </div>
-        }
+      />
+
+      <DeleteExitModal
+        isOpen={deleteExitModal.open}
+        onClose={() => setDeleteExitModal({ open: false, type: 'soft' })}
+        onConfirm={handleDeleteExitConfirm}
+        deleteType={deleteExitModal.type}
+        employeeCount={selectedCount}
+        isProcessing={isProcessing}
       />
 
       {/* Tag Management Modal */}

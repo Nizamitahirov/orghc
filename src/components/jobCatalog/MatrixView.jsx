@@ -201,7 +201,7 @@ export default function MatrixView({ context }) {
                 </div>
                 <div className="text-xs text-gray-600 dark:text-almet-bali-hai">
                   {matrixView === 'department' ? 'Departments' : 
-                   matrixView === 'function' ? 'Job Functions' : 'Companys'}
+                   matrixView === 'function' ? 'Job Functions' : 'Companies'}
                 </div>
               </div>
             </div>

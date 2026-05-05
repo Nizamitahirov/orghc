@@ -33,11 +33,83 @@ body {
   }
 }
 
+/* ── Org Chart Print Styles ─────────────────────────────────────────────── */
+@media print {
+  /* Hide everything except the org chart */
+  body > * { display: none !important; }
+  #org-chart-print-root { display: block !important; }
+
+  /* Reset page margins and background */
+  @page {
+    size: A3 landscape;
+    margin: 10mm;
+  }
+
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide UI chrome */
+  header,
+  aside,
+  .react-flow__controls,
+  .react-flow__minimap,
+  .react-flow__attribution,
+  .react-flow__panel,
+  [data-no-print] {
+    display: none !important;
+  }
+
+  /* Org chart container fills the page */
+  .org-chart-print-area {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    page-break-inside: avoid;
+  }
+
+  /* ReactFlow nodes keep colours */
+  .react-flow__node {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
 /* Transition helpers */
 .transition-all {
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 300ms;
+}
+
+/* Glass panel utility */
+.glass {
+  @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border border-white/20 dark:border-white/[0.07];
+}
+.glass-dropdown {
+  @apply bg-white/90 dark:bg-almet-cloud-burst/95 backdrop-blur-xl border border-gray-200/60 dark:border-white/[0.08] shadow-xl shadow-black/10 dark:shadow-black/40 rounded-xl;
+}
+
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+  background-size: 200% auto;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+.dark .animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+  background-size: 200% auto;
+}
+
+/* Hover scaling for interactive elements */
+.hover-lift {
+  @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md;
 }
 
 

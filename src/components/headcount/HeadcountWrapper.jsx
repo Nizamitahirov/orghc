@@ -1,20 +1,23 @@
 // src/components/headcount/HeadcountWrapper.jsx - WITH STATE PERSISTENCE
 "use client";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { 
-  Building2, 
-  Users, 
-  Briefcase, 
-  TrendingUp, 
-  ArrowRight, 
-  Grid3x3, 
+import {
+  Building2,
+  Users,
+  Briefcase,
+  TrendingUp,
+  ArrowRight,
+  Grid3x3,
   List,
   ArrowLeft,
   RefreshCw,
   AlertCircle,
   UserCheck,
   Clock,
-  ShieldOff
+  ShieldOff,
+  ChevronDown,
+  Check,
+  X
 } from 'lucide-react';
 import { useTheme } from "../common/ThemeProvider";
 import { useReferenceData } from "../../hooks/useReferenceData";
@@ -88,6 +91,7 @@ const HeadcountWrapper = () => {
   
   const [accessDenied, setAccessDenied] = useState(false);
   const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
+  const [showCompanySwitcher, setShowCompanySwitcher] = useState(false);
   
   const { businessFunctions, loading: refLoading } = useReferenceData();
   const { statistics, fetchStatistics, loading } = useEmployees();
@@ -161,11 +165,19 @@ const HeadcountWrapper = () => {
            businessFunctions.length > 0;
   }, [businessFunctions]);
 
-  // Helper function to generate colors based on index
+  // Almet design-token colors (matches tailwind.config.js almet.* values)
   const generateColorForIndex = useCallback((index) => {
     const colors = [
-      '#30539b', '#336fa5', '#4e7db5', '#38587d', '#253360',
-      '#7a829a', '#90a0b9', '#4f5772', '#2346A8', '#1e3a8a',
+      '#30539b', // almet-sapphire
+      '#336fa5', // almet-astral
+      '#4e7db5', // almet-steel-blue
+      '#38587d', // almet-san-juan
+      '#253360', // almet-cloud-burst
+      '#7a829a', // almet-waterloo
+      '#90a0b9', // almet-bali-hai
+      '#4f5772', // almet-comet
+      '#9c9cb5', // almet-santas-gray
+      '#e7ebf1', // almet-mystic
     ];
     return colors[index % colors.length];
   }, []);
@@ -281,6 +293,31 @@ const HeadcountWrapper = () => {
     
     getUserEmployeeId();
   }, []);
+
+  // Handle company change from within the table (QuickFilterBar)
+  const handleCompanyChangeFromTable = useCallback((newBFIds) => {
+    if (!businessFunctions || businessFunctions.length === 0) return;
+    if (!newBFIds || newBFIds.length === 0) {
+      // No company selected - switch to "all" view
+      setSelectedCompany(null);
+      setSelectedView('all');
+    } else if (newBFIds.length === 1) {
+      // Single company - find and set it
+      const bfId = Number(newBFIds[0]);
+      const bf = businessFunctions.find(b => Number(b.id) === bfId);
+      if (bf) {
+        const card = companyCards.find(c => c.id === bf.id || c.code === bf.code);
+        if (card) {
+          setSelectedCompany(card);
+          setSelectedView('company');
+        }
+      }
+    } else {
+      // Multiple companies selected - treat as "all" view with multiple filters
+      setSelectedCompany(null);
+      setSelectedView('all');
+    }
+  }, [businessFunctions, companyCards]);
 
   const handleGoToProfile = useCallback(() => {
     if (currentUserEmployeeId) {
@@ -733,34 +770,123 @@ const HeadcountWrapper = () => {
             </button>
           </div>
 
-          {selectedView === 'company' && selectedCompany && (
-            <div 
-              className="rounded-xl p-3 mb-3 text-white relative overflow-hidden"
-              style={{ backgroundColor: selectedCompany.color }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
-              <div className="relative">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center font-bold text-lg">
-                      {selectedCompany.code}
-                    </div>
-                    <div>
-                      <h1 className="text-base font-bold mb-0.5">
-                        {selectedCompany.name}
-                      </h1>
-                      <p className="text-white/80 text-sm">
-                        {selectedCompany.code} • {selectedCompany.totalEmployees} employees
-                      </p>
-                    </div>
-                  </div>
+          {/* Company switcher banner */}
+          <div className={`${bgCard} border ${borderColor} rounded-xl p-3 mb-3 flex items-center justify-between gap-3 flex-wrap`}>
+            <div className="flex items-center gap-3">
+              {selectedView === 'company' && selectedCompany ? (
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-sm flex-shrink-0"
+                  style={{ backgroundColor: selectedCompany.color }}
+                >
+                  {selectedCompany.code}
                 </div>
+              ) : (
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-almet-sapphire/10 flex-shrink-0">
+                  <Building2 size={20} className="text-almet-sapphire" />
+                </div>
+              )}
+              <div>
+                <p className={`font-semibold text-sm ${textPrimary}`}>
+                  {selectedView === 'company' && selectedCompany ? selectedCompany.name : 'All Companies'}
+                </p>
+                <p className={`text-xs ${textMuted}`}>
+                  {selectedView === 'company' && selectedCompany
+                    ? `${selectedCompany.code} • ${selectedCompany.totalEmployees} employees`
+                    : `${totals.totalCompanies} companies • ${totals.totalEmployees} employees`}
+                </p>
               </div>
             </div>
-          )}
 
-          <HeadcountTable 
-            businessFunctionFilter={selectedView === 'company' ? selectedCompany?.code : null} 
+            {/* Company switcher dropdown */}
+            <div className="relative flex-shrink-0">
+              <button
+                onClick={() => setShowCompanySwitcher(prev => !prev)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
+                  showCompanySwitcher
+                    ? 'bg-almet-sapphire/10 border-almet-sapphire text-almet-sapphire'
+                    : `${darkMode ? 'border-gray-600 text-gray-300 hover:border-gray-500' : 'border-gray-200 text-gray-600 hover:border-gray-300'}`
+                }`}
+              >
+                <Building2 size={14} />
+                <span>Switch Company</span>
+                <ChevronDown size={14} className={`transition-transform ${showCompanySwitcher ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showCompanySwitcher && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowCompanySwitcher(false)}
+                  />
+                  <div
+                    className={`absolute right-0 top-full mt-1 z-50 ${bgCard} border ${borderColor} rounded-xl shadow-xl min-w-[240px] overflow-hidden`}
+                  >
+                    <div className={`px-3 py-2 border-b ${borderColor} flex items-center justify-between`}>
+                      <span className={`text-xs font-semibold ${textMuted} uppercase tracking-wide`}>Select Company</span>
+                      <button onClick={() => setShowCompanySwitcher(false)}>
+                        <X size={14} className={textMuted} />
+                      </button>
+                    </div>
+                    <div className="py-1 max-h-72 overflow-y-auto">
+                      {/* All companies option */}
+                      <button
+                        onClick={() => {
+                          handleViewAll();
+                          setShowCompanySwitcher(false);
+                        }}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-almet-sapphire/5 transition-colors ${
+                          selectedView === 'all' ? 'bg-almet-sapphire/5' : ''
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded-lg bg-almet-sapphire/10 flex items-center justify-center flex-shrink-0">
+                          <Building2 size={14} className="text-almet-sapphire" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium ${textPrimary} truncate`}>All Companies</p>
+                          <p className={`text-xs ${textMuted}`}>{totals.totalEmployees} employees</p>
+                        </div>
+                        {selectedView === 'all' && <Check size={14} className="text-almet-sapphire flex-shrink-0" />}
+                      </button>
+
+                      {/* Individual companies */}
+                      {companyCards.map((company, idx) => (
+                        <button
+                          key={`switcher-${company.id ?? company.code ?? idx}`}
+                          onClick={() => {
+                            handleCompanySelect(company);
+                            setShowCompanySwitcher(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-almet-sapphire/5 transition-colors ${
+                            selectedView === 'company' && selectedCompany?.id === company.id
+                              ? 'bg-almet-sapphire/5'
+                              : ''
+                          }`}
+                        >
+                          <div
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+                            style={{ backgroundColor: company.color }}
+                          >
+                            {company.code}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium ${textPrimary} truncate`}>{company.name}</p>
+                            <p className={`text-xs ${textMuted}`}>{company.totalEmployees} employees</p>
+                          </div>
+                          {selectedView === 'company' && selectedCompany?.id === company.id && (
+                            <Check size={14} className="text-almet-sapphire flex-shrink-0" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          <HeadcountTable
+            businessFunctionFilter={selectedView === 'company' ? selectedCompany?.code : null}
+            onCompanyChange={handleCompanyChangeFromTable}
           />
         </div>
       </div>

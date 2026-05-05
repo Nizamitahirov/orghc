@@ -185,6 +185,37 @@ export const deletePolicy = async (id) => {
   }
 };
 
+// ==================== BULK UPLOAD ====================
+
+/**
+ * Bulk upload multiple policy PDFs in a single request.
+ * @param {number}   folderId
+ * @param {File[]}   files
+ * @param {string[]} titles      - one per file; uses filename if shorter than files
+ * @param {boolean}  requiresAck
+ * @param {Function} onProgress  - (percent: 0–100) called during upload
+ * @returns {Promise<{ results, summary }>}
+ */
+export const bulkCreatePolicies = async (folderId, files, titles = [], requiresAck = true, onProgress) => {
+  const formData = new FormData();
+  formData.append('folder_id', folderId);
+  formData.append('requires_acknowledgment', String(requiresAck));
+  files.forEach((file) => formData.append('files', file));
+  titles.forEach((t) => formData.append('titles', t));
+
+  try {
+    const response = await api.post('/policies/policies/bulk-upload/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (evt) => {
+        if (onProgress && evt.total) onProgress(Math.round((evt.loaded / evt.total) * 100));
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
 // ==================== POLICY FOLDERS ====================
 
 /**

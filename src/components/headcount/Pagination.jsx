@@ -1,7 +1,7 @@
 // src/components/headcount/Pagination.jsx - FIXED VERSION
 import { ChevronLeft, ChevronRight, MoreHorizontal, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
-import { useCallback } from "react";
+import { useCallback, memo } from "react";
 
 const Pagination = ({
   currentPage = 1,
@@ -324,4 +324,4 @@ const Pagination = ({
   );
 };
 
-export default Pagination;
+export default memo(Pagination);

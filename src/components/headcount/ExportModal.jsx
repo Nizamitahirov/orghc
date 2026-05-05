@@ -19,7 +19,9 @@ const ExportModal = ({
   darkMode 
 }) => {
   // Local state
-  const [exportType, setExportType] = useState("selected");
+  const [exportType, setExportType] = useState(
+    filteredCount != null && filteredCount < (totalEmployees || Infinity) ? "filtered" : "selected"
+  );
   const [exportFormat, setExportFormat] = useState("excel");
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState(null);

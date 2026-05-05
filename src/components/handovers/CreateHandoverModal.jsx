@@ -8,6 +8,7 @@ import {
   AlertTriangle, MessageSquare, Clock, Upload, CheckCircle
 } from 'lucide-react';
 import handoverService from '@/services/handoverService';
+import taskService from '@/services/taskService'; // ⭐ taskService import
 import { useToast } from '@/components/common/Toast';
 import SearchableDropdown from '@/components/common/SearchableDropdown';
 
@@ -67,11 +68,18 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
 
   const loadInitialData = async () => {
     try {
-      const [employeesData, typesData] = await Promise.all([
-        handoverService.getEmployees(),
+      // ⭐ employees taskService.getAllEmployees()-dən gəlir, handoverTypes əvvəlki kimi
+      const [employeesResult, typesData] = await Promise.all([
+        taskService.getAllEmployees(),
         handoverService.getHandoverTypes()
       ]);
-      setEmployees(employeesData);
+
+      if (employeesResult.success) {
+        setEmployees(employeesResult.data);
+      } else {
+        showError('Error loading employees');
+      }
+
       setHandoverTypes(typesData);
     } catch (error) {
       showError('Error loading form data');
@@ -163,7 +171,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
   // Handle next step
   const handleNextStep = () => {
     if (validateStep(activeStep)) {
-      setActiveStep(prev => Math.min(prev + 1, 3)); // ⭐ 3 steps now
+      setActiveStep(prev => Math.min(prev + 1, 3));
     } else {
       showError('Please fix the errors before continuing');
     }
@@ -183,6 +191,13 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
     if (!formData.handover_type) return false;
     const typeName = getHandoverTypeName(formData.handover_type);
     return typeName.includes('resignation');
+  };
+
+  // ⭐ Employee label helper - taskService data strukturuna uyğun
+  const getEmployeeLabel = (emp) => {
+    const name = emp.full_name || emp.name || '';
+    const title = emp.job_title || emp.position || '';
+    return title ? `${name} - ${title}` : name;
   };
 
   // Validate form
@@ -220,26 +235,16 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
       }
     }
 
-    // ⭐ Step 2 - Tasks & Dates (dates optional)
     if (step === 2) {
       const validTasks = tasks.filter(t => t.description.trim());
       if (validTasks.length === 0) {
         newErrors.tasks = 'At least one task with description is required';
       }
-      
-      // ⭐ Dates are now OPTIONAL - no validation
+      // Dates optional - no validation
     }
 
-    // ⭐ Step 3 - Additional Information
-    if (step === 3) {
-      const hasAnyField = formData.contacts || formData.access_info || 
-                          formData.documents_info || formData.open_issues || 
-                          formData.notes || attachments.length > 0;
-      
-      if (!hasAnyField) {
-        newErrors.details = 'Please fill at least one field in Additional Information';
-      }
-    }
+    // ⭐ Step 3 - ALL OPTIONAL, no validation required
+    // (step === 3 block removed intentionally)
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -249,17 +254,14 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    let isValid = true;
-    for (let step = 1; step <= 3; step++) { // ⭐ 3 steps now
+    // ⭐ Only validate steps 1 and 2; step 3 is fully optional
+    for (let step = 1; step <= 2; step++) {
       if (!validateStep(step)) {
-        isValid = false;
         setActiveStep(step);
         showError('Please complete all required fields');
         return;
       }
     }
-
-    if (!isValid) return;
 
     setLoading(true);
     try {
@@ -271,7 +273,6 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
           comment: t.comment
         }));
 
-      // ⭐ Dates optional - filter only filled ones
       const dates_data = dates
         .filter(d => d.date && d.description.trim())
         .map(d => ({
@@ -281,9 +282,9 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
 
       const handoverData = {
         ...formData,
-        end_date: formData.end_date || null, // ⭐ null if empty
+        end_date: formData.end_date || null,
         tasks_data,
-        dates_data: dates_data.length > 0 ? dates_data : [] // ⭐ empty array if no dates
+        dates_data: dates_data.length > 0 ? dates_data : []
       };
 
       const result = await handoverService.createHandover(handoverData);
@@ -318,10 +319,9 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
     { value: 'POSTPONED', label: 'Postponed' },
   ];
 
-  // ⭐ Steps configuration - 3 steps now
   const steps = [
     { id: 1, label: 'Basic Info', icon: Users },
-    { id: 2, label: 'Tasks & Dates', icon: FileText }, // ⭐ Combined
+    { id: 2, label: 'Tasks & Dates', icon: FileText },
     { id: 3, label: 'Details', icon: Folder },
   ];
 
@@ -426,7 +426,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                   <SearchableDropdown
                     options={employees.map(emp => ({
                       value: emp.id,
-                      label: `${emp.name} - ${emp.job_title}`
+                      label: getEmployeeLabel(emp)
                     }))}
                     value={formData.handing_over_employee}
                     onChange={(value) => {
@@ -455,7 +455,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                       .filter(emp => emp.id !== formData.handing_over_employee)
                       .map(emp => ({
                         value: emp.id,
-                        label: `${emp.name} - ${emp.job_title}`
+                        label: getEmployeeLabel(emp)
                       }))}
                     value={formData.taking_over_employee}
                     onChange={(value) => {
@@ -518,7 +518,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                       name="start_date"
                       value={formData.start_date}
                       onChange={handleInputChange}
-                      className={`w-full outline-0 focus:outline-none   pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
+                      className={`w-full outline-0 focus:outline-none pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
                         errors.start_date ? 'border-red-500' : 'border-almet-bali-hai dark:border-gray-700'
                       }`}
                       required
@@ -547,7 +547,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                       value={formData.end_date}
                       onChange={handleInputChange}
                       min={formData.start_date}
-                      className={`w-full outline-0 focus:outline-none  pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
+                      className={`w-full outline-0 focus:outline-none pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
                         errors.end_date ? 'border-red-500' : 'border-almet-bali-hai dark:border-gray-700'
                       }`}
                       required={!isResignationType()}
@@ -589,7 +589,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
             </div>
           )}
             
-          {/* ⭐ Step 2: Tasks & Important Dates (Combined) */}
+          {/* Step 2: Tasks & Important Dates */}
           {activeStep === 2 && (
             <div className="space-y-5">
               {/* Tasks Section */}
@@ -629,7 +629,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                             <textarea
                               value={task.description}
                               onChange={(e) => handleTaskChange(index, 'description', e.target.value)}
-                              className="w-full outline-0 px-3 focus:outline-none  py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                              className="w-full outline-0 px-3 focus:outline-none py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                               rows="2"
                               placeholder="Enter task description..."
                               required
@@ -662,7 +662,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                                 type="text"
                                 value={task.comment}
                                 onChange={(e) => handleTaskChange(index, 'comment', e.target.value)}
-                                className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                                className="w-full outline-0 focus:outline-none px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                                 placeholder="Add comment..."
                               />
                             </div>
@@ -683,7 +683,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                 </div>
               </div>
 
-              {/* ⭐ Important Dates Section - OPTIONAL */}
+              {/* Important Dates Section - OPTIONAL */}
               <div className="border-t border-almet-mystic dark:border-gray-700 pt-5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -719,7 +719,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                                 type="date"
                                 value={dateItem.date}
                                 onChange={(e) => handleDateChange(index, 'date', e.target.value)}
-                                className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                                className="w-full outline-0 focus:outline-none px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                               />
                             </div>
 
@@ -731,7 +731,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                                 type="text"
                                 value={dateItem.description}
                                 onChange={(e) => handleDateChange(index, 'description', e.target.value)}
-                                className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                                className="w-full outline-0 focus:outline-none px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                                 placeholder="Enter description..."
                               />
                             </div>
@@ -767,7 +767,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
             </div>
           )}
 
-          {/* ⭐ Step 3: Additional Information */}
+          {/* Step 3: Additional Information - ALL OPTIONAL */}
           {activeStep === 3 && (
             <div className="space-y-3.5">
               <div className="flex items-center gap-2 mb-2">
@@ -775,16 +775,11 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                 <h3 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
                   Additional Information
                 </h3>
+                {/* ⭐ Optional badge */}
+                <span className="ml-2 px-2 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded text-xs font-medium">
+                  All Optional
+                </span>
               </div>
-
-              {errors.details && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2.5">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-red-700 dark:text-red-400 text-xs">{errors.details}</p>
-                  </div>
-                </div>
-              )}
 
               <div className="space-y-3.5">
                 {/* Related Contacts */}
@@ -797,7 +792,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                     name="contacts"
                     value={formData.contacts}
                     onChange={handleInputChange}
-                    className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    className="w-full outline-0 focus:outline-none px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                     rows="2"
                     placeholder="List important contacts..."
                   />
@@ -813,7 +808,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                     name="access_info"
                     value={formData.access_info}
                     onChange={handleInputChange}
-                    className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    className="w-full outline-0 focus:outline-none px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                     rows="2"
                     placeholder="System names, accounts..."
                   />
@@ -829,7 +824,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                     name="documents_info"
                     value={formData.documents_info}
                     onChange={handleInputChange}
-                    className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    className="w-full outline-0 focus:outline-none px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                     rows="2"
                     placeholder="File locations, shared drives..."
                   />
@@ -845,7 +840,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                     name="open_issues"
                     value={formData.open_issues}
                     onChange={handleInputChange}
-                    className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    className="w-full outline-0 focus:outline-none px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                     rows="2"
                     placeholder="Unresolved problems, pending actions..."
                   />
@@ -861,7 +856,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                     name="notes"
                     value={formData.notes}
                     onChange={handleInputChange}
-                    className="w-full outline-0 focus:outline-none  px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    className="w-full outline-0 focus:outline-none px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                     rows="3"
                     placeholder="Additional notes, tips, recommendations..."
                   />

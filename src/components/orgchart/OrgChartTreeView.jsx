@@ -1,13 +1,14 @@
 // components/orgchart/OrgChartTreeView.jsx
 'use client'
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
     Background,
     useNodesState,
     useEdgesState,
     ConnectionMode,
     Panel,
-    useReactFlow
+    useReactFlow,
+    useViewport
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import dagre from 'dagre';
@@ -83,24 +84,20 @@ const getLayoutedElements = (nodes, edges, direction = 'TB') => {
 };
 
 // ─────────────────────────────────────────────────────────────────
-const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSelectedEmployee, navigateToEmployee) => {
-    if (!Array.isArray(employees) || employees.length === 0) return { visibleNodes: [], edges: [] };
+// Step 1: Build the parent-child map from employee data.
+// This is expensive and only needs to re-run when the data changes,
+// NOT when the user expands/collapses nodes.
+// ─────────────────────────────────────────────────────────────────
+const normalize = (id) => (id === null || id === undefined) ? null : String(id);
+
+const buildHierarchyTree = (employees) => {
+    if (!Array.isArray(employees) || employees.length === 0) return { map: new Map(), roots: [] };
 
     const clean = employees.map(cleanEmployeeData).filter(Boolean);
-
-    //  FIX: Bütün id-ləri STRING-ə çevir — type mismatch aradan qalxır
-    const normalize = (id) => (id === null || id === undefined) ? null : String(id);
-
     const map = new Map();
     clean.forEach(e => {
         const key = normalize(e.employee_id);
-        map.set(key, {
-            ...e,
-            employee_id: key,
-            line_manager_id: normalize(e.line_manager_id),
-            children: [],
-            isVisible: false
-        });
+        map.set(key, { ...e, employee_id: key, line_manager_id: normalize(e.line_manager_id), children: [], parent: null });
     });
 
     const roots = [];
@@ -115,30 +112,32 @@ const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSe
         }
     });
 
-    // Fallback 1: ən çox direct_reports olan
+    // Fallback 1: most direct_reports
     if (roots.length === 0) {
         const maxR = Math.max(...[...map.values()].map(e => e.direct_reports || 0));
-        if (maxR > 0) {
-            [...map.values()]
-                .filter(e => (e.direct_reports || 0) === maxR)
-                .forEach(e => { if (!roots.includes(e)) roots.push(e); });
-        }
+        if (maxR > 0) [...map.values()].filter(e => (e.direct_reports || 0) === maxR).forEach(e => roots.push(e));
     }
-    // Fallback 2: ən az level_to_ceo olan
+    // Fallback 2: lowest level_to_ceo
     if (roots.length === 0) {
         const minL = Math.min(...[...map.values()].map(e => e.level_to_ceo || 999));
-        if (minL < 999) {
-            [...map.values()]
-                .filter(e => (e.level_to_ceo || 999) === minL)
-                .forEach(e => { if (!roots.includes(e)) roots.push(e); });
-        }
+        if (minL < 999) [...map.values()].filter(e => (e.level_to_ceo || 999) === minL).forEach(e => roots.push(e));
     }
-    // Fallback 3: ilk 3
-    if (roots.length === 0) {
-        [...map.values()].slice(0, 3).forEach(e => roots.push(e));
-    }
+    // Fallback 3: first 3
+    if (roots.length === 0) [...map.values()].slice(0, 3).forEach(e => roots.push(e));
 
-    //  expandedNodeIds də normalize et
+    return { map, roots };
+};
+
+// ─────────────────────────────────────────────────────────────────
+// Step 2: Traverse visibility — cheap, runs on every expand/collapse.
+// Callbacks are passed here (not baked into the map) to stay fresh.
+// ─────────────────────────────────────────────────────────────────
+const getVisibleNodesAndEdges = ({ map, roots }, expandedNodeIds, toggleExpandedNode, setSelectedEmployee, navigateToEmployee) => {
+    if (!map.size) return { visibleNodes: [], edges: [] };
+
+    // Reset visibility flags from previous render
+    map.forEach(emp => { emp.isVisible = false; });
+
     const expandedSet = new Set((expandedNodeIds || []).map(normalize));
     const visible = [];
 
@@ -190,8 +189,8 @@ const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSe
 // Controls panel — inside ReactFlow context
 // ─────────────────────────────────────────────────────────────────
 const EnhancedControlsPanel = ({ darkMode }) => {
-    const { zoomIn, zoomOut, fitView, getViewport } = useReactFlow();
-    const [zoom, setZoom] = useState(1);
+    const { zoomIn, zoomOut, fitView } = useReactFlow();
+    const { zoom } = useViewport();
 
     const bg     = darkMode ? 'bg-slate-800'   : 'bg-white';
     const border = darkMode ? 'border-slate-600': 'border-gray-200';
@@ -199,18 +198,12 @@ const EnhancedControlsPanel = ({ darkMode }) => {
     const muted  = darkMode ? 'text-gray-500'   : 'text-almet-bali-hai';
     const hover  = darkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-50';
 
-    useEffect(() => {
-        const id = setInterval(() => setZoom(Math.round(getViewport().zoom * 100) / 100), 200);
-        return () => clearInterval(id);
-    }, [getViewport]);
-
     const fit = useCallback(() => fitView({ duration: 800, padding: 0.15, minZoom: 0.1, maxZoom: 1.5 }), [fitView]);
     const smart = useCallback(() => {
-        const v = getViewport();
-        if (v.zoom > 1) zoomOut({ duration: 500 });
-        else if (v.zoom < 0.3) fitView({ padding: 0.2, duration: 500 });
+        if (zoom > 1) zoomOut({ duration: 500 });
+        else if (zoom < 0.3) fitView({ padding: 0.2, duration: 500 });
         else fit();
-    }, [getViewport, zoomOut, fitView, fit]);
+    }, [zoom, zoomOut, fitView, fit]);
 
     const btn = `w-full h-8 ${bg} ${text} border ${border} rounded-md ${hover} transition-colors flex items-center justify-center`;
 
@@ -238,7 +231,6 @@ const TreeView = ({
     toggleExpandedNode,
     setSelectedEmployee,
     navigateToEmployee,
-    orgChart,
     setExpandedNodes,
     isLoading,
     darkMode
@@ -254,13 +246,20 @@ const TreeView = ({
     const secondary = darkMode ? 'text-gray-400' : 'text-almet-waterloo';
     const hover  = darkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-50';
 
+    // Step 1: build parent-child map — only when data changes (not on expand/collapse)
+    const hierarchyTree = useMemo(
+        () => buildHierarchyTree(filteredOrgChart),
+        [filteredOrgChart]
+    );
+
     useEffect(() => {
         if (!Array.isArray(filteredOrgChart) || filteredOrgChart.length === 0) {
             setNodes([]); setEdges([]); return;
         }
 
-        const { visibleNodes, edges: rawEdges } = buildOrgHierarchy(
-            filteredOrgChart, expandedNodes || [],
+        // Step 2: traverse visibility — fast, runs on every expand/collapse
+        const { visibleNodes, edges: rawEdges } = getVisibleNodesAndEdges(
+            hierarchyTree, expandedNodes || [],
             toggleExpandedNode, setSelectedEmployee, navigateToEmployee
         );
 
@@ -268,18 +267,16 @@ const TreeView = ({
 
         const { nodes: ln, edges: le } = getLayoutedElements(visibleNodes, rawEdges, layoutDirection);
 
-        // fade-in
-        setNodes(ln.map(n => ({ ...n, style: { opacity: 0 } })));
-        setEdges(le.map(e => ({ ...e, style: { ...e.style, opacity: 0 } })));
+        // Set nodes visible immediately — no setTimeout so nodes are never stuck at opacity:0
+        setNodes(ln.map(n => ({ ...n, style: { opacity: 1, transition: 'opacity 0.3s ease' } })));
+        setEdges(le.map(e => ({ ...e, style: { ...e.style, opacity: e.style?.opacity ?? 0.6 } })));
 
-        const t1 = setTimeout(() => {
-            setNodes(ln.map(n => ({ ...n, style: { opacity: 1, transition: 'opacity 0.4s ease' } })));
-            setEdges(le.map(e => ({ ...e, style: { ...e.style, opacity: e.style?.opacity ?? 0.6, transition: 'opacity 0.4s ease' } })));
-            const t2 = setTimeout(() => fitView({ padding: 0.15, minZoom: 0.1, maxZoom: 1.5, duration: 600 }), 80);
-            return () => clearTimeout(t2);
-        }, 60);
-        return () => clearTimeout(t1);
-    }, [filteredOrgChart, expandedNodes, layoutDirection, toggleExpandedNode, setSelectedEmployee, navigateToEmployee, setNodes, setEdges, fitView]);
+        // Fit view after a short rAF so ReactFlow has measured node sizes
+        const raf = requestAnimationFrame(() => {
+            fitView({ padding: 0.15, minZoom: 0.1, maxZoom: 1.5, duration: 600 });
+        });
+        return () => cancelAnimationFrame(raf);
+    }, [hierarchyTree, expandedNodes, layoutDirection, toggleExpandedNode, setSelectedEmployee, navigateToEmployee, setNodes, setEdges, fitView]);
 
     const onLayout = useCallback((dir) => {
         if (!nodes.length) return;
@@ -294,19 +291,19 @@ const TreeView = ({
     }, [nodes, edges, setNodes, setEdges, setLayoutDirection, fitView]);
 
     const handleExpandAll = useCallback(() => {
-        if (!orgChart?.length) return;
-        setExpandedNodes(orgChart.filter(e => e.direct_reports > 0).map(e => e.employee_id));
-    }, [orgChart, setExpandedNodes]);
+        if (!filteredOrgChart?.length) return;
+        setExpandedNodes(filteredOrgChart.filter(e => e.direct_reports > 0).map(e => e.employee_id));
+    }, [filteredOrgChart, setExpandedNodes]);
 
     const handleCollapseAll = useCallback(() => {
-        if (!orgChart?.length) return;
-        const roots = orgChart.filter(e => !e.line_manager_id && !e.manager_id && !e.parent_id);
+        if (!filteredOrgChart?.length) return;
+        const roots = filteredOrgChart.filter(e => !e.line_manager_id && !e.manager_id && !e.parent_id);
         if (roots.length) setExpandedNodes(roots.map(e => e.employee_id));
         else {
-            const max = Math.max(...orgChart.map(e => e.direct_reports || 0));
-            setExpandedNodes(orgChart.filter(e => (e.direct_reports || 0) === max).map(e => e.employee_id));
+            const max = Math.max(...filteredOrgChart.map(e => e.direct_reports || 0));
+            setExpandedNodes(filteredOrgChart.filter(e => (e.direct_reports || 0) === max).map(e => e.employee_id));
         }
-    }, [orgChart, setExpandedNodes]);
+    }, [filteredOrgChart, setExpandedNodes]);
 
     const panelBtn = (active) =>
         `px-3 py-2 ${bg} ${text} border ${border} rounded-lg ${hover} transition-colors text-sm font-medium${active ? ' !bg-almet-sapphire !text-sky-400' : ''}`;
@@ -358,12 +355,15 @@ const TreeView = ({
 
             <EnhancedControlsPanel darkMode={darkMode} />
 
-            <Panel position="top-right" className="flex gap-2 flex-wrap">
+            {/* Top-right: layout + expand controls */}
+            <Panel position="top-right" className="flex gap-1.5 flex-wrap">
                 <button onClick={() => onLayout('TB')} className={panelBtn(layoutDirection === 'TB')}>Vertical</button>
                 <button onClick={() => onLayout('LR')} className={panelBtn(layoutDirection === 'LR')}>Horizontal</button>
-                <button onClick={handleExpandAll} className={panelBtn(false)}>Expand All</button>
+                <button onClick={handleExpandAll}   className={panelBtn(false)}>Expand All</button>
                 <button onClick={handleCollapseAll} className={panelBtn(false)}>Collapse All</button>
             </Panel>
+
+        
         </ReactFlow>
     );
 };
