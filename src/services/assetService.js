@@ -1,5 +1,5 @@
 // src/services/assetService.js
-import axios from "axios";
+import axios from '@/lib/axiosShim';
 
 // ─── Axios instance ────────────────────────────────────────────────────────────
 const api = axios.create({

@@ -1,5 +1,5 @@
 // services/jobDescriptionService.js - COMPLETE API Integration with Multi-Assignment Support
-import axios from 'axios';
+import axios from '@/lib/axiosShim';
 
 // Base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;

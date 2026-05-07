@@ -1,6 +1,6 @@
 // services/celebrationService.js
 
-import axios from 'axios';
+import axios from '@/lib/axiosShim';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 

@@ -1,5 +1,5 @@
 // src/services/newsService.js - Complete News & Target Groups API Service
-import axios from 'axios';
+import axios from '@/lib/axiosShim';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -518,33 +518,43 @@ export const formatApiError = (error) => {
 // ============================================
 
 export const employeeService = {
-  // Get all employees
+  // Get all employees — uses local mock API
   getEmployees: async (params = {}) => {
     try {
-      const response = await api.get('/employees/', { params });
-      return response.data;
+      const sp = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== '') sp.append(k, v);
+      });
+      const qs = sp.toString();
+      const res = await fetch(`/api/employees${qs ? `?${qs}` : ''}`);
+      if (!res.ok) throw new Error(res.statusText);
+      return res.json();
     } catch (error) {
-      throw error.response?.data || error;
-    }
-  },
-getMyProfile: async () => {
-    try {
-      const response = await api.get('/employees/get_my_profile/');
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get my profile:', error);
       throw error;
     }
+  },
+  getMyProfile: async () => {
+    // Return a mock profile for demo
+    return {
+      employee: {
+        id: 1,
+        full_name: 'Demo User',
+        employee_id: 'EMP001',
+      },
+      is_admin: true,
+      is_manager: true,
+    };
   },
   // Get single employee
   getEmployee: async (id) => {
     try {
-      const response = await api.get(`/employees/${id}/`);
-      return response.data;
+      const res = await fetch(`/api/employees/${id}`);
+      if (!res.ok) throw new Error(res.statusText);
+      return res.json();
     } catch (error) {
-      throw error.response?.data || error;
+      throw error;
     }
-  }
+  },
 };
 
 export default {

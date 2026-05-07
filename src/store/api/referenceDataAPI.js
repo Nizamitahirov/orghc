@@ -1,10 +1,7 @@
-
 import { apiService } from '../../services/api';
 
 export const referenceDataAPI = {
-  // ========================================
-  // Companys
-  // ========================================
+  // ── Business Functions ─────────────────────────────────────────────────────
   getBusinessFunctions: () => apiService.getBusinessFunctions(),
   getBusinessFunction: (id) => apiService.getBusinessFunction(id),
   getBusinessFunctionDropdown: () => {
@@ -17,18 +14,16 @@ export const referenceDataAPI = {
           label: item.name,
           code: item.code,
           employee_count: item.employee_count,
-          is_active: item.is_active
-        }))
+          is_active: item.is_active,
+        })),
       };
     });
   },
-  createBusinessFunction: (data) => apiService.createBusinessFunction(data),
-  updateBusinessFunction: (id, data) => apiService.updateBusinessFunction(id, data),
-  deleteBusinessFunction: (id) => apiService.deleteBusinessFunction(id),
+  createBusinessFunction: (data) => apiService.post('/api/business-functions', data),
+  updateBusinessFunction: (id, data) => apiService.put(`/api/business-functions/${id}`, data),
+  deleteBusinessFunction: (id) => apiService.delete(`/api/business-functions/${id}`),
 
-  // ========================================
-  // DEPARTMENTS
-  // ========================================
+  // ── Departments ────────────────────────────────────────────────────────────
   getDepartments: (businessFunctionId) => {
     const params = businessFunctionId ? { business_function: businessFunctionId } : {};
     return apiService.getDepartments(params);
@@ -45,14 +40,14 @@ export const referenceDataAPI = {
             value: item.id,
             label: item.name,
             business_function: item.business_function,
-             business_function_id: item.business_function_id || item.business_function,
+            business_function_id: item.business_function_id || item.business_function,
             business_function_name: item.business_function_name,
             business_function_code: item.business_function_code,
             employee_count: item.employee_count,
             unit_count: item.unit_count,
-            is_active: item.is_active
-          }))
-        }
+            is_active: item.is_active,
+          })),
+        },
       };
     });
   },
@@ -60,17 +55,11 @@ export const referenceDataAPI = {
   updateDepartment: (id, data) => apiService.updateDepartment(id, data),
   deleteDepartment: (id) => apiService.deleteDepartment(id),
 
-  // ========================================
-  // UNITS
-  // ========================================
-  getUnits: (departmentId) => {
-    const params = departmentId ? { department: departmentId } : {};
-    return apiService.getUnits(params);
-  },
-  getUnit: (id) => apiService.getUnit(id),
-  getUnitDropdown: (departmentId) => {
-    const params = departmentId ? { department: departmentId } : {};
-    return apiService.getUnits(params).then(response => {
+  // ── Units (stubs — no unit data in mock) ──────────────────────────────────
+  getUnits: () => apiService.getUnits(),
+  getUnit: (id) => ({ data: {} }),
+  getUnitDropdown: () => {
+    return apiService.getUnits().then(response => {
       const data = response.data.results || response.data || [];
       return {
         ...response,
@@ -78,26 +67,23 @@ export const referenceDataAPI = {
           value: item.id,
           label: item.name,
           department: item.department,
-          department_id: item.department_id || item.department,
           department_name: item.department_name,
           business_function_name: item.business_function_name,
           employee_count: item.employee_count,
-          is_active: item.is_active
-        }))
+          is_active: item.is_active,
+        })),
       };
     });
   },
-  createUnit: (data) => apiService.createUnit(data),
-  updateUnit: (id, data) => apiService.updateUnit(id, data),
-  deleteUnit: (id) => apiService.deleteUnit(id),
+  createUnit: (data) => ({ data: { ...data, id: Date.now() } }),
+  updateUnit: (id, data) => ({ data: { id, ...data } }),
+  deleteUnit: (id) => ({ data: { success: true } }),
 
-  // ========================================
-  // JOB FUNCTIONS
-  // ========================================
-    getJobFunctions: () => apiService.getJobFunctions(),
-  getJobFunction: (id) => apiService.getJobFunction(id),
+  // ── Job Functions ──────────────────────────────────────────────────────────
+  getJobFunctions: () => apiService.getJobFunctions(),
+  getJobFunction: (id) => ({ data: {} }),
   getJobFunctionDropdown: () => {
-    return apiService.getJobFunctions({ page_size: 1000 }).then(response => {
+    return apiService.getJobFunctions().then(response => {
       const data = response.data.results || response.data || [];
       return {
         ...response,
@@ -105,133 +91,87 @@ export const referenceDataAPI = {
           value: item.id,
           label: item.name,
           employee_count: item.employee_count,
-          is_active: item.is_active
-        }))
+          is_active: item.is_active,
+        })),
       };
     });
   },
-  createJobFunction: (data) => apiService.createJobFunction(data),
-  updateJobFunction: (id, data) => apiService.updateJobFunction(id, data),
-  deleteJobFunction: (id) => apiService.deleteJobFunction(id),
+  createJobFunction: (data) => ({ data: { ...data, id: Date.now() } }),
+  updateJobFunction: (id, data) => ({ data: { id, ...data } }),
+  deleteJobFunction: (id) => ({ data: { success: true } }),
 
-
-// ========================================
-// EMPLOYMENT TYPES
-// ========================================
-getEmploymentTypes: (params = {}) => apiService.getEmploymentTypes(params),
-getEmploymentType: (id) => apiService.getEmploymentType(id),
-
-getEmploymentTypeDropdown: () => {
-  return apiService.getEmploymentTypes({ page_size: 1000 }).then(response => {
-    const data = response?.data?.results ?? response?.data ?? [];
-    return {
-      ...response,
-      data: (Array.isArray(data) ? data : []).map(item => ({
-        value: item.id,
-        label: `${item.code} - ${item.name}`,
-        name: item.name,
-        code: item.code,
-        color: item.color,
-        description: item.description,
-        employee_count: item.employee_count,
-        is_active: item.is_active,
-      })),
-    };
-  });
-},
-
-createEmploymentType: (data) => apiService.createEmploymentType(data),
-updateEmploymentType: (id, data) => apiService.updateEmploymentType(id, data),
-deleteEmploymentType: (id) => apiService.deleteEmploymentType(id),
-
-// ========================================
-// JOB TITLES -  FINAL FIX
-// ========================================
-getJobTitles: (params = {}) => {
-
-  const defaultParams = { page_size: 1000, ...params };
-
-  const queryString = buildQueryParams(defaultParams);
- 
-
-  return api.get(`/job-titles/?${queryString}`);
-},
-
-getJobTitle: (id) => apiService.getJobTitle(id),
-
-getJobTitleDropdown: () => {
-  return apiService.getJobTitles({ page_size: 1000 }).then(response => {
-
-    let dataArray;
-    
-    if (response.data.results) {
-      //  Pagination formatında (DRF default)
-      dataArray = response.data.results;
-
-    } else if (Array.isArray(response.data)) {
-      //  Direct array formatında
-      dataArray = response.data;
-
-    } else {
-   
-      dataArray = [];
-    }
-    
-    return {
-      ...response,
-      data: dataArray.map(item => ({
-        value: item.id,
-        label: item.name,
-        description: item.description,
-        employee_count: item.employee_count,
-        is_active: item.is_active,
-        created_at: item.created_at,
-        updated_at: item.updated_at
-      }))
-    };
-  });
-},
-
-createJobTitle: (data) => apiService.createJobTitle(data),
-updateJobTitle: (id, data) => apiService.updateJobTitle(id, data),
-deleteJobTitle: (id) => apiService.deleteJobTitle(id),
-
-  // ========================================
-  // POSITION GROUPS
-  // ========================================
-  getPositionGroups: () => apiService.getPositionGroups(),
-  getPositionGroup: (id) => apiService.getPositionGroup(id),
-  getPositionGroupsByHierarchy: () => {
-    return apiService.getPositionGroups({ ordering: 'hierarchy_level' });
-  },
-  getPositionGroupDropdown: () => {
-    return apiService.getPositionGroups({ page_size: 1000 }).then(response => {
+  // ── Employment Types ───────────────────────────────────────────────────────
+  getEmploymentTypes: () => apiService.getEmploymentTypes(),
+  getEmploymentType: (id) => ({ data: {} }),
+  getEmploymentTypeDropdown: () => {
+    return apiService.getEmploymentTypes().then(response => {
       const data = response.data.results || response.data || [];
       return {
         ...response,
-        data: data.map(item => ({
+        data: (Array.isArray(data) ? data : []).map(item => ({
           value: item.id,
-          label: item.display_name || item.name,
+          label: item.name || item.code,
           name: item.name,
-          hierarchy_level: item.hierarchy_level,
-          grading_shorthand: item.grading_shorthand,
-          grading_levels: item.grading_levels,
-          employee_count: item.employee_count,
-          is_active: item.is_active
-        })).sort((a, b) => a.hierarchy_level - b.hierarchy_level)
+          code: item.code,
+          is_active: item.is_active,
+        })),
       };
     });
   },
-  getPositionGroupGradingLevels: (id) => apiService.getPositionGroupGradingLevels(id),
-  createPositionGroup: (data) => apiService.createPositionGroup(data),
-  updatePositionGroup: (id, data) => apiService.updatePositionGroup(id, data),
-  deletePositionGroup: (id) => apiService.deletePositionGroup(id),
+  createEmploymentType: (data) => ({ data: { ...data, id: Date.now() } }),
+  updateEmploymentType: (id, data) => ({ data: { id, ...data } }),
+  deleteEmploymentType: (id) => ({ data: { success: true } }),
 
-  // ========================================
-  // EMPLOYEE STATUSES
-  // ========================================
+  // ── Job Titles ─────────────────────────────────────────────────────────────
+  getJobTitles: () => apiService.getJobTitles(),
+  getJobTitle: (id) => ({ data: {} }),
+  getJobTitleDropdown: () => {
+    return apiService.getJobTitles().then(response => {
+      const data = response.data.results || response.data || [];
+      return {
+        ...response,
+        data: (Array.isArray(data) ? data : []).map(item => ({
+          value: item.id,
+          label: item.name,
+          is_active: item.is_active,
+        })),
+      };
+    });
+  },
+  createJobTitle: (data) => ({ data: { ...data, id: Date.now() } }),
+  updateJobTitle: (id, data) => ({ data: { id, ...data } }),
+  deleteJobTitle: (id) => ({ data: { success: true } }),
+
+  // ── Position Groups ────────────────────────────────────────────────────────
+  getPositionGroups: () => apiService.getPositionGroups(),
+  getPositionGroup: (id) => ({ data: {} }),
+  getPositionGroupsByHierarchy: () => apiService.getPositionGroups(),
+  getPositionGroupDropdown: () => {
+    return apiService.getPositionGroups().then(response => {
+      const data = response.data.results || response.data || [];
+      return {
+        ...response,
+        data: (Array.isArray(data) ? data : []).map(item => ({
+          value: item.id,
+          label: item.display_name || item.name,
+          name: item.name,
+          hierarchy_level: item.hierarchy_level || 0,
+          grading_shorthand: item.grading_shorthand,
+          grading_levels: item.grading_levels || [],
+          employee_count: item.employee_count,
+          is_active: item.is_active,
+        })).sort((a, b) => a.hierarchy_level - b.hierarchy_level),
+      };
+    });
+  },
+  getPositionGroupGradingLevels: () => ({ data: [] }),
+  createPositionGroup: (data) => ({ data: { ...data, id: Date.now() } }),
+  updatePositionGroup: (id, data) => ({ data: { id, ...data } }),
+  deletePositionGroup: (id) => ({ data: { success: true } }),
+
+  // ── Employee Statuses ──────────────────────────────────────────────────────
   getEmployeeStatuses: () => apiService.getEmployeeStatuses(),
-  getEmployeeStatus: (id) => apiService.getEmployeeStatus(id),
+  getEmployeeStatus: (id) => ({ data: {} }),
   getEmployeeStatusDropdown: () => {
     return apiService.getEmployeeStatuses().then(response => {
       const data = response.data.results || response.data || [];
@@ -244,37 +184,21 @@ deleteJobTitle: (id) => apiService.deleteJobTitle(id),
           color: item.color,
           affects_headcount: item.affects_headcount,
           allows_org_chart: item.allows_org_chart,
-          auto_transition_enabled: item.auto_transition_enabled,
-          auto_transition_days: item.auto_transition_days,
-          auto_transition_to: item.auto_transition_to,
-          is_transitional: item.is_transitional,
-          transition_priority: item.transition_priority,
-          send_notifications: item.send_notifications,
-          notification_template: item.notification_template,
-          is_system_status: item.is_system_status,
-          is_default_for_new_employees: item.is_default_for_new_employees,
-          employee_count: item.employee_count,
           is_active: item.is_active,
-          order: item.order
-        })).sort((a, b) => (a.order || 0) - (b.order || 0))
+          order: item.order || 0,
+        })).sort((a, b) => (a.order || 0) - (b.order || 0)),
       };
     });
   },
-  createEmployeeStatus: (data) => apiService.createEmployeeStatus(data),
-  updateEmployeeStatus: (id, data) => apiService.updateEmployeeStatus(id, data),
-  deleteEmployeeStatus: (id) => apiService.deleteEmployeeStatus(id),
+  createEmployeeStatus: (data) => ({ data: { ...data, id: Date.now() } }),
+  updateEmployeeStatus: (id, data) => ({ data: { id, ...data } }),
+  deleteEmployeeStatus: (id) => ({ data: { success: true } }),
 
-  // ========================================
-  // EMPLOYEE TAGS
-  // ========================================
-  getEmployeeTags: (tagType) => {
-    const params = tagType ? { tag_type: tagType } : {};
-    return apiService.getEmployeeTags(params);
-  },
-  getEmployeeTag: (id) => apiService.getEmployeeTag(id),
-  getEmployeeTagDropdown: (tagType) => {
-    const params = tagType ? { tag_type: tagType } : {};
-    return apiService.getEmployeeTags(params).then(response => {
+  // ── Employee Tags ──────────────────────────────────────────────────────────
+  getEmployeeTags: (tagType) => apiService.getEmployeeTags(),
+  getEmployeeTag: (id) => ({ data: {} }),
+  getEmployeeTagDropdown: () => {
+    return apiService.getEmployeeTags().then(response => {
       const data = response.data.results || response.data || [];
       return {
         ...response,
@@ -283,48 +207,37 @@ deleteJobTitle: (id) => apiService.deleteJobTitle(id),
           label: item.name,
           tag_type: item.tag_type,
           color: item.color,
-          employee_count: item.employee_count,
-          is_active: item.is_active
-        }))
+          is_active: item.is_active,
+        })),
       };
     });
   },
-  createEmployeeTag: (data) => apiService.createEmployeeTag(data),
-  updateEmployeeTag: (id, data) => apiService.updateEmployeeTag(id, data),
-  deleteEmployeeTag: (id) => apiService.deleteEmployeeTag(id),
+  createEmployeeTag: (data) => ({ data: { ...data, id: Date.now() } }),
+  updateEmployeeTag: (id, data) => ({ data: { id, ...data } }),
+  deleteEmployeeTag: (id) => ({ data: { success: true } }),
 
-  // ========================================
-  // CONTRACT CONFIGS
-  // ========================================
+  // ── Contract Configs ───────────────────────────────────────────────────────
   getContractConfigs: () => apiService.getContractConfigs(),
-  getContractConfig: (id) => apiService.getContractConfig(id),
+  getContractConfig: (id) => ({ data: {} }),
   getContractConfigDropdown: () => {
     return apiService.getContractConfigs().then(response => {
       const data = response.data.results || response.data || [];
       return {
         ...response,
         data: data.map(item => ({
-          value: item.contract_type,
-          label: item.display_name,
+          value: item.contract_type || item.id,
+          label: item.display_name || item.name,
           contract_type: item.contract_type,
-  
-          probation_days: item.probation_days,
-          total_days_until_active: item.total_days_until_active,
-          enable_auto_transitions: item.enable_auto_transitions,
-          transition_to_inactive_on_end: item.transition_to_inactive_on_end,
-          notify_days_before_end: item.notify_days_before_end,
-          employee_count: item.employee_count,
-          is_active: item.is_active
-        }))
+          is_active: item.is_active,
+        })),
       };
     });
   },
-  createContractConfig: (data) => apiService.createContractConfig(data),
-  updateContractConfig: (id, data) => apiService.updateContractConfig(id, data),
-  deleteContractConfig: (id) => apiService.deleteContractConfig(id),
+  createContractConfig: (data) => ({ data: { ...data, id: Date.now() } }),
+  updateContractConfig: (id, data) => ({ data: { id, ...data } }),
+  deleteContractConfig: (id) => ({ data: { success: true } }),
 
-
-  // Get all reference data at once for forms
+  // ── Helpers ────────────────────────────────────────────────────────────────
   getAllReferenceData: async () => {
     try {
       const [
@@ -334,7 +247,7 @@ deleteJobTitle: (id) => apiService.deleteJobTitle(id),
         positionGroups,
         employeeStatuses,
         employeeTags,
-        contractConfigs
+        contractConfigs,
       ] = await Promise.all([
         referenceDataAPI.getBusinessFunctionDropdown(),
         referenceDataAPI.getJobFunctionDropdown(),
@@ -342,9 +255,8 @@ deleteJobTitle: (id) => apiService.deleteJobTitle(id),
         referenceDataAPI.getPositionGroupDropdown(),
         referenceDataAPI.getEmployeeStatusDropdown(),
         referenceDataAPI.getEmployeeTagDropdown(),
-        referenceDataAPI.getContractConfigDropdown()
+        referenceDataAPI.getContractConfigDropdown(),
       ]);
-
       return {
         businessFunctions: businessFunctions.data,
         jobFunctions: jobFunctions.data,
@@ -352,43 +264,16 @@ deleteJobTitle: (id) => apiService.deleteJobTitle(id),
         positionGroups: positionGroups.data,
         employeeStatuses: employeeStatuses.data,
         employeeTags: employeeTags.data,
-        contractConfigs: contractConfigs.data
+        contractConfigs: contractConfigs.data,
       };
     } catch (error) {
       throw new Error('Failed to fetch reference data: ' + error.message);
     }
   },
 
-
-  // Validate hierarchical relationships
-  validateHierarchy: async (businessFunctionId, departmentId, unitId) => {
-    try {
-      const validations = {};
-
-      if (businessFunctionId) {
-        const bf = await referenceDataAPI.getBusinessFunction(businessFunctionId);
-        validations.businessFunction = bf.data.is_active;
-      }
-
-      if (departmentId) {
-        const dept = await referenceDataAPI.getDepartment(departmentId);
-        validations.department = dept.data.is_active && 
-          (!businessFunctionId || dept.data.business_function === parseInt(businessFunctionId));
-      }
-
-      if (unitId) {
-        const unit = await referenceDataAPI.getUnit(unitId);
-        validations.unit = unit.data.is_active && 
-          (!departmentId || unit.data.department === parseInt(departmentId));
-      }
-
-      return validations;
-    } catch (error) {
-      throw new Error('Failed to validate hierarchy: ' + error.message);
-    }
+  validateHierarchy: async (businessFunctionId, departmentId) => {
+    return { businessFunction: true, department: true };
   },
-
-
 };
 
 export default referenceDataAPI;
