@@ -1,18 +1,11 @@
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { LANGUAGES, DEFAULT_LANGUAGE, getTranslation } from '@/i18n';
-import { setupLanguageInterceptor } from '@/utils/languageInterceptor';
-import api from '@/services/api';
 
 const LanguageContext = createContext(null);
 
 export function LanguageProvider({ children }) {
   const [language, setLanguage] = useState(DEFAULT_LANGUAGE);
-
-  // Setup axios interceptor once on mount
-  useEffect(() => {
-    setupLanguageInterceptor(api);
-  }, []);
 
   // Load saved language from localStorage on mount
   useEffect(() => {
