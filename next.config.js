@@ -2,8 +2,6 @@ const path = require('path');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone', // export əvəzinə
-  trailingSlash: true,
   reactStrictMode: true,
   images: {
     remotePatterns: [
